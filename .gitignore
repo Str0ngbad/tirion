@@ -46,3 +46,8 @@ next-env.d.ts
 
 # Local IDE settings (in case VS Code workspace settings get committed accidentally)
 .vscode/settings.json
+
+/lib/generated/prisma
+
+# Prisma generated client (if output path is customized)
+/lib/generated/
