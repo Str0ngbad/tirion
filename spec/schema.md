@@ -2,15 +2,16 @@
 
 ## Overview
 
-23 tables organized into four layers:
+21 models organized into four layers:
 - **Definition Layer** — Parts, BOM, Routing Templates, lookup tables. Project-agnostic. The source of truth for what things are and how they're made.
 - **Execution Layer** — Projects, Work Orders, Work Order Steps, Batches, Blockers, Definition Change Flags. Where production state lives.
-- **Procurement / Receiving Layer** — Supply Orders, Supply Order Lines, Supply Order Line Allocations, Receipts, Receipt Lines.
-- **Supporting Tables** — Users, Audit Log, Audit Action lookup.
+- **Procurement / Receiving Layer** — Supply Orders, Supply Order Lines, Supply Order Line Allocations.
+- **Supporting Tables** — Users, User Process Type Assignments, Audit Log, Audit Action lookup.
 
-This is the post-Stage-6 / post-reconciliation schema, incorporating all decisions
-locked through Stage 5, Stage 6 schema validation, and the Definition Change Flag
-spec finalized during reconciliation.
+This is the post-Stage-6 / post-reconciliation / post-Receiving-design-session
+schema, incorporating all decisions locked through Stage 5, Stage 6 schema
+validation, the Definition Change Flag spec finalized during reconciliation,
+and the Receiving design session that removed Receipt + ReceiptLine entities.
 
 ---
 
@@ -97,6 +98,8 @@ model Part {
   bomParent         BOM[]             @relation("ParentPart")
   bomChild          BOM[]             @relation("ChildPart")
   workOrders        WorkOrder[]
+  productionBatches ProductionBatch[]
+  supplyOrderLines  SupplyOrderLine[]
 }
 
 enum PartType {
@@ -221,7 +224,8 @@ model MaterialSpec {
   isActive        Boolean @default(true)
 
   // Relations
-  parts Part[]
+  parts            Part[]
+  supplyOrderLines SupplyOrderLine[]
 }
 ```
 
@@ -758,6 +762,7 @@ model SupplyOrder {
   // Relations
   vendor    Vendor              @relation(fields: [vendorId], references: [vendorId])
   lines     SupplyOrderLine[]
+  receipts  Receipt[]
 }
 
 enum SupplyOrderStatus {
@@ -942,7 +947,7 @@ a row insert, not a schema migration.
 model AuditAction {
   auditActionId   Int     @id @default(autoincrement())
   actionName      String  @unique  // e.g. 'StepStateChanged', 'StockFulfilled'
-  category        String  // 'WO' | 'Step' | 'Batch' | 'Blocker' | 'Project' | 'Stock' | 'Receipt' | 'Definition'
+  category        String  // 'WO' | 'Step' | 'Batch' | 'Blocker' | 'Project' | 'Stock' | 'SupplyOrder' | 'Definition' | 'Flag'
   description     String?
   isActive        Boolean @default(true)
 
@@ -1035,16 +1040,17 @@ model AuditLog {
   note            String?   // optional user-supplied note (drift correction, blocker resolution, etc.)
 
   // Relations
-  action    AuditAction @relation(fields: [auditActionId], references: [auditActionId])
-  changedBy User        @relation(fields: [changedByUserId], references: [userId])
+  action                AuditAction            @relation(fields: [auditActionId], references: [auditActionId])
+  changedBy             User                   @relation(fields: [changedByUserId], references: [userId])
+  definitionChangeFlags DefinitionChangeFlag[]
 }
 ```
 
 **Rules:**
 - AuditLog is append-only. No updates or deletes.
 - Every state change on WorkOrderStep, WorkOrder, ProductionBatch, Blocker,
-  Project, Part, BOM, RoutingTemplate, Stock, and Receipt must produce an AuditLog
-  entry.
+  Project, Part, BOM, RoutingTemplate, Stock, and SupplyOrder must produce
+  an AuditLog entry.
 - `previousValue` and `newValue` store JSON snapshots of the changed fields.
 - `auditActionId` references AuditAction lookup — adding a new action type is a row
   insert in AuditAction, not a schema migration.
@@ -1059,26 +1065,25 @@ Prisma manages migrations, but the dependency order is:
 
 1. User
 2. ProcessType
-3. ProcessTypeSubStatus
-4. AuditAction
-5. Vendor
-6. MaterialSpec
-7. Part
-8. BOM
-9. RoutingTemplateDefinition
-10. RoutingTemplateStep
-11. Project
-12. ProductionBatch
-13. WorkOrder
-14. WorkOrderStep
-15. Blocker
-16. SupplyOrder
-17. SupplyOrderLine
-18. SupplyOrderLineAllocation
-19. Receipt
-20. ReceiptLine
-21. AuditLog
-22. DefinitionChangeFlag
+3. UserProcessTypeAssignment
+4. ProcessTypeSubStatus
+5. AuditAction
+6. Vendor
+7. MaterialSpec
+8. Part
+9. BOM
+10. RoutingTemplateDefinition
+11. RoutingTemplateStep
+12. Project
+13. ProductionBatch
+14. WorkOrder
+15. WorkOrderStep
+16. Blocker
+17. SupplyOrder
+18. SupplyOrderLine
+19. SupplyOrderLineAllocation
+20. AuditLog
+21. DefinitionChangeFlag
 
 (AuditLog and DefinitionChangeFlag have a circular dependency — flags reference an
 auditLogId, but DefinitionChangeFlagCreated audit entries reference the flag. Migration
