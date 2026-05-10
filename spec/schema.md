@@ -758,7 +758,6 @@ model SupplyOrder {
   // Relations
   vendor    Vendor              @relation(fields: [vendorId], references: [vendorId])
   lines     SupplyOrderLine[]
-  receipts  Receipt[]
 }
 
 enum SupplyOrderStatus {
@@ -882,21 +881,24 @@ No authentication enforcement in Rev 1 — user selection is manual.
 
 ```prisma
 model User {
-  userId    Int       @id @default(autoincrement())
-  userName  String    @unique
-  role      UserRole  @default(Operator)
-  isActive  Boolean   @default(true)
+  userId         Int       @id @default(autoincrement())
+  userName       String    @unique
+  displayName    String                                  // Required — appears in UI and audit logs
+  role           UserRole  @default(Operator)
+  isActive       Boolean   @default(true)
+  defaultStation String?                                 // Optional, for Operators
 
   // Relations
-  assignedSteps    WorkOrderStep[]
-  blockersCreated  Blocker[]       @relation("BlockerCreator")
-  blockersPending  Blocker[]       @relation("BlockerPending")
-  blockersResolved Blocker[]       @relation("BlockerResolver")
-  projectsCreated  Project[]       @relation("ProjectCreator")
-  projectsEdited   Project[]       @relation("ProjectLastEditor")
-  flagsCreated     DefinitionChangeFlag[] @relation("FlagCreator")
-  flagsResolved    DefinitionChangeFlag[] @relation("FlagResolver")
-  auditLogs        AuditLog[]
+  assignedProcessTypes UserProcessTypeAssignment[]
+  assignedSteps        WorkOrderStep[]
+  blockersCreated      Blocker[]              @relation("BlockerCreator")
+  blockersPending      Blocker[]              @relation("BlockerPending")
+  blockersResolved     Blocker[]              @relation("BlockerResolver")
+  projectsCreated      Project[]              @relation("ProjectCreator")
+  projectsEdited       Project[]              @relation("ProjectLastEditor")
+  flagsCreated         DefinitionChangeFlag[] @relation("FlagCreator")
+  flagsResolved        DefinitionChangeFlag[] @relation("FlagResolver")
+  auditLogs            AuditLog[]
 }
 
 enum UserRole {
@@ -905,7 +907,29 @@ enum UserRole {
   Manager
   Admin
 }
+
+model UserProcessTypeAssignment {
+  userId         Int
+  processTypeId  Int
+
+  user           User         @relation(fields: [userId], references: [userId])
+  processType    ProcessType  @relation(fields: [processTypeId], references: [processTypeId])
+
+  @@id([userId, processTypeId])
+}
 ```
+
+**Notes on UserProcessTypeAssignment:**
+
+- Junction table assigning Operators and Leads to specific ProcessTypes
+- Determines which lenses the user has execution access to and which side
+  panel edit affordances are enabled (per `detail_panel_spec.md` permission
+  rules)
+- Required for Operators and Leads at user creation (per
+  `configuration_management_spec.md` User Form rules)
+- Hidden / not used for Managers and Admins (they have implicit access to
+  all ProcessTypes)
+- Composite primary key — a user-to-process-type pair is unique
 
 ---
 
