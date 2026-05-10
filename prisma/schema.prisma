@@ -4,10 +4,458 @@
 // Get a free hosted Postgres database in seconds: `npx create-db`
 
 generator client {
-  provider = "prisma-client"
-  output   = "../lib/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+model Part {
+  partId          Int               @id @default(autoincrement())
+  partNumber      String            @unique
+  partName        String
+  partType        PartType          // 'Part' | 'Assembly'
+  description     String?
+  defaultVendorId             Int?
+  materialSpecId              Int?
+  routingTemplateDefinitionId Int?
+  blankLength                 Decimal?  // length of raw material consumed per piece; nullable
+  procurementType             ProcurementType  // 'Make' | 'Buy' | 'MakeBuy'
+  inventoryLocation           String?   @unique  // enforced unique; default sort field for Parts Master
+  stockCount                  Decimal?  @default(0)  // current on-hand count; core for distribution and stock fulfillment
+  isActive                    Boolean   @default(true)
+  notes                       String?
+
+  // Relations
+  defaultVendor     Vendor?           @relation(fields: [defaultVendorId], references: [vendorId])
+  materialSpec      MaterialSpec?     @relation(fields: [materialSpecId], references: [materialSpecId])
+  routingTemplate   RoutingTemplateDefinition? @relation(fields: [routingTemplateDefinitionId], references: [routingTemplateDefinitionId])
+  bomParent         BOM[]             @relation("ParentPart")
+  bomChild          BOM[]             @relation("ChildPart")
+  workOrders        WorkOrder[]
+  productionBatches ProductionBatch[]
+  supplyOrderLines  SupplyOrderLine[]
+}
+
+enum PartType {
+  Part
+  Assembly
+}
+
+enum ProcurementType {
+  Make
+  Buy
+  MakeBuy
+}
+
+model BOM {
+  bomId         Int   @id @default(autoincrement())
+  parentPartId  Int
+  childPartId   Int
+  quantity      Decimal
+  displayOrder  Int   // display order within parent assembly
+
+  // Relations
+  parentPart  Part  @relation("ParentPart", fields: [parentPartId], references: [partId])
+  childPart   Part  @relation("ChildPart", fields: [childPartId], references: [partId])
+}
+
+model RoutingTemplateDefinition {
+  routingTemplateDefinitionId Int     @id @default(autoincrement())
+  templateName                String  @unique
+  description                 String?
+  isActive                    Boolean @default(true)
+
+  // Relations
+  steps RoutingTemplateStep[]
+  parts Part[]
+  workOrders WorkOrder[]  // WOs reference the template they were generated from (snapshot)
+}
+
+model RoutingTemplateStep {
+  routingTemplateStepId       Int     @id @default(autoincrement())
+  routingTemplateDefinitionId Int
+  stepIndex                   Int     // 1-based, ordered execution sequence
+  processTypeId               Int
+
+  // Relations
+  templateDefinition  RoutingTemplateDefinition @relation(fields: [routingTemplateDefinitionId], references: [routingTemplateDefinitionId])
+  processType         ProcessType               @relation(fields: [processTypeId], references: [processTypeId])
+}
+
+model MaterialSpec {
+  materialSpecId  Int     @id @default(autoincrement())
+  materialName    String  // e.g. '1018 CRS', '6061-T6'
+  form            String  // e.g. 'Flat Bar', 'Round', 'DOM Tubing'
+  stockSize       String  // e.g. '.25 x 2', '2" OD x 1.5" ID' — free text, human-readable
+  unitOfMeasure   String  // 'in' | 'ft' | 'each'
+  isActive        Boolean @default(true)
+
+  // Relations
+  parts            Part[]
+  supplyOrderLines SupplyOrderLine[]
+}
+
+model Vendor {
+  vendorId    Int     @id @default(autoincrement())
+  vendorName  String
+  contactInfo String?
+  isActive    Boolean @default(true)
+  notes       String?
+
+  // Relations
+  parts        Part[]
+  supplyOrders SupplyOrder[]
+}
+
+model ProcessType {
+  processTypeId   Int     @id @default(autoincrement())
+  processCode     String  @unique  // e.g., "MACHINE", "ASSEMBLE"
+  processName     String  @unique  // display label
+  description     String?
+  isActive        Boolean @default(true)
+
+  // Relations
+  routingTemplateSteps   RoutingTemplateStep[]
+  workOrderSteps         WorkOrderStep[]
+  blockers               Blocker[]
+  subStatuses            ProcessTypeSubStatus[]
+  userAssignments        UserProcessTypeAssignment[]
+}
+
+model ProcessTypeSubStatus {
+  processTypeSubStatusId Int      @id @default(autoincrement())
+  processTypeId          Int
+  subStatusName          String   // e.g., "Setup", "Running"
+  description            String?
+  displayOrder           Int      @default(0)  // order in dropdown
+  isActive               Boolean  @default(true)
+
+  // Relations
+  processType    ProcessType     @relation(fields: [processTypeId], references: [processTypeId])
+  workOrderSteps WorkOrderStep[]
+
+  @@unique([processTypeId, subStatusName])
+}
+
+model Project {
+  projectId          Int           @id @default(autoincrement())
+  projectNumber      String        @unique  // e.g. '10102.01' — user-entered, format conventions are organizational
+  projectName        String
+  customerName       String?
+  dueDate            DateTime?
+  status             ProjectStatus @default(Draft)
+  notes              String?
+  createdAt          DateTime      @default(now())
+  creatorUserId      Int
+  lastEditedAt       DateTime      @default(now())
+  lastEditedUserId   Int
+
+  // Relations
+  workOrders   WorkOrder[]
+  creator      User        @relation("ProjectCreator", fields: [creatorUserId], references: [userId])
+  lastEditedBy User        @relation("ProjectLastEditor", fields: [lastEditedUserId], references: [userId])
+}
+
+enum ProjectStatus {
+  Draft
+  Active
+  Complete
+  Archived
+}
+
+model WorkOrder {
+  workOrderId                 Int       @id @default(autoincrement())
+  projectId                   Int
+  partId                      Int
+  parentWoId                  Int?      // FK to WorkOrder — mirrors BOM hierarchy; null for top-level
+  routingTemplateDefinitionId Int       // snapshot of which template generated this WO at compile time
+  topLevelIndex               Int?      // suffix value (1, 2, 3...) for top-level WOs; null for non-top-level WOs
+  quantity                    Decimal
+  priority                    Int?      // global integer; lower number = higher priority; nullable
+  dueDate                     DateTime  // denormalized from Project.dueDate; cascades on Project edit
+  eta                         DateTime? // per-WO ETA, independently editable; receives propagated updates from Supply Order Line ETA edits
+  status                      WOStatus  @default(Unreleased)
+  batchId                     Int?      // FK to ProductionBatch; null if unbatched
+  stockFulfillmentReviewedAt  DateTime? // stamped when WO has a Stock Fulfillment decision recorded
+  notes                       String?
+  createdAt                   DateTime  @default(now())
+
+  // Relations
+  project         Project           @relation(fields: [projectId], references: [projectId])
+  part            Part              @relation(fields: [partId], references: [partId])
+  parentWO        WorkOrder?        @relation("WOHierarchy", fields: [parentWoId], references: [workOrderId])
+  childWOs        WorkOrder[]       @relation("WOHierarchy")
+  routingTemplate RoutingTemplateDefinition @relation(fields: [routingTemplateDefinitionId], references: [routingTemplateDefinitionId])
+  batch           ProductionBatch?  @relation(fields: [batchId], references: [batchId])
+  steps           WorkOrderStep[]
+  supplyOrderAllocations SupplyOrderLineAllocation[]
+}
+
+enum WOStatus {
+  Unreleased
+  Open
+  Complete
+  Cancelled
+}
+
+model WorkOrderStep {
+  workOrderStepId        Int         @id @default(autoincrement())
+  workOrderId            Int
+  processTypeId          Int
+  stepIndex              Int         // matches RoutingTemplateStep.stepIndex
+  state                  StepState   @default(Waiting)
+  subStatusId            Int?        // FK to ProcessTypeSubStatus
+  subStatusNote          String?     // free-text overflow alongside the validated dropdown
+  assignedUserId         Int?
+  startedAt              DateTime?
+  completedAt            DateTime?
+  completedQty           Decimal?
+  scrapQty               Decimal?
+  notes                  String?
+
+  // Relations
+  workOrder     WorkOrder             @relation(fields: [workOrderId], references: [workOrderId])
+  processType   ProcessType           @relation(fields: [processTypeId], references: [processTypeId])
+  subStatus     ProcessTypeSubStatus? @relation(fields: [subStatusId], references: [processTypeSubStatusId])
+  assignedUser  User?                 @relation(fields: [assignedUserId], references: [userId])
+}
+
+enum StepState {
+  Waiting
+  Ready
+  Started
+  Complete
+  Blocked
+  Skipped
+}
+
+model ProductionBatch {
+  batchId           Int           @id @default(autoincrement())
+  partId            Int
+  totalQuantity     Decimal       // sum of member WO quantities
+  plannedQuantity   Decimal?      // planner overage target; null = use totalQuantity
+  priority          Int?          // inherited: max priority among member WOs
+  dueDate           DateTime?     // inherited: earliest due date among member WOs
+  currentStepIndex  Int           @default(1)
+  status            BatchStatus   @default(Planned)
+  createdAt         DateTime      @default(now())
+
+  // Relations
+  part      Part        @relation(fields: [partId], references: [partId])
+  memberWOs WorkOrder[]
+}
+
+enum BatchStatus {
+  Planned
+  Active
+  Complete
+  Blocked
+}
+
+model Blocker {
+  blockerId        Int               @id @default(autoincrement())
+  entityType       BlockerEntityType // 'WorkOrder' | 'Batch'
+  entityId         Int               // ID of the blocked WorkOrder or ProductionBatch
+  processTypeId    Int               // which step is blocked
+  category         BlockerCategory   @default(Local)
+  preBlockerState  StepState         // captured at creation; surfaces as suggested default on Cleared resolution
+  createdByUserId  Int
+  createdAt        DateTime          @default(now())
+  pendingAt        DateTime?         // set when transitioned to Pending Resolution
+  pendingByUserId  Int?              // user who marked it Pending Resolution
+  resolvedAt       DateTime?
+  resolvedByUserId Int?              // user who resolved it
+  resolutionType   ResolutionType?
+  resolutionNote   String?
+
+  // Relations
+  processType ProcessType @relation(fields: [processTypeId], references: [processTypeId])
+  createdBy   User        @relation("BlockerCreator", fields: [createdByUserId], references: [userId])
+  pendingBy   User?       @relation("BlockerPending", fields: [pendingByUserId], references: [userId])
+  resolvedBy  User?       @relation("BlockerResolver", fields: [resolvedByUserId], references: [userId])
+}
+
+enum BlockerEntityType {
+  WorkOrder
+  Batch
+}
+
+enum BlockerCategory {
+  Local
+  Escalated
+}
+
+enum ResolutionType {
+  Cleared
+  BatchAdjustment
+  RoutingRollback
+  WOSplit
+}
+
+model DefinitionChangeFlag {
+  flagId              Int                @id @default(autoincrement())
+  changeType          DefinitionChangeType
+  changedEntityType   String             // 'Part' | 'BOM' | 'RoutingTemplate'
+  changedEntityId     Int                // ID of changed Part / BOM row / Template
+  affectedEntityType  String             // 'WorkOrder' | 'Batch'
+  affectedEntityId    Int                // ID of affected WorkOrder or ProductionBatch
+  parentFlagId        Int?               // FK to parent flag — set on member flags whose parent is a batch flag
+  changeDescription   String             // Human-readable: "Default vendor changed from Acme to Globex"
+  changeAuditLogId    Int                // FK to triggering AuditLog entry
+  createdAt           DateTime           @default(now())
+  createdByUserId     Int                // User who made the definition change
+  resolvedAt          DateTime?
+  resolvedByUserId    Int?
+  resolutionAction    FlagResolution?    // Dismiss | AcceptChange
+  resolutionNote      String?            // Required when resolved
+
+  // Relations
+  parentFlag          DefinitionChangeFlag? @relation("FlagHierarchy", fields: [parentFlagId], references: [flagId])
+  childFlags          DefinitionChangeFlag[] @relation("FlagHierarchy")
+  changeAuditLog      AuditLog              @relation(fields: [changeAuditLogId], references: [auditLogId])
+  createdBy           User                  @relation("FlagCreator", fields: [createdByUserId], references: [userId])
+  resolvedBy          User?                 @relation("FlagResolver", fields: [resolvedByUserId], references: [userId])
+}
+
+enum DefinitionChangeType {
+  PartFieldChanged       // Vendor, material spec, blankLength, procurementType
+  PartRoutingChanged     // routingTemplateDefinitionId on a Part
+  RoutingTemplateEdited  // Template definition itself changed
+  BOMQuantityChanged     // Quantity on existing parent/child relationship
+  BOMComponentAdded      // New child added to a parent
+  BOMComponentRemoved    // Child removed from a parent
+}
+
+enum FlagResolution {
+  Dismiss        // Accept drift; no system action
+  AcceptChange   // Apply the change to the affected entity via change-type-specific workflow
+}
+
+model SupplyOrder {
+  supplyOrderId Int           @id @default(autoincrement())
+  vendorId      Int
+  status        SupplyOrderStatus @default(Draft)
+  orderDate     DateTime?
+  expectedEta   DateTime?
+  trackingRef   String?       // tracking number, PO number, Amazon order ID, etc.
+  notes         String?
+
+  // Relations
+  vendor    Vendor              @relation(fields: [vendorId], references: [vendorId])
+  lines     SupplyOrderLine[]
+}
+
+enum SupplyOrderStatus {
+  Draft
+  RFQSent
+  Ordered
+  PartialReceived
+  Closed
+}
+
+model SupplyOrderLine {
+  supplyOrderLineId    Int       @id @default(autoincrement())
+  supplyOrderId        Int
+  partId               Int?      // for finished components; nullable for raw material lines
+  materialSpecId       Int?      // for raw material lines
+  orderedQty           Decimal
+  receivedQty          Decimal   @default(0)
+  unitCost             Decimal?
+  notes                String?
+  eta                  DateTime? // Supply Order Line ETA — propagates to member WOs on edit
+
+  // Exception fields — populated when receiver flags an issue with this line
+  hasException             Boolean   @default(false)
+  exceptionNote            String?
+  exceptionCreatedByUserId Int?
+  exceptionCreatedAt       DateTime?
+  exceptionResolvedNote    String?
+  exceptionResolvedByUserId Int?
+  exceptionResolvedAt      DateTime?
+
+  // Relations
+  supplyOrder    SupplyOrder                    @relation(fields: [supplyOrderId], references: [supplyOrderId])
+  part           Part?                          @relation(fields: [partId], references: [partId])
+  materialSpec   MaterialSpec?                  @relation(fields: [materialSpecId], references: [materialSpecId])
+  allocations    SupplyOrderLineAllocation[]
+}
+
+model SupplyOrderLineAllocation {
+  supplyOrderLineAllocationId Int       @id @default(autoincrement())
+  supplyOrderLineId           Int
+  workOrderId                 Int
+  allocatedQty                Decimal
+  notes                       String?
+
+  // Relations
+  supplyOrderLine SupplyOrderLine @relation(fields: [supplyOrderLineId], references: [supplyOrderLineId])
+  workOrder       WorkOrder       @relation(fields: [workOrderId], references: [workOrderId])
+}
+
+model User {
+  userId         Int       @id @default(autoincrement())
+  userName       String    @unique
+  displayName    String                                  // Required — appears in UI and audit logs
+  role           UserRole  @default(Operator)
+  isActive       Boolean   @default(true)
+  defaultStation String?                                 // Optional, for Operators
+
+  // Relations
+  assignedProcessTypes UserProcessTypeAssignment[]
+  assignedSteps        WorkOrderStep[]
+  blockersCreated      Blocker[]              @relation("BlockerCreator")
+  blockersPending      Blocker[]              @relation("BlockerPending")
+  blockersResolved     Blocker[]              @relation("BlockerResolver")
+  projectsCreated      Project[]              @relation("ProjectCreator")
+  projectsEdited       Project[]              @relation("ProjectLastEditor")
+  flagsCreated         DefinitionChangeFlag[] @relation("FlagCreator")
+  flagsResolved        DefinitionChangeFlag[] @relation("FlagResolver")
+  auditLogs            AuditLog[]
+}
+
+enum UserRole {
+  Operator
+  Lead
+  Manager
+  Admin
+}
+
+model UserProcessTypeAssignment {
+  userId         Int
+  processTypeId  Int
+
+  user           User         @relation(fields: [userId], references: [userId])
+  processType    ProcessType  @relation(fields: [processTypeId], references: [processTypeId])
+
+  @@id([userId, processTypeId])
+}
+
+model AuditAction {
+  auditActionId   Int     @id @default(autoincrement())
+  actionName      String  @unique  // e.g. 'StepStateChanged', 'StockFulfilled'
+  category        String  // 'WO' | 'Step' | 'Batch' | 'Blocker' | 'Project' | 'Stock' | 'SupplyOrder' | 'Definition' | 'Flag'
+  description     String?
+  isActive        Boolean @default(true)
+
+  // Relations
+  auditLogs AuditLog[]
+}
+
+model AuditLog {
+  auditLogId      Int       @id @default(autoincrement())
+  entityType      String    // 'WorkOrder' | 'WorkOrderStep' | 'Batch' | 'Blocker' | etc.
+  entityId        Int
+  auditActionId   Int       // FK to AuditAction lookup
+  changedByUserId Int
+  timestamp       DateTime  @default(now())
+  previousValue   Json?     // state before the action
+  newValue        Json?     // state after the action
+  note            String?   // optional user-supplied note (drift correction, blocker resolution, etc.)
+
+  // Relations
+  action                AuditAction            @relation(fields: [auditActionId], references: [auditActionId])
+  changedBy             User                   @relation(fields: [changedByUserId], references: [userId])
+  definitionChangeFlags DefinitionChangeFlag[]
 }
