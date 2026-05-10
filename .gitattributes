@@ -1,0 +1,11 @@
+# Normalize all text files to LF in the repo, auto-convert on checkout per OS
+* text=auto eol=lf
+
+# Force binary files to be left alone
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
