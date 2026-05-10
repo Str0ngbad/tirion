@@ -762,7 +762,6 @@ model SupplyOrder {
   // Relations
   vendor    Vendor              @relation(fields: [vendorId], references: [vendorId])
   lines     SupplyOrderLine[]
-  receipts  Receipt[]
 }
 
 enum SupplyOrderStatus {
