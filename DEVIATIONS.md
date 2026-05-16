@@ -209,3 +209,58 @@ the WO-context surface for partial-allocation decisions.
 - Slip/invoice reference dropped from Rev 1
 **Schema impact:** 15 changes applied — see schema.md Receiving Design
 Session Change Summary
+
+## 2026-05-09 — Local dev uses Neon dev branch instead of Docker Compose
+
+**Phase:** 0
+**Spec section:** BUILD_ROADMAP.md Phase 0 — "Set up Docker Compose for local PostgreSQL"
+**Discovered by:** Project owner (during environment setup)
+**Status:** Resolved-Deviation-Accepted
+
+### What the spec says
+
+The build roadmap lists Docker Compose for local PostgreSQL as a Phase 0
+task. The intent is a self-contained local database that lives in repo
+config and can be spun up identically by anyone cloning the repo.
+
+### What was discovered
+
+The build machine is running Windows 10 Enterprise 21H2. Docker Desktop
+requires Windows 10 Pro/Home 22H2 or higher. The Enterprise edition is
+managed by the project owner's former employer and cannot be upgraded
+through consumer Windows Update channels. A future Pro license upgrade
+is planned but is not scheduled for the Rev 1 build window.
+
+### Resolution
+
+Local development uses a dedicated `development` branch of the Neon project
+in place of Docker Compose. Tests use a third `test` branch, also on Neon.
+Both branches are isolated from the `production` branch.
+
+Pros of this approach:
+- No local install or OS-level dependency
+- Schema state is reproducible from `prisma/schema.prisma` + migrations
+- Matches the production database engine exactly (no SQLite-in-dev,
+  Postgres-in-prod mismatch)
+
+Cons:
+- Requires network connectivity for any database operation in dev
+- Slight added latency on each query (vs. local Docker)
+- Anyone cloning the repo needs their own Neon account or alternative
+  Postgres setup
+
+The `.env.example` file documents the `DATABASE_URL` requirement; new
+developers cloning the repo can either follow the Neon path or set up
+their own local Postgres if preferred.
+
+### Migration path
+
+When the build machine is upgraded to Windows 11 Pro, Docker can be
+installed and a `docker-compose.yml` added to the repo. The Neon branches
+remain valuable regardless (production database, separate test isolation),
+so this is additive rather than a replacement.
+
+### Files affected
+
+- No code changes; this is an environment-level decision
+- `.env.example` already documents `DATABASE_URL` correctly for either path
