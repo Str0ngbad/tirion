@@ -10,3 +10,4 @@ Eighth test, full stdin capture for commit hook.
 Ninth test, end-to-end verification of self-review hook.
 Tenth test, end-to-end after subscription auth.
 Eleventh test, retry after subscription auth.
+Auth verified, end-to-end test
