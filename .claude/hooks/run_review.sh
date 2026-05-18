@@ -34,7 +34,7 @@ log "claude binary: $(command -v claude || echo 'NOT FOUND')"
 
 echo "Running self-review for commit ${COMMIT_HASH}: ${COMMIT_SUBJECT}" >&2
 
-CLAUDE_CMD=(claude --agent code-reviewer --print "Review the most recent commit and append your review to .claude/reviews/log.md")
+CLAUDE_CMD=(claude --agent code-reviewer -p "Review the most recent commit and append your review to .claude/reviews/log.md per the format in your system prompt." --bare --allowedTools "Read,Grep,Glob,Bash")
 log "about to run: ${CLAUDE_CMD[*]}"
 
 # Disable errexit around the claude call so a non-zero exit still gets logged.

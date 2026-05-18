@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "STDIN=$(cat); { echo \"--- hook fired at $(date) ---\"; echo \"PATH=$PATH\"; echo \"jq: $(command -v jq 2>&1)\"; echo \"claude: $(command -v claude 2>&1)\"; echo \"STDIN_LEN=${#STDIN}\"; echo \"--- stdin raw ---\"; echo \"$STDIN\"; echo \"--- end stdin ---\"; COMMAND=$(echo \"$STDIN\" | jq -r '.tool_input.command' 2>&1); echo \"Parsed command: $COMMAND\"; if echo \"$COMMAND\" | grep -q 'git commit'; then echo \"MATCH: would invoke run_review.sh\"; bash .claude/hooks/run_review.sh < /dev/null; echo \"run_review.sh exit code: $?\"; else echo \"NO MATCH\"; fi; echo \"--- end ---\"; } >> .claude/reviews/hook-diag.log 2>&1"
+            "command": "STDIN=$(cat); COMMAND=$(echo \"$STDIN\" | jq -r '.tool_input.command' 2>&1); if echo \"$COMMAND\" | grep -q 'git commit'; then { echo \"--- $(date) ---\"; echo \"Triggered by commit\"; bash .claude/hooks/run_review.sh < /dev/null; echo \"exit: $?\"; } >> .claude/reviews/hook-debug.log 2>&1; fi"
           }
         ]
       }
