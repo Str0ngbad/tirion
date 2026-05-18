@@ -6,3 +6,4 @@ Fourth test, instrumented.
 Fifth test, shell diagnostic.
 Sixth test, jq/stdin diagnosis.
 Seventh test, combined diagnostic + hook logic.
+Eighth test, full stdin capture for commit hook.
