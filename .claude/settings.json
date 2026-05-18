@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c \"date >> .claude/reviews/hook-shell-test.log 2>&1; echo SHELL=$SHELL >> .claude/reviews/hook-shell-test.log 2>&1; echo SHELL_ARGV=$0 >> .claude/reviews/hook-shell-test.log 2>&1\" || echo \"bash failed at $(date)\" >> .claude/reviews/hook-shell-test.log"
+            "command": "STDIN=$(cat); { echo \"--- hook fired at $(date) ---\"; echo \"PATH=$PATH\"; echo \"jq location: $(command -v jq 2>&1)\"; echo \"--- stdin received ---\"; echo \"$STDIN\"; echo \"--- attempting jq parse ---\"; echo \"$STDIN\" | jq -r '.tool_input.command' 2>&1; echo \"--- end ---\"; } >> .claude/reviews/hook-diag.log 2>&1"
           }
         ]
       }

@@ -4,3 +4,4 @@ This file exists only to verify the self-review hook fires on commit.
 Third test run, post-reboot.
 Fourth test, instrumented.
 Fifth test, shell diagnostic.
+Sixth test, jq/stdin diagnosis.
