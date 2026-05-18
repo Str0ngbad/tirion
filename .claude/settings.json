@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "COMMAND=$(jq -r '.tool_input.command'); if echo \"$COMMAND\" | grep -q 'git commit'; then bash .claude/hooks/run_review.sh < /dev/null; fi"
+          }
+        ]
+      }
+    ]
+  }
+}

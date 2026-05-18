@@ -54,3 +54,6 @@ next-env.d.ts
 
 # Claude Code worktrees
 .claude/worktrees/
+
+# Self-review hook outputs (ephemeral, regenerated on each commit)
+.claude/reviews/
