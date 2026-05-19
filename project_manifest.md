@@ -60,8 +60,11 @@
 
 ## .claude/hooks/
 
+- .claude/hooks/dispatch.sh
 - .claude/hooks/run_review.sh
+- .claude/hooks/update_deviations.sh
 - .claude/hooks/update_manifest.sh
+- .claude/hooks/update_tracker.sh
 
 ## config (root)
 

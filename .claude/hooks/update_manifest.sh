@@ -2,8 +2,6 @@
 # update_manifest.sh — regenerates project_manifest.md at the repo root.
 # Invoked by the PostToolUse hook after every git commit.
 
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] update_manifest.sh fired" >> "$(git rev-parse --show-toplevel 2>/dev/null || pwd)/.claude/reviews/hook-debug.log"
-
 set -uo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
