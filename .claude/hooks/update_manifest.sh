@@ -97,6 +97,7 @@ HEADER
   done < <(find "$REPO_ROOT/app" -type f \
     ! -name "*.ico" \
     ! -path "*/.next/*" \
+    ! -path "*/node_modules/*" \
     -print0 2>/dev/null | sort -z)
   echo ""
 
@@ -109,7 +110,7 @@ HEADER
       *.ts|*.tsx) echo "- $(describe_ts "$f")" ;;
       *)          echo "- $rel" ;;
     esac
-  done < <(find "$REPO_ROOT/lib" -type f -print0 2>/dev/null | sort -z)
+  done < <(find "$REPO_ROOT/lib" -type f ! -path "*/node_modules/*" -print0 2>/dev/null | sort -z)
   echo ""
 
   # ---- components/ ---------------------------------------------------------
@@ -122,7 +123,7 @@ HEADER
         *.ts|*.tsx) echo "- $(describe_ts "$f")" ;;
         *)          echo "- $rel" ;;
       esac
-    done < <(find "$REPO_ROOT/components" -type f -print0 2>/dev/null | sort -z)
+    done < <(find "$REPO_ROOT/components" -type f ! -path "*/node_modules/*" -print0 2>/dev/null | sort -z)
     echo ""
   fi
 
@@ -136,7 +137,7 @@ HEADER
         *.ts|*.tsx) echo "- $(describe_ts "$f")" ;;
         *)          echo "- $rel" ;;
       esac
-    done < <(find "$REPO_ROOT/tests" -type f -print0 2>/dev/null | sort -z)
+    done < <(find "$REPO_ROOT/tests" -type f ! -path "*/node_modules/*" -print0 2>/dev/null | sort -z)
     echo ""
   fi
 
