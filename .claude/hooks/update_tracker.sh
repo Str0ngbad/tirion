@@ -176,6 +176,29 @@ HEADER
     echo ""
   done
 
+  # ---- Open DEVIATIONS stubs ----
+  echo "---"
+  echo ""
+  echo "## Open DEVIATIONS stubs"
+  echo ""
+  if [ -f "$REPO_ROOT/DEVIATIONS.md" ]; then
+    OPEN_STUBS=$(awk '/^\*\*Status:\*\* Captured/{f=1} /^\*\*Commit:\*\*/ && f{print $2; f=0}' \
+      "$REPO_ROOT/DEVIATIONS.md" 2>/dev/null)
+    if [ -n "$OPEN_STUBS" ]; then
+      while IFS= read -r hash; do
+        [ -z "$hash" ] && continue
+        STUB_DATE=$(git -C "$REPO_ROOT" log --format="%ad" --date=short -1 "$hash" 2>/dev/null \
+          || echo "unknown")
+        echo "- \`$hash\` ($STUB_DATE) — rationale TBD"
+      done <<< "$OPEN_STUBS"
+    else
+      echo "_None._"
+    fi
+  else
+    echo "_None._"
+  fi
+  echo ""
+
 } > "$OUT"
 
 echo "project_tracker.md updated." >&2

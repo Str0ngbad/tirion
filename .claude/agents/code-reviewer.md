@@ -70,3 +70,21 @@ Write your review as a markdown entry to be appended to `.claude/reviews/log.md`
 Be brief and specific. A clean commit's review can be 3-5 lines total. A complex commit with real concerns might be 15-25 lines. Long reviews are usually bad reviews — they suggest the reviewer is padding or being precious.
 
 If the commit message is a `chore:` or `docs:` commit and the diff is mechanical (no business logic, no schema changes), the review can be 2 lines. Don't manufacture concerns about routine changes.
+
+## Standing check: open DEVIATIONS stubs
+
+On **every** review, run this command to detect unfilled deviation stubs:
+
+```bash
+awk '/^\*\*Status:\*\* Captured/{f=1} /^\*\*Commit:\*\*/ && f{print $2; f=0}' DEVIATIONS.md 2>/dev/null
+```
+
+If the command produces any commit hashes, add this section to your review **after the Notes section**:
+
+### Open DEVIATIONS stubs
+
+- `<hash>` — rationale not yet filled in
+
+One bullet per hash. This is a standing reminder that stub entries in DEVIATIONS.md need their "What was discovered", "Resolution", and "Files affected" sections completed, and their status changed from "Captured (rationale TBD)" to a resolved status.
+
+If the command produces no output, **omit this section entirely** from your review.
