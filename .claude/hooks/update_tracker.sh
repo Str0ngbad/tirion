@@ -4,6 +4,14 @@
 
 set -uo pipefail
 
+# Known limitations to address as phases progress:
+# - Phase 1A/1B heuristics are coarse: bare directory existence will mark them Done
+#   as soon as the first file lands. Tighten heuristics phase-by-phase when work
+#   on each phase actually begins. Consider an "In Progress" state.
+# - Phase 0 bullet list claims Pino/Sentry/Vitest are configured but phase0_status()
+#   only checks package.json, LICENSE, .env.example, and the health route.
+#   Either expand the checks or trim the bullets to match what's actually verified.
+
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 OUT="$REPO_ROOT/project_tracker.md"
 
