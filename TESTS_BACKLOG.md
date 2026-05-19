@@ -38,7 +38,25 @@ to write it later.
 
 ## Backlog
 
-*(Empty — no deferred tests recorded yet.)*
+---
+
+## Hook Issues / Tooling Debt
+
+### Self-review hook log.md write is sandbox-blocked
+
+The PostToolUse self-review hook completes successfully and produces review
+output, but the sub-agent is consistently blocked from writing to
+.claude/reviews/log.md. Verdicts surface in-session but do not persist.
+
+Impact: lost historical record of self-review verdicts; reviews must be
+captured manually if needed for retrospective.
+
+Diagnostic notes: First observed during Phase 0a hook setup; reproduces on
+every commit. The block fires from the sub-agent's write step, not from
+the hook script itself. Likely a Claude Code sandbox or permissions
+configuration; not investigated further during Phase 0a.
+
+Phase: 0a — to revisit in Rev 1.5+
 
 ---
 
