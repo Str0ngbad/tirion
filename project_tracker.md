@@ -19,7 +19,7 @@
 - Self-review hook ✓
 - Manifest hook ✓
 - Tracker hook ✓
-- Deviations hook ✗
+- Deviations hook ✓
 - ADRs 001–010 ✗
 
 ## Phase 1A — Configuration Foundation
@@ -63,4 +63,10 @@
 
 ## Phase 10 — Polish and Acceptance
 **Status:** Not Started
+
+---
+
+## Open DEVIATIONS stubs
+
+_None._
 
