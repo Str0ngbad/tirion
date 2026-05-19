@@ -11,6 +11,10 @@
           {
             "type": "command",
             "command": "STDIN=$(cat); COMMAND=$(echo \"$STDIN\" | jq -r '.tool_input.command' 2>&1); if echo \"$COMMAND\" | grep -q 'git commit'; then bash .claude/hooks/update_manifest.sh < /dev/null; fi"
+          },
+          {
+            "type": "command",
+            "command": "STDIN=$(cat); COMMAND=$(echo \"$STDIN\" | jq -r '.tool_input.command' 2>&1); if echo \"$COMMAND\" | grep -q 'git commit'; then bash .claude/hooks/update_tracker.sh < /dev/null; fi"
           }
         ]
       }
