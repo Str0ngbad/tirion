@@ -7,6 +7,10 @@
           {
             "type": "command",
             "command": "echo \"FIRE $(date)\" >> .claude/reviews/hook-debug.log; STDIN=$(cat); COMMAND=$(echo \"$STDIN\" | jq -r '.tool_input.command' 2>&1); echo \"CMD=[$COMMAND]\" >> .claude/reviews/hook-debug.log; if echo \"$COMMAND\" | grep -q 'git commit'; then { echo \"--- $(date) ---\"; echo \"Triggered by commit\"; bash .claude/hooks/run_review.sh < /dev/null; echo \"exit: $?\"; } >> .claude/reviews/hook-debug.log 2>&1; fi"
+          },
+          {
+            "type": "command",
+            "command": "STDIN=$(cat); COMMAND=$(echo \"$STDIN\" | jq -r '.tool_input.command' 2>&1); if echo \"$COMMAND\" | grep -q 'git commit'; then bash .claude/hooks/update_manifest.sh < /dev/null; fi"
           }
         ]
       }
