@@ -8,8 +8,7 @@ REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 OUT="$REPO_ROOT/project_manifest.md"
 
 # Header metadata
-COMMIT_HASH=$(git -C "$REPO_ROOT" rev-parse --short HEAD 2>/dev/null || echo "unknown")
-TIMESTAMP=$(git -C "$REPO_ROOT" log -1 --format="%aI" HEAD 2>/dev/null || date '+%Y-%m-%dT%H:%M:%S%z')
+COMMIT_HASH=$(git -C "$REPO_ROOT" rev-parse --short HEAD 2>/dev/null || echo "unknown")  # used in status message only
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -77,8 +76,6 @@ describe_spec() {
 
 > Auto-generated. Do not edit by hand.
 > Regenerated on every commit by \`.claude/hooks/update_manifest.sh\`
->
-> Commit: \`${COMMIT_HASH}\`  |  Generated: \`${TIMESTAMP}\`
 
 ---
 
