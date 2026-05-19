@@ -3,7 +3,7 @@
 > Auto-generated. Do not edit by hand.
 > Regenerated on every commit by `.claude/hooks/update_manifest.sh`
 >
-> Commit: `47e86e2`  |  Generated: `2026-05-19 13:10:44`
+> Commit: `d0fef2d`  |  Generated: `2026-05-19T13:23:51-05:00`
 
 ---
 

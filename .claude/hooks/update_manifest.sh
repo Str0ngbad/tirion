@@ -9,7 +9,7 @@ OUT="$REPO_ROOT/project_manifest.md"
 
 # Header metadata
 COMMIT_HASH=$(git -C "$REPO_ROOT" rev-parse --short HEAD 2>/dev/null || echo "unknown")
-TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+TIMESTAMP=$(git -C "$REPO_ROOT" log -1 --format="%aI" HEAD 2>/dev/null || date '+%Y-%m-%dT%H:%M:%S%z')
 
 # ---------------------------------------------------------------------------
 # Helpers
