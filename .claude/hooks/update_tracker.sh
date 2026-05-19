@@ -2,6 +2,8 @@
 # update_tracker.sh — regenerates project_tracker.md at the repo root.
 # Invoked by the PostToolUse hook after every git commit.
 
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] update_tracker.sh fired" >> "$(git rev-parse --show-toplevel 2>/dev/null || pwd)/.claude/reviews/hook-debug.log"
+
 set -uo pipefail
 
 # Known limitations to address as phases progress:
