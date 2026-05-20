@@ -57,3 +57,6 @@ next-env.d.ts
 
 # Self-review hook outputs (ephemeral, regenerated on each commit)
 .claude/reviews/
+
+# Playwright MCP output (screenshots, snapshots, console logs)
+.playwright-mcp/
