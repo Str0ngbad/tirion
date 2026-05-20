@@ -478,47 +478,76 @@ extract into named functions in `/lib/queries` so they're testable and reusable.
 
 ## Hooks and Project Maintenance
 
-This project uses Claude Code hooks for automated maintenance. Hooks fire
-deterministically on every commit — they are not subject to your judgment
-about whether they should run. Their configuration lives in
-`.claude/settings.json` (committed) with supporting scripts in `.claude/hooks/`
-and sub-agent definitions in `.claude/agents/`.
+This project uses a Claude Code hook system to automate project maintenance.
+Hooks fire deterministically on every commit — they are not subject to
+your judgment about whether they should run.
 
-The four core hooks:
+The hook system is configured as a single `PostToolUse` entry on the `Bash`
+matcher in `.claude/settings.json`. That entry invokes `.claude/hooks/dispatch.sh`,
+which routes to the four maintenance scripts when the bash command was a
+`git commit`. All other bash commands pass through unaffected.
 
-1. **project_manifest.md** — auto-regenerated on every commit. It is a map
-   of every meaningful file, function, API call, and database query in the
-   project. Read this file to find relevant code instead of scanning the
-   entire repository. If you make a change that should be reflected in the
-   manifest, the hook will handle it on the next commit — do not edit the
-   manifest manually.
+**Why a single dispatcher rather than four separate hook entries:** an earlier
+configuration registered four separate `PostToolUse` entries, each reading the
+hook payload from stdin. Multiple hook entries each calling `cat` on stdin
+consume the payload sequentially, so only the first hook receives the actual
+data; the rest see empty input and never run their sub-scripts. The dispatcher
+pattern reads stdin once and routes internally, which avoids the stdin
+starvation issue. If you ever need to add a fifth hook, add it as another
+function inside `dispatch.sh`, not as a separate `PostToolUse` entry.
 
-2. **project_tracker.md** — auto-regenerated on every commit. Shows what's
-   been built versus what's still in spec. Reference this to understand
-   progress and identify what to work on next.
+**The four maintenance scripts, all in `.claude/hooks/`:**
 
-3. **DEVIATIONS.md auto-update** — when a commit introduces a deliberate
-   deviation from spec (different decision than what's written), the hook
-   appends a new entry to DEVIATIONS.md. You should still note the deviation
-   in the commit message and explain the reasoning; the hook captures the
-   structured record.
+1. **`update_manifest.sh`** — regenerates `project_manifest.md` after every
+   commit. The manifest is a map of every meaningful file, function, API
+   endpoint, and database query in the project. Use it to find code instead
+   of scanning the whole repository. Do not edit the manifest manually; the
+   hook overwrites it on the next commit.
 
-4. **Self-review code review** — after every commit, a sub-agent reviews
-   the just-committed changes for spec compliance, code quality, and
-   adherence to the principles in this file. Address review findings before
-   moving on; if the review surfaces a real concern, fix it before the next
-   commit. If the review surfaces a false positive, document why in the
-   commit message.
+2. **`update_tracker.sh`** — regenerates `project_tracker.md` after every
+   commit. Shows what's been built versus what's still in spec. Reference
+   this to understand build progress and identify what to work on next.
+
+3. **`update_deviations.sh`** — appends a structured entry to `DEVIATIONS.md`
+   when the commit message contains both of the following footer tags:
+   - `Deviates-From: <spec reference>` (e.g., `Deviates-From: spec/schema.md`)
+   - `Deviation-Summary: <short description>`
+   Both tags are required, case-sensitive, and must be at the start of their
+   respective lines. If either is absent, the hook does nothing. When a commit
+   deliberately deviates from the spec, include both tags in the commit message
+   footer so the deviation is logged automatically. The phase is auto-detected
+   from `project_tracker.md`.
+
+4. **`run_review.sh`** — spawns a Claude Code sub-agent to review the
+   just-committed changes for spec compliance, code quality, and adherence
+   to this file's principles. The review surfaces in-session output. Note:
+   there is a known issue where the sub-agent's write to
+   `.claude/reviews/log.md` is sandbox-blocked, so reviews do not persist
+   across sessions. The verdicts are still visible in the session where the
+   commit was made; the persistence gap is logged in `TESTS_BACKLOG.md` for
+   future investigation.
+
+**The commit-routing rule:**
+
+All commits during Rev 1 development must go through Claude Code's commit
+workflow. Direct terminal commits via `git commit` bypass `PostToolUse`
+hooks entirely — none of the four maintenance scripts will fire. The rule
+is documented in detail in `docs/adr/ADR-012-commits-via-claude-code.md`,
+including the recovery procedure if a direct commit is unavoidable
+(manual run of `update_manifest.sh` and `update_tracker.sh`, with a note
+in the commit message that automated hooks did not fire).
+
+**Disabling a hook locally:**
 
 If a hook is producing problems during a specific phase of work, it can be
-temporarily disabled via `.claude/settings.local.json` (your local override,
-not committed). Do not modify `.claude/settings.json` to disable hooks — that
-affects the project for everyone and breaks the discipline these hooks
-establish.
+temporarily disabled via `.claude/settings.local.json` (your personal
+override, not committed). Do not modify `.claude/settings.json` to disable
+hooks — that affects the project for everyone and breaks the discipline
+the hook system establishes.
 
-If you (Claude Code) need to make a project-level change that conflicts with
-how the hooks operate, raise it explicitly with the developer rather than
-working around the hook.
+If you (Claude Code) need to make a project-level change that conflicts
+with how the hooks operate, raise it explicitly with the developer rather
+than working around the hook.
 
 ---
 
