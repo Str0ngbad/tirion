@@ -15,12 +15,12 @@
 - LICENSE and README in place ✓
 
 ## Phase 0a — Tooling and Hooks Setup
-**Status:** In Progress
+**Status:** Done
 - Self-review hook ✓
 - Manifest hook ✓
 - Tracker hook ✓
 - Deviations hook ✓
-- ADRs 001–010 ✗
+- ADRs 001–012 ✓
 
 ## Phase 1A — Configuration Foundation
 **Status:** Not Started

@@ -59,8 +59,9 @@ phase0a_checks() {
 
   if dir_exists "docs/adr"; then
     local all=true
-    for n in 001 002 003 004 005 006 007 008 009 010; do
-      file_exists "docs/adr/ADR-${n}.md" || { all=false; break; }
+    for n in 001 002 003 004 005 006 007 008 009 010 011 012; do
+      compgen -G "$REPO_ROOT/docs/adr/ADR-${n}-*.md" > /dev/null 2>&1 \
+        || { all=false; break; }
     done
     $all && adrs="✓"
   fi
@@ -131,7 +132,7 @@ HEADER
   echo "- Manifest hook $MANIFEST"
   echo "- Tracker hook $TRACKER"
   echo "- Deviations hook $DEVIATIONS"
-  echo "- ADRs 001–010 $ADRS"
+  echo "- ADRs 001–012 $ADRS"
   echo ""
 
   # ---- Phase 1A ----
