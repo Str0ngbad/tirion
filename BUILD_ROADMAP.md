@@ -563,7 +563,8 @@ Update this section as phases complete.
 
 | Phase | Status | Notes |
 |-------|--------|-------|
-| Phase 0 | Not started | |
+| Phase 0 | Done | Initial scaffolding complete |
+| Phase 0a | Done | Tooling, hooks, ADRs, Playwright, commitlint |
 | Phase 1A | Not started | |
 | Phase 1B | Not started | |
 | Phase 1C | Not started | |
