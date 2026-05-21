@@ -148,6 +148,12 @@ async function seedAuditActions() {
     { actionName: "DefinitionChangeFlagResolved", category: "Flag", description: "Flag resolved (Dismiss or AcceptChange)" },
     { actionName: "DefinitionChangeFlagInheritedViaWOSplit", category: "Flag", description: "Original flag auto-resolved when flagged WO was split; new flags created on resulting WOs" },
     { actionName: "DefinitionChangeFlagAutoResolvedViaBatchDissolution", category: "Flag", description: "Batch flag auto-resolved when batch was dissolved while flag was open" },
+
+    // Configuration (4)
+    { actionName: "VendorCreated", category: "Configuration", description: "New Vendor record created" },
+    { actionName: "VendorUpdated", category: "Configuration", description: "Vendor attribute fields edited" },
+    { actionName: "VendorDeactivated", category: "Configuration", description: "Vendor isActive set to false" },
+    { actionName: "VendorReactivated", category: "Configuration", description: "Vendor isActive restored to true" },
   ];
 
   for (const aa of auditActions) {
@@ -192,7 +198,7 @@ async function verify() {
   console.log("\nVerification:");
   console.log(`  ProcessTypes:           ${processTypeCount} (expected = 9)`);
   console.log(`  ProcessTypeSubStatuses: ${subStatusCount} (expected = 16)`);
-  console.log(`  AuditActions:           ${auditActionCount} (expected = 59)`);
+  console.log(`  AuditActions:           ${auditActionCount} (expected = 63)`);
   console.log(`  Admin user present:     ${userCount === 1 ? "yes" : "NO — check seed"}`);
 }
 

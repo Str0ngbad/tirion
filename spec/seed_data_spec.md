@@ -255,7 +255,15 @@ via row inserts, not schema migrations. The full Rev 1 seed list:
 | DefinitionChangeFlagInheritedViaWOSplit | Flag | Original flag auto-resolved when flagged WO was split; new flags created on resulting WOs |
 | DefinitionChangeFlagAutoResolvedViaBatchDissolution | Flag | Batch flag auto-resolved when batch was dissolved while flag was open |
 
-**Total AuditAction seed entries:** 59
+### Configuration Actions
+| actionName | category | description |
+|------------|----------|-------------|
+| VendorCreated | Configuration | New Vendor record created |
+| VendorUpdated | Configuration | Vendor attribute fields edited |
+| VendorDeactivated | Configuration | Vendor isActive set to false |
+| VendorReactivated | Configuration | Vendor isActive restored to true |
+
+**Total AuditAction seed entries:** 63
 
 All seeded with `isActive = true`. New action types added during Rev 1
 build (or Rev 2+) are inserted via additional seed runs or admin tooling.
@@ -366,7 +374,7 @@ After seeding, verify:
 - All 9 ProcessTypes exist
 - 16 ProcessTypeSubStatus entries exist (4 + 3 + 5 + 4 across the four
   process types with seed entries)
-- All 59 AuditAction entries exist
+- All 63 AuditAction entries exist
 - One admin user with userName = "admin" exists
 
 A simple verification script in `prisma/verify-seed.ts` can sanity-check
