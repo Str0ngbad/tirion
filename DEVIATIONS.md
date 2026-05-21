@@ -334,3 +334,54 @@ ProcessTypeSubStatus lifecycle events.
   updated from 59 to 63 in two places)
 
 ---
+
+## 2026-05-21 — Vendor schema reconciliation: leadTimeDays and vendorName uniqueness
+
+**Phase:** 1A
+**Spec section:** schema.md (Vendor model) vs configuration_management_spec.md (Vendor Management section)
+**Discovered by:** Claude Code (during Phase 1A Vendor service layer foundation)
+**Status:** Resolved-Spec-Updated
+**Commit:** c9ed3b8f9efbe3f9ab0069fa30594fc5adbf2878
+
+### What the spec said
+
+schema.md described the Vendor model without leadTimeDays and without
+@unique on vendorName. configuration_management_spec.md's Vendor
+Management section cited "Existing schema per schema.md" but then
+described a Vendor model that included leadTimeDays (Int?) and
+vendorName uniqueness — describing fields that schema.md did not
+actually contain.
+
+### What was discovered
+
+The two specs disagreed on the Vendor model. The configuration spec
+treats leadTimeDays as a first-class grid column ("Lead Time (Days) |
+Reference for buyer planning") and treats vendorName uniqueness as
+required ("Vendor Name | Required, unique"). Both are functionally
+necessary: leadTimeDays for buyer planning workflows, and vendorName
+uniqueness to prevent ambiguous vendor identification in the
+configuration grid and to support the seed file's upsert pattern.
+
+Per developer confirmation, these fields were intended to be in the
+Vendor model. They were missed when schema.md was updated to reflect
+decisions made during the configuration management spec work. The
+configuration spec is the more recently-revised document and reflects
+the intended state.
+
+### Resolution
+
+- schema.md updated to add leadTimeDays Int? and @unique vendorName to
+  the Vendor model.
+- prisma/schema.prisma updated to match.
+- Migration generated and applied to the dev branch:
+  20260521175345_add_vendor_lead_time_and_unique_name
+- Seed re-ran cleanly with the updated schema.
+
+### Files affected
+
+- spec/schema.md (Vendor model definition updated)
+- prisma/schema.prisma (Vendor model updated to match)
+- prisma/migrations/20260521175345_add_vendor_lead_time_and_unique_name/
+  migration.sql (new migration file)
+
+---

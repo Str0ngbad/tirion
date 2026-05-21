@@ -155,6 +155,40 @@ Phase: 1A — observed but deferred
 
 ---
 
+## Operational Patterns
+
+### Prisma migrations require manual handling in Claude Code's bash tool
+
+The conventional Prisma workflow uses `prisma migrate dev` to author
+and apply migrations. This command is interactive and requires a TTY,
+which Claude Code's bash tool does not provide. Attempting `migrate
+dev` in a Claude Code session fails with a TTY-related error
+regardless of arguments (--create-only, --skip-seed, etc.).
+
+The working pattern observed during commit c9ed3b8:
+1. Update prisma/schema.prisma manually with the desired schema change
+2. Create the migration directory and file manually:
+   mkdir prisma/migrations/<timestamp>_<name>
+   write the migration SQL by hand, matching Prisma's naming
+   conventions (table_column_key for unique indexes, etc.)
+3. Apply with `npx prisma migrate deploy` (non-interactive, applies
+   pending migrations without asking questions)
+4. Regenerate the Prisma client: `npx prisma generate`
+5. Verify via re-running the seed
+
+This pattern is conventional in CI/CD environments (migrate deploy is
+the production-equivalent of migrate dev). It just happens to be
+required here too because of the TTY constraint.
+
+Resolution path (deferred): document this in CLAUDE.md's database
+workflow section so future Code sessions know the pattern. Probably
+worth a brief addition to ADR-011 as well, since the ADR currently
+describes a workflow that assumes migrate dev works.
+
+Phase: 1A — observed and operational
+
+---
+
 ## Categories Summary
 
 | Category | Count | Notes |
