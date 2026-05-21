@@ -124,6 +124,37 @@ Phase: 1A — observed but deferred
 
 ---
 
+## Spec Consistency
+
+### UI surface naming not locked in terminology_lock
+
+The terminology_lock.md spec covers entities, states, and operations
+but does not lock the names for UI surfaces. As a result, the same
+surface is referred to by multiple names across the spec corpus:
+
+- The Vendor configuration grid / Vendor Management Surface / Vendors
+  surface / Vendor library (informal user-perspective name)
+- Likely similar issues exist for Materials, Users, ProcessTypes,
+  ProcessTypeSubStatus, Parts Master, lenses, Project View, etc.
+
+Impact: minor inconsistency when reading the spec; risk of larger
+inconsistency as more UI is built without canonical names locked.
+
+Resolution path (deferred): once UI surfaces are more concretely defined
+in Phase 1+ work, do a single pass adding a "UI Surfaces" section to
+terminology_lock.md that lists each surface with its canonical name
+and a brief description. Then update spec references to use the
+canonical names.
+
+Best timing: end of Phase 1A or start of Phase 1B, when the
+configuration grids are built and the Part Form / Parts Master are
+being designed. By then we'll have hands-on knowledge of which names
+feel right.
+
+Phase: 1A — observed but deferred
+
+---
+
 ## Categories Summary
 
 | Category | Count | Notes |
