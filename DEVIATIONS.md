@@ -264,3 +264,30 @@ so this is additive rather than a replacement.
 
 - No code changes; this is an environment-level decision
 - `.env.example` already documents `DATABASE_URL` correctly for either path
+
+## 2026-05-21 — AuditAction count corrected from 49 to 59
+
+**Phase:** 1A
+**Spec section:** seed_data_spec.md Section 3 (AuditAction Lookup) and the Verification section
+**Discovered by:** Claude Code (during Phase 1A seed implementation)
+**Status:** Resolved-Spec-Updated
+**Commit:** 1ec1d1b
+
+### What the spec says
+
+"**Total AuditAction seed entries:** 49" — but the actual table in the same section listed 59 distinct entries.
+
+### What was discovered
+
+The declared count was not updated after the Reconciliation Pass added 10 entries (WOCancelled, four flag actions, RoutingResetByFlagResolution, WOAttributeUpdatedByFlagResolution, BOMComponentAddedViaFlagResolution, BatchMemberRemovedForFlagResolution) and the Receiving Design Session added 7 SupplyOrder action entries. The table was correct; the count line was stale metadata.
+
+### Resolution
+
+Count line updated from 49 to 59 in both Section 3 and the Verification section of seed_data_spec.md. Seed implements all 59 listed entries.
+
+### Files affected
+
+- spec/seed_data_spec.md (count corrected in two places)
+- prisma/seed.ts (implements all 59 entries)
+
+---
