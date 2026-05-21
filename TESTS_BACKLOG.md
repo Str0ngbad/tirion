@@ -60,6 +60,25 @@ Phase: 0a — to revisit in Rev 1.5+
 
 ---
 
+### AuditAction naming: ETA case inconsistency
+
+Two AuditAction entries use different capitalization for the same acronym:
+- WOEtaUpdated (Eta as word stem)
+- SupplyOrderLineETAUpdated (ETA fully capitalized)
+
+Both spellings exist in seed_data_spec.md, schema.md, and prisma/seed.ts.
+The inconsistency was inherited from the spec and not introduced during build.
+
+Resolution requires a decision on canonical case style for acronyms across the
+codebase, then a coordinated update across spec + schema + seed + any downstream
+consumers (route paths, audit log queries, Zod schemas).
+
+Out of scope for Rev 1 build; capture for Rev 1.5+ cleanup pass.
+
+Phase: 1A — captured but deferred
+
+---
+
 ## Categories Summary
 
 | Category | Count | Notes |
