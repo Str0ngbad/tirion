@@ -99,6 +99,31 @@ Phase: 1A — observed but deferred
 
 ---
 
+### project_tracker.md has no "In Progress" status
+
+The tracker script reports each phase as either "Not Started" or
+"Done" based on the presence of expected deliverable files (e.g.,
+Phase 0a's ADR detection). There is no "In Progress" status for
+phases where some work has been committed but not all deliverables
+exist.
+
+Observed: as of commit 3a850d2, five Phase 1A commits have landed
+(seed file, spec corrections, deviation logs, AuditAction additions)
+but project_tracker.md still reports Phase 1A as "Not Started."
+
+Impact: the tracker's status field becomes misleading during active
+phase work. Anyone reading the tracker mid-phase has to look at git
+history to know whether work has begun.
+
+Resolution path (deferred): teach the tracker script to detect partial
+progress via either (a) a count of commits since the phase started,
+(b) the presence of some-but-not-all expected deliverables, or
+(c) a manually-maintained phase status field.
+
+Phase: 1A — observed but deferred
+
+---
+
 ## Categories Summary
 
 | Category | Count | Notes |
