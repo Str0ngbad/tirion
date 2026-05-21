@@ -241,11 +241,12 @@ Suppliers of purchased parts and raw materials.
 
 ```prisma
 model Vendor {
-  vendorId    Int     @id @default(autoincrement())
-  vendorName  String
-  contactInfo String?
-  isActive    Boolean @default(true)
-  notes       String?
+  vendorId     Int     @id @default(autoincrement())
+  vendorName   String  @unique
+  contactInfo  String?
+  leadTimeDays Int?
+  notes        String?
+  isActive     Boolean @default(true)
 
   // Relations
   parts        Part[]
