@@ -291,3 +291,46 @@ Count line updated from 49 to 59 in both Section 3 and the Verification section 
 - prisma/seed.ts (implements all 59 entries)
 
 ---
+
+## 2026-05-21 — Added Configuration AuditAction category for Vendor lifecycle events
+
+**Phase:** 1A
+**Spec section:** seed_data_spec.md Section 3 (AuditAction Lookup)
+**Discovered by:** Phase 1A consultant (during Vendor API design)
+**Status:** Resolved-Spec-Updated
+**Commit:** 3fbfde4c9fad595e3ec4593c84da0bb2ea638b17
+
+### What the spec said
+
+The AuditAction seed list did not include configuration-management
+actions. The Configuration Management spec implies generic config
+actions (CREATE, EDIT, DEACTIVATE) would be sufficient, but neither
+generic nor entity-specific configuration actions appear in the
+AuditAction seed.
+
+### What was discovered
+
+Building the Vendor API requires AuditAction entries for the four
+Vendor lifecycle events (created, updated, deactivated, reactivated)
+to write AuditLog entries with meaningful action identifiers. Generic
+CRUD actions would be less useful for audit trail filtering than
+entity-specific names, and the existing AuditAction conventions in
+the seed favor explicit domain-meaningful names (StockReconciliation,
+ProjectArchived) over generic CRUD.
+
+### Resolution
+
+Added a new "Configuration" AuditAction category to the seed with four
+entries: VendorCreated, VendorUpdated, VendorDeactivated,
+VendorReactivated. seed_data_spec.md Section 3 updated to document the
+new category and the new total of 63 entries. The same pattern will
+be extended in subsequent Phase 1A work for MaterialSpec, User, and
+ProcessTypeSubStatus lifecycle events.
+
+### Files affected
+
+- prisma/seed.ts (4 new entries in seedAuditActions)
+- spec/seed_data_spec.md (new Configuration Actions subsection, count
+  updated from 59 to 63 in two places)
+
+---

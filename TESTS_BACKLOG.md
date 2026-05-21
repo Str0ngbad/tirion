@@ -79,6 +79,26 @@ Phase: 1A — captured but deferred
 
 ---
 
+### Deviations hook auto-populated date may be off by one
+
+The deviations hook's auto-appended stub headers have shown dates one
+day behind the actual local date on at least two occasions (commits
+1ec1d1b on 2026-05-21 stub-dated 2026-05-20; commit 3fbfde4 on
+2026-05-21 stub-dated 2026-05-20). The discrepancy may stem from a
+timezone mismatch in the hook script (e.g., UTC vs local time when the
+date is generated near midnight) or from a script reading a cached
+date value.
+
+Impact: cosmetic — deviation entries get manually corrected during
+stub fill. No data integrity issue.
+
+Diagnosis deferred to Rev 1.5+. Until then, manually correct the date
+in the header when filling in each stub.
+
+Phase: 1A — observed but deferred
+
+---
+
 ## Categories Summary
 
 | Category | Count | Notes |
