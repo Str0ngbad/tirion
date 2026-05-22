@@ -6,3 +6,4 @@ export {
   VendorNameCollisionError,
   VendorDeactivationBlockedError,
 } from "@/lib/errors/vendor";
+export { UserRequiredError, UserNotFoundError } from "@/lib/errors/auth";
