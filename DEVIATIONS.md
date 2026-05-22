@@ -385,3 +385,77 @@ the intended state.
   migration.sql (new migration file)
 
 ---
+
+## 2026-05-21 — MaterialSpec model reconciliation: simplified to alloy + form, stockSize moved to Part
+
+**Phase:** 1A
+**Spec section:** schema.md (MaterialSpec model) and
+  configuration_management_spec.md (MaterialSpec Management section)
+**Discovered by:** Phase 1A consultant (during MaterialSpec service layer planning)
+**Status:** Resolved-Spec-Updated
+**Commit:** 26e4e4cad7fda676d2445eb53b968d3b322a784b
+
+### What the spec said
+
+schema.md described MaterialSpec with fields including materialName,
+form, stockSize, unitOfMeasure, and isActive — a model that conflated
+material identity (what kind of material) with material handling
+(specific stockable dimensional items). configuration_management_spec.md
+described a different MaterialSpec model with materialName, description,
+defaultVendorId, and isActive — closer to material identity alone but
+adding fields not present in schema.md. Neither was internally
+consistent across the spec corpus, and the Parts Master spec actively
+referenced MaterialSpec.stockSize as a grid column source.
+
+### What was discovered
+
+The model conflated two related but distinct concerns: material
+identity (alloy + form: "1018 Steel + Flat Bar") and material
+handling (specific stockable dimensions and quantities). Material
+handling proper is Rev 2 work and depends on tracking on-hand
+quantities, allocations, and locations. In Rev 1, the dimensional
+information is captured per Part because two Parts using the same
+generic material can have different stock sizes.
+
+Per developer resolution in a dedicated spec window: MaterialSpec is
+scoped to generic material identity (alloy + form) for Rev 1.
+Dimensional information moves to the Part record. Default vendor
+remains at the Part level (no MaterialSpec-level default vendor in
+Rev 1). isActive stays on MaterialSpec for typo/duplicate cleanup.
+
+### Resolution
+
+- spec/schema.md MaterialSpec: dropped stockSize, unitOfMeasure;
+  added composite @@unique([materialName, form])
+- spec/schema.md Part: added stockSize String? (required at
+  application layer when materialSpecId is populated, enforced via
+  Zod not via database constraint)
+- spec/configuration_management_spec.md: updated MaterialSpec model
+  block, grid columns, creation path; added three Rev 1 scope notes
+  (Default Vendor in Rev 1, Dimensional Information in Rev 1, Rev 2)
+- spec/parts_master_spec.md: updated Stock Size column and filter
+  sources to Part.stockSize; added stockSize as a Part Form field
+  with conditional-required behavior; added stockSize to the
+  Definition Change Flag triggers; removed stale "stock size is a
+  property of MaterialSpec" language
+- spec/definition_change_flag_spec.md: added MaterialSpec field-
+  trigger rules (materialName and form trigger flags; isActive does
+  not)
+- prisma/schema.prisma: synced with schema.md changes
+- Migration 20260521180000_material_spec_reconciliation applied to
+  dev branch (DROP COLUMN on stockSize and unitOfMeasure with
+  IF EXISTS guards, CREATE UNIQUE INDEX on composite key, ADD COLUMN
+  on Part.stockSize)
+- Seed re-ran cleanly with updated schema
+- Vendor service verification re-ran cleanly (no regressions)
+
+### Files affected
+
+- spec/schema.md
+- spec/configuration_management_spec.md
+- spec/parts_master_spec.md
+- spec/definition_change_flag_spec.md
+- prisma/schema.prisma
+- prisma/migrations/20260521180000_material_spec_reconciliation/migration.sql
+
+---
