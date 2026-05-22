@@ -119,6 +119,26 @@ change, on every open WO for that Part).
 | Template steps added, removed, or reordered | Every open WO whose `routingTemplateDefinitionId` matches the edited template |
 | Part's routing template assignment changed | Every open WO for that Part |
 
+### MaterialSpec Field Changes
+
+When a MaterialSpec record is edited via the Configuration surface, the
+following field changes trigger flags on all open WOs for Parts that
+reference the changed MaterialSpec:
+
+- **`materialName`** — triggers flag when changed on a MaterialSpec
+  referenced by active Parts on open WOs. The change propagates as an
+  identity change on every Part inheriting from this MaterialSpec.
+- **`form`** — same trigger rule as `materialName`.
+
+These changes affect Part identity through inheritance — a WO whose Part
+references "1018 Steel + Flat Bar" needs the manager to acknowledge if
+either field changes.
+
+Changes to `MaterialSpec.isActive` do **not** trigger flags (lifecycle
+change, not identity change). Deactivating a MaterialSpec while open WOs
+reference it is permitted; FK integrity is preserved, and the deactivated
+MaterialSpec simply cannot be assigned to new Parts.
+
 ---
 
 ## Flag Eligibility — Which WOs Get Flagged

@@ -34,7 +34,7 @@ Visible by default, ordered left to right:
 | Part Name | `partName` | No | |
 | Type | `partType` | No | 'Part' or 'Assembly' — icon or pill |
 | Material | `materialSpec.materialName` | No | Blank for assemblies |
-| Stock Size | `materialSpec.stockSize` | No | Sortable |
+| Stock Size | `stockSize` | No | Sortable; blank when no MaterialSpec assigned |
 | Vendor | `defaultVendor.vendorName` | No | Blank if none assigned |
 | Procurement | `procurementType` | No | Make / Buy / MakeBuy |
 | Inventory Location | `inventoryLocation` | **Yes** | Inline edit appropriate here |
@@ -63,7 +63,7 @@ Filters appear above the grid. All filters are additive (AND logic).
 | Active / Inactive / Both | Toggle | `isActive` (default: Active only) |
 | Vendor | Dropdown | `defaultVendorId` |
 | Material | Dropdown | `materialSpecId` |
-| Stock Size | Dropdown | `materialSpec.stockSize` |
+| Stock Size | Dropdown | `stockSize` |
 
 **Deferred filter (Rev 2):**
 - **Includes Process** — filter to parts whose assigned routing template contains
@@ -127,6 +127,7 @@ edit.
 | `defaultVendorId` | Yes | Affects Purchase step on WOs |
 | `materialSpecId` | Yes | Affects material identity throughout WO history |
 | `routingTemplateDefinitionId` | Yes | Treated as Routing Template Change flag (separate type) |
+| `stockSize` | Yes | Affects material consumption / procurement planning |
 | `blankLength` | Yes | Affects material consumption math |
 | `procurementType` | Yes | Behavioral — affects which process types apply |
 | `partName` | No | Cosmetic — display only |
@@ -225,8 +226,10 @@ See `definition_change_flag_spec.md` for the full Cancel specification.
 
 ### Material & Vendor
 - Material Spec (searchable dropdown → MaterialSpecs table)
-- Stock Size (auto-populated from selected MaterialSpec, read-only here —
-  stock size is a property of the MaterialSpec, not typed per part)
+- Stock Size (`stockSize` — text input, nullable in the schema but required at
+  the application layer when `materialSpecId` is populated. Displayed when a
+  MaterialSpec has been selected; hidden or blank for Parts where
+  `materialSpecId` is null — Assemblies, finished purchased components)
 - Default Vendor (searchable dropdown → Vendors table)
 
 ### Routing Template

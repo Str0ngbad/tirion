@@ -19,6 +19,7 @@ model Part {
   description     String?
   defaultVendorId             Int?
   materialSpecId              Int?
+  stockSize                   String?
   routingTemplateDefinitionId Int?
   blankLength                 Decimal?  // length of raw material consumed per piece; nullable
   procurementType             ProcurementType  // 'Make' | 'Buy' | 'MakeBuy'
@@ -86,15 +87,15 @@ model RoutingTemplateStep {
 
 model MaterialSpec {
   materialSpecId  Int     @id @default(autoincrement())
-  materialName    String  // e.g. '1018 CRS', '6061-T6'
-  form            String  // e.g. 'Flat Bar', 'Round', 'DOM Tubing'
-  stockSize       String  // e.g. '.25 x 2', '2" OD x 1.5" ID' — free text, human-readable
-  unitOfMeasure   String  // 'in' | 'ft' | 'each'
+  materialName    String
+  form            String
   isActive        Boolean @default(true)
 
   // Relations
   parts            Part[]
   supplyOrderLines SupplyOrderLine[]
+
+  @@unique([materialName, form])
 }
 
 model Vendor {

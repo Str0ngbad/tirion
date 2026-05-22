@@ -83,6 +83,12 @@ model Part {
   description     String?
   defaultVendorId             Int?
   materialSpecId              Int?
+  stockSize                   String?   // Free text describing material dimensions
+                                        // (e.g., "1 x 2", "2 OD x 1.5 ID"). Nullable;
+                                        // populated only for Parts made from raw
+                                        // material. Required at the application layer
+                                        // when materialSpecId is populated; enforced
+                                        // via Zod, not via a database constraint.
   routingTemplateDefinitionId Int?
   blankLength                 Decimal?  // length of raw material consumed per piece; nullable
   procurementType             ProcurementType  // 'Make' | 'Buy' | 'MakeBuy'
@@ -216,22 +222,17 @@ Raw material specifications. Referenced by Parts.
 
 ```prisma
 model MaterialSpec {
-  materialSpecId  Int     @id @default(autoincrement())
-  materialName    String  // e.g. '1018 CRS', '6061-T6'
-  form            String  // e.g. 'Flat Bar', 'Round', 'DOM Tubing'
-  stockSize       String  // e.g. '.25 x 2', '2" OD x 1.5" ID' — free text, human-readable
-  unitOfMeasure   String  // 'in' | 'ft' | 'each'
-  isActive        Boolean @default(true)
+  materialSpecId  Int      @id @default(autoincrement())
+  materialName    String                                  // "1018 Steel"
+  form            String                                  // "Flat Bar"
+  isActive        Boolean  @default(true)
 
-  // Relations
   parts            Part[]
   supplyOrderLines SupplyOrderLine[]
+
+  @@unique([materialName, form])
 }
 ```
-
-**Notes:**
-- `stockSize` is free text to accommodate varied material forms without over-engineering.
-- `unitOfMeasure` drives how quantities are displayed in purchasing and receiving.
 
 ---
 
@@ -1254,5 +1255,20 @@ fields.
 Total Receiving Design Session: 15 changes applied. Schema now reflects all
 locked decisions through Stage 5, Stage 6, Stage 7, the post-Stage-7
 reconciliation, and the Receiving design session.
+
+---
+
+## MaterialSpec Reconciliation Change Summary
+
+Changes applied during the MaterialSpec / Part reconciliation pass, resolving
+spec drift in how dimensional information and default vendor are modeled.
+
+| # | Change | Source |
+|---|--------|--------|
+| RD16 | MaterialSpec model simplified to alloy + form; `stockSize`, `unitOfMeasure`, `description`, `defaultVendorId` removed | MaterialSpec reconciliation |
+| RD17 | `Part.stockSize` `String?` added (moved from MaterialSpec; required at application layer when `materialSpecId` is populated) | MaterialSpec reconciliation |
+| RD18 | `MaterialSpec.@@unique([materialName, form])` composite unique constraint added | MaterialSpec reconciliation |
+
+Total MaterialSpec Reconciliation: 3 changes applied.
 
 The schema is build-ready.

@@ -249,16 +249,15 @@ Existing schema per `schema.md`:
 
 ```prisma
 model MaterialSpec {
-  materialSpecId   Int      @id @default(autoincrement())
-  materialName     String   @unique
-  description      String?
-  defaultVendorId  Int?
-  isActive         Boolean  @default(true)
+  materialSpecId  Int      @id @default(autoincrement())
+  materialName    String                                  // "1018 Steel"
+  form            String                                  // "Flat Bar"
+  isActive        Boolean  @default(true)
 
-  // Relations
-  parts                Part[]
-  supplyOrderLines     SupplyOrderLine[]
-  defaultVendor        Vendor?  @relation(fields: [defaultVendorId], references: [vendorId])
+  parts            Part[]
+  supplyOrderLines SupplyOrderLine[]
+
+  @@unique([materialName, form])
 }
 ```
 
@@ -266,9 +265,8 @@ model MaterialSpec {
 
 | Column | Notes |
 |--------|-------|
-| Material Name | Required, unique (e.g., "1018 Steel Bar 1.5\" Round") |
-| Description | Free text |
-| Default Vendor | Reference to Vendor record (nullable) |
+| Material Name | Alloy/spec (e.g., "1018 Steel") |
+| Form | Shape (e.g., "Flat Bar") |
 | Used By | Count of active Parts referencing this MaterialSpec |
 | Active | Soft-delete indicator |
 
@@ -283,7 +281,7 @@ All grid columns plus:
 Two paths:
 1. **Inline from Part Form** (primary): when editing a Part's Material field,
    "Add new material spec" inline option opens a quick-create modal with
-   Material Name (required), Description (optional), Default Vendor (optional)
+   Material Name (required) and Form (required)
 2. **From MaterialSpecs surface** (administrative): "Add New" button
 
 ### Editing
@@ -301,6 +299,28 @@ A MaterialSpec can be deactivated only when:
 
 Historical Supply Order Lines referencing the MaterialSpec do not block
 deactivation. The MaterialSpec just can't be used for new Parts.
+
+### Default Vendor in Rev 1
+
+Default vendor is captured at the Part record level, not on MaterialSpec. A
+Part that uses raw material has its own `defaultVendorId` indicating where to
+buy that material; a Part that is a finished purchased component has its own
+`defaultVendorId` indicating where to buy the component. See
+`parts_master_spec.md` for Part-level default vendor handling.
+
+### Dimensional Information in Rev 1
+
+Stock size lives on the Part record (`Part.stockSize`), not on MaterialSpec.
+Two Parts using the same MaterialSpec (e.g., "1018 Steel + Flat Bar") may have
+different stock sizes (one part uses "1 x 2", another uses ".5 x 1"). The
+MaterialSpec is the generic category; the Part record carries the specific
+dimensions.
+
+### Rev 2
+
+Material handling will introduce specific stockable items combining MaterialSpec
++ dimensions + length + on-hand quantity. At that time, MaterialSpec may also
+gain a default vendor for replenishment workflows.
 
 ---
 
