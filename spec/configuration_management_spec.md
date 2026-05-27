@@ -279,9 +279,12 @@ All grid columns plus:
 ### Creation
 
 Two paths:
-1. **Inline from Part Form** (primary): when editing a Part's Material field,
-   "Add new material spec" inline option opens a quick-create modal with
-   Material Name (required) and Form (required)
+1. **Inline from Part Form** (primary): when editing a Part's Material
+   field, the user can select an existing MaterialSpec from a cascade
+   modal (Material Name selector, then Form selector — see Cascade
+   Modal Behavior below). If the desired MaterialSpec doesn't exist,
+   the cascade modal supports inline creation of a new
+   (materialName, form) pair following the cascade pattern.
 2. **From MaterialSpecs surface** (administrative): "Add New" button
 
 ### Editing
@@ -321,6 +324,76 @@ dimensions.
 Material handling will introduce specific stockable items combining MaterialSpec
 + dimensions + length + on-hand quantity. At that time, MaterialSpec may also
 gain a default vendor for replenishment workflows.
+
+### Cascade Selection and Uniqueness
+
+MaterialSpec records are created and selected via a cascade pattern that
+operationalizes three distinct levels of uniqueness:
+
+**Schema-level uniqueness:** The database enforces the pair
+`(materialName, form)` as unique via `@@unique([materialName, form])`.
+Two records cannot share the same materialName AND form together. The
+pair is what distinguishes one MaterialSpec from another.
+
+**Conceptual uniqueness of `materialName`:** Each material name (e.g.,
+"1018 Steel", "6061 Aluminum") is a single operational entity. The same
+material name should never be entered twice in the database. The cascade
+UI prevents this by populating the material name selector from existing
+records — when a user is selecting or adding a MaterialSpec, they pick
+from the list of materials already present in the system.
+
+**Conceptual uniqueness of `form`:** Each form (e.g., "Flat Bar",
+"Round", "DOM Tubing") is a single operational entity. The same form
+should never be entered twice. The cascade UI applies the same rule: the
+form selector populates from existing form values, so reuse is the path
+of least resistance.
+
+These three levels work together: the database backstops the pair
+uniqueness; the cascade UI prevents individual `materialName` and `form`
+duplication.
+
+### Cascade Modal Behavior
+
+The cascade pattern applies to both creation modals (the dedicated
+configuration grid's "Add New" modal and the Part Form's inline-create
+modal):
+
+1. **Material Name selector:** Populated from `SELECT DISTINCT
+   materialName FROM MaterialSpec WHERE isActive = true`, sorted
+   alphabetically. The user picks an existing material. If their
+   material isn't in the list, an "Add new material" option opens a
+   sub-form accepting a new material name. This sub-form should
+   display the existing material names as visual reference so the
+   user can verify their entry isn't an accidental variant.
+
+2. **Form selector:** Populated from `SELECT DISTINCT form FROM
+   MaterialSpec WHERE isActive = true`, sorted alphabetically. Same
+   pattern as the Material Name selector — pick from existing or add
+   new with the existing values visible.
+
+3. **Pair validation:** Once both materialName and form are selected,
+   the system checks whether the pair already exists. If yes, the
+   modal switches to "Use existing MaterialSpec X" rather than
+   creating a duplicate. If no, the new MaterialSpec is created.
+
+### Duplicate Prevention
+
+The combination of the schema constraint and the cascade UI prevents
+the most common path to duplicates. Two additional safeguards are
+considered but deferred:
+
+- **Similarity warning on new materialName/form values:** when a user
+  adds a new material name or form, the system could compare the new
+  string against existing values via an edit-distance algorithm and
+  warn if the entry is suspiciously close to an existing value ("Did
+  you mean '1018 Steel'?"). This is a UX nice-to-have that catches
+  typo-driven duplicates. Deferred to Rev 1.5+.
+- **Admin merge utility:** if duplicates do reach the database (via
+  bulk import, direct database edits, or any path that bypasses the
+  cascade), an admin tool to merge two MaterialSpec records
+  (combining their Part references) would resolve them cleanly.
+  Deferred to Rev 2 (parallels the Vendor merge utility already on
+  the Rev 2 wishlist).
 
 ---
 

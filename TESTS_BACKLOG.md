@@ -155,6 +155,28 @@ Phase: 1A — observed but deferred
 
 ---
 
+### purchasing_lens_spec.md Stock Size source is stale
+
+The Purchasing Lens Grid Columns table lists Stock Size as
+"From MaterialSpec — sortable". This was correct before the
+MaterialSpec reconciliation (commit 26e4e4c) but is now stale —
+Stock Size lives on Part.stockSize, not on MaterialSpec.
+
+Impact: minor. The Purchasing Lens isn't being built until Phase 6+,
+so the spec drift doesn't affect current work. But anyone reading
+the spec to understand Stock Size's source will get an incorrect
+answer.
+
+Resolution: when Phase 6 work begins, update the line to read
+"From Part.stockSize — sortable" or similar wording matching the
+Parts Master spec. Optionally, do a full pass through other specs
+to find any remaining stockSize references that still cite
+MaterialSpec.
+
+Phase: 1A — observed during MaterialSpec implementation planning
+
+---
+
 ## Operational Patterns
 
 ### Prisma migrations require manual handling in Claude Code's bash tool
