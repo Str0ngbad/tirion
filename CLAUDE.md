@@ -511,12 +511,26 @@ function inside `dispatch.sh`, not as a separate `PostToolUse` entry.
 3. **`update_deviations.sh`** — appends a structured entry to `DEVIATIONS.md`
    when the commit message contains both of the following footer tags:
    - `Deviates-From: <spec reference>` (e.g., `Deviates-From: spec/schema.md`)
-   - `Deviation-Summary: <short description>`
+   - `Deviation-Summary: <short description, under 95 characters>`
    Both tags are required, case-sensitive, and must be at the start of their
-   respective lines. If either is absent, the hook does nothing. When a commit
-   deliberately deviates from the spec, include both tags in the commit message
-   footer so the deviation is logged automatically. The phase is auto-detected
-   from `project_tracker.md`.
+   respective lines. If either is absent, the hook does nothing. The phase is
+   auto-detected from `project_tracker.md`, and the commit hash is
+   auto-populated from the triggering commit — the resulting stub is then
+   filled in by hand with the substantive analysis.
+
+   **When to include the footers:** any commit that changes the spec corpus
+   or involves a deviation from spec should include both footer lines. When
+   the footers are present, the hook auto-appends a structured stub to
+   `DEVIATIONS.md` with the commit hash already filled in. When the footers
+   are absent, the hook does nothing — if a deviation occurs but the footer
+   is missing, the entry must be hand-authored and the commit hash
+   backfilled afterward.
+
+   **For consultant-drafted prompts:** when drafting a commit message in a
+   Claude Code prompt, include the `Deviates-From:` and `Deviation-Summary:`
+   footers whenever the change involves spec drift, a gap, or a contradiction
+   discovery. This ensures the deviation stub is created automatically with
+   the correct commit hash, rather than requiring manual backfill.
 
 4. **`run_review.sh`** — spawns a Claude Code sub-agent to review the
    just-committed changes for spec compliance, code quality, and adherence

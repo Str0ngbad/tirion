@@ -186,6 +186,30 @@ Phase: 1A — observed during MaterialSpec implementation planning
 
 ---
 
+## Follow-up Implementation
+
+### Vendor Active Work Summary endpoint not yet implemented
+
+Spec was updated in commit e2a363d to add an Active Work summary to
+the Vendor Detail Modal Fields (configuration_management_spec.md
+Vendor Management section). The corresponding API endpoint has not
+been built.
+
+Specification: GET /api/v1/vendors/:id/active-work-summary returning
+three counts:
+- total active WOs whose Part has this vendor as defaultVendorId
+- awaiting receipt (active WOs in the ordered-not-yet-received state)
+- awaiting purchase (active WOs in the not-yet-ordered state)
+
+The two breakdown counts are disjoint subsets of total per the state
+model; the remainder (total minus the two breakdowns) is WOs past
+both purchasing and receiving.
+
+Phase: 1A — to implement after MaterialSpec work is complete, before
+closing Phase 1A.
+
+---
+
 ## Operational Patterns
 
 ### Prisma migrations require manual handling in Claude Code's bash tool

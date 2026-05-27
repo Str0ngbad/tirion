@@ -18,6 +18,11 @@ When a deviation is discovered:
 
 ## Entry Template
 
+For entries created by the deviations hook (via `Deviates-From:` /
+`Deviation-Summary:` commit footer tags), **Commit:** is auto-populated
+from the triggering commit. For hand-authored entries, backfill
+**Commit:** with the hash of the commit that landed the change.
+
 When adding a deviation, copy this template and fill it in:
 
 ```markdown
@@ -27,6 +32,7 @@ When adding a deviation, copy this template and fill it in:
 **Spec section:** [which spec document and section]
 **Discovered by:** [Claude Code / user / consultant]
 **Status:** [Open | Resolved-Spec-Updated | Resolved-Accepted | Resolved-Reverted]
+**Commit:** [commit hash where the deviation was resolved]
 
 ### What the spec says
 
@@ -57,6 +63,7 @@ If reverted (the deviation turned out to be wrong), explain.]
 **Spec section:** configuration_management_spec.md — Vendor Management → Detail Modal Fields
 **Discovered by:** User, during mockup review
 **Status:** Resolved-Spec-Updated
+**Commit:** e2a363d
 
 ### What the spec said
 
