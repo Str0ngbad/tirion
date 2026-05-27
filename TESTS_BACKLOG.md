@@ -155,23 +155,32 @@ Phase: 1A — observed but deferred
 
 ---
 
-### purchasing_lens_spec.md Stock Size source is stale
+### Stale stockSize references citing MaterialSpec in downstream spec files
 
-The Purchasing Lens Grid Columns table lists Stock Size as
-"From MaterialSpec — sortable". This was correct before the
-MaterialSpec reconciliation (commit 26e4e4c) but is now stale —
-Stock Size lives on Part.stockSize, not on MaterialSpec.
+Two spec files reference `stockSize` via a path that no longer exists
+after the MaterialSpec reconciliation (commit 26e4e4c), which moved
+`stockSize` from MaterialSpec to Part:
 
-Impact: minor. The Purchasing Lens isn't being built until Phase 6+,
-so the spec drift doesn't affect current work. But anyone reading
-the spec to understand Stock Size's source will get an incorrect
-answer.
+- **purchasing_lens_spec.md** Grid Columns table — Stock Size listed as
+  "From MaterialSpec — sortable". Correct path is `Part.stockSize`.
+- **project_view_spec.md** WO grid columns table — Stock Size source
+  listed as `Part.materialSpec.stockSize`. That path doesn't exist;
+  correct path is `Part.stockSize`.
 
-Resolution: when Phase 6 work begins, update the line to read
-"From Part.stockSize — sortable" or similar wording matching the
-Parts Master spec. Optionally, do a full pass through other specs
-to find any remaining stockSize references that still cite
-MaterialSpec.
+Root cause is the same for both: the MaterialSpec reconciliation updated
+schema.md and configuration_management_spec.md but did not sweep
+downstream specs that referenced the old path.
+
+Impact: minor. Neither surface is being built until Phase 6+ (Purchasing
+Lens) or Phase 7+ (Project View WO grid), so the drift doesn't affect
+current work. But anyone reading either spec to understand where Stock
+Size comes from will get an incorrect answer.
+
+Resolution: when Phase 6 or Phase 7 work begins on these surfaces,
+update both references to read `Part.stockSize` (or prose equivalent
+matching the Parts Master spec). Also run a fresh grep across the spec
+corpus at that time — other downstream specs may have acquired similar
+drift by then.
 
 Phase: 1A — observed during MaterialSpec implementation planning
 
