@@ -190,6 +190,18 @@ All grid columns plus:
 - Audit log (collapsible)
 - Reference list: which Parts use this vendor as Default Vendor (clickable
   links to those Parts)
+- Active Work summary: total count of active WOs depending on Parts where
+  this vendor is the Default Vendor, with breakdown into "awaiting receipt"
+  (WOs in the ordered-not-yet-received state) and "awaiting purchase" (WOs
+  in the not-yet-ordered state). Includes a link to the Operations Lens
+  filtered by this vendor for the full breakdown.
+
+The Active Work summary is informational, not a blocker. Vendor deactivation
+rules and reassignment rules are unchanged: WIP impact is awareness, not
+enforcement. Per the state model, "awaiting receipt" and "awaiting purchase"
+are disjoint — every WO is in exactly one purchasing state at a time. The
+sum may be less than the total; the remainder represents WOs past both
+purchasing and receiving that are still active in downstream routing.
 
 ### Creation
 

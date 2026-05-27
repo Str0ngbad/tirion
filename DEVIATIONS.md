@@ -51,6 +51,57 @@ If reverted (the deviation turned out to be wrong), explain.]
 
 ## Deviations
 
+## 2026-05-27 — Vendor detail panel: Active Work summary added
+
+**Phase:** Mockup track (Vendor Configuration Grid)
+**Spec section:** configuration_management_spec.md — Vendor Management → Detail Modal Fields
+**Discovered by:** User, during mockup review
+**Status:** Resolved-Spec-Updated
+
+### What the spec said
+
+The Vendor Detail Modal Fields section listed Notes, Audit log, and a
+Reference list of Parts using this vendor as Default Vendor. The two
+stat tiles (Default Vendor For, Open Supply Orders) covered configuration
+counts but did not surface WIP impact.
+
+### What was discovered
+
+During mockup review, the user identified that an admin considering vendor
+deactivation or Default-Vendor reassignment needs awareness of WIP impact
+to make an informed decision — not as a blocker (spec is explicit that WIP
+doesn't block these actions), but as operational context. Specifically:
+how many active WOs depend on this vendor, and of those how many are in
+the purchasing queue vs. awaiting material receipt.
+
+Open Supply Orders gave partial information (transactions in flight) but
+missed WOs in the purchasing queue and didn't communicate the count of WOs
+affected.
+
+### Resolution
+
+- Added a third stat tile "Active Work" to the Vendor Detail panel with
+  three counts: total active WOs, awaiting receipt, awaiting purchase.
+- Counts are disjoint subsets of total; per the state model, every WO is
+  in exactly one purchasing state at a time. The sum of awaiting receipt
+  and awaiting purchase will often be less than total, with the remainder
+  representing WOs past both gates but still active in routing.
+- Added a link to the Operations Lens filtered by vendor for the full
+  breakdown — the Active Work summary is a high-level signal, not a
+  detailed list.
+- configuration_management_spec.md Vendor Management section updated to
+  document the new field and its semantics.
+- Same pattern may apply to Part Form Default Vendor changes; deferred
+  pending separate review when Part Form mockup work begins.
+
+### Files affected
+
+- spec/configuration_management_spec.md (Detail Modal Fields section)
+- app/mockups/vendors/_data.ts (three new fields on MockVendor)
+- app/mockups/vendors/_components/vendor-detail-modal.tsx (new tile)
+
+---
+
 ## 2026-05-09 — schema.md missing UserProcessTypeAssignment model
 
 **Phase:** 0
