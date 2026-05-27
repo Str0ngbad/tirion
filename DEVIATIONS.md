@@ -517,3 +517,59 @@ Rev 1). isActive stays on MaterialSpec for typo/duplicate cleanup.
 - prisma/migrations/20260521180000_material_spec_reconciliation/migration.sql
 
 ---
+
+## 2026-05-27 — Deviation footer convention made explicit in CLAUDE.md
+
+**Phase:** 1A
+**Spec section:** CLAUDE.md (Hooks and Project Maintenance section)
+**Discovered by:** Phase 1A consultant (during Vendor mockup commit retrospective)
+**Status:** Resolved-Spec-Updated
+**Commit:** c8625b7
+
+### What the spec said
+
+CLAUDE.md's Hooks and Project Maintenance section described the
+deviations hook's behavior — appends a structured stub to DEVIATIONS.md
+when the commit message contains both `Deviates-From:` and
+`Deviation-Summary:` footers — but did not explicitly direct consultant-
+authored prompts to include those footers when proposing commits that
+modify the spec corpus.
+
+### What was discovered
+
+During the Vendor mockup work (commit e2a363d), a consultant in a
+separate conversation window drafted a Claude Code prompt that updated
+the configuration_management_spec but omitted the deviation footers
+from the commit message. The deviations hook correctly did nothing
+(no footers, no trigger), and the deviation entry had to be authored
+by hand directly in DEVIATIONS.md. This bypassed the hook's
+auto-population of the commit hash, which then required backfilling
+in commit c8625b7.
+
+The convention existed structurally but was implicit in CLAUDE.md.
+Other Claude.ai conversation windows working on this project don't
+inherit context from this conversation — each one reads CLAUDE.md
+fresh. If the convention isn't documented there, it has to be
+re-established in every conversation.
+
+### Resolution
+
+CLAUDE.md's Hooks and Project Maintenance section now explicitly
+documents that any commit which changes the spec corpus should
+include `Deviates-From:` and `Deviation-Summary:` footers, with the
+expected format and the consequence of omitting them. This convention
+is now discoverable by any consultant agent reading CLAUDE.md without
+requiring out-of-band knowledge transfer.
+
+This is the inverse of the convention/decision distinction discussed
+earlier in the build: a convention that was being followed informally
+in one workstream got bypassed in another because it wasn't formalized.
+Formalizing it in CLAUDE.md prevents the same bypass from recurring
+in future mockup work or contributor onboarding.
+
+### Files affected
+
+- CLAUDE.md (Hooks and Project Maintenance section expanded with
+  explicit footer-convention guidance)
+
+---
