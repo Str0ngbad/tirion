@@ -171,8 +171,7 @@ export default function VendorCreateModal({
                   htmlFor="website"
                   className="mb-1 text-xs uppercase tracking-wide text-muted-foreground"
                 >
-                  Website{" "}
-                  <span className="font-normal normal-case tracking-normal text-muted-foreground/40">*</span>
+                  Website
                 </Label>
                 <Input
                   id="website"
@@ -187,8 +186,7 @@ export default function VendorCreateModal({
                   htmlFor="location"
                   className="mb-1 text-xs uppercase tracking-wide text-muted-foreground"
                 >
-                  Location{" "}
-                  <span className="font-normal normal-case tracking-normal text-muted-foreground/40">*</span>
+                  Location
                 </Label>
                 <Input
                   id="location"
@@ -199,7 +197,6 @@ export default function VendorCreateModal({
                 />
               </div>
             </div>
-            <p className="text-xs text-muted-foreground/50">* Exploratory — not in Rev 1 spec</p>
           </div>
 
           <DialogFooter>

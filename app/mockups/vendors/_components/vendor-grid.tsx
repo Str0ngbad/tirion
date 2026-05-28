@@ -31,7 +31,6 @@ function Th({
   label,
   sortCol,
   align = "left",
-  exploratory = false,
   activeSortKey,
   sortAsc,
   onSort,
@@ -39,7 +38,6 @@ function Th({
   label: string;
   sortCol?: SortKey;
   align?: "left" | "right" | "center";
-  exploratory?: boolean;
   activeSortKey: SortKey;
   sortAsc: boolean;
   onSort: (key: SortKey) => void;
@@ -55,9 +53,6 @@ function Th({
         onClick={() => onSort(sortCol)}
       >
         {label}
-        {exploratory && (
-          <span className="ml-0.5 font-normal normal-case tracking-normal text-muted-foreground/40">*</span>
-        )}
         <SortIcon active={activeSortKey === sortCol} asc={sortAsc} />
       </TableHead>
     );
@@ -65,9 +60,6 @@ function Th({
   return (
     <TableHead className={headClass}>
       {label}
-      {exploratory && (
-        <span className="ml-0.5 font-normal normal-case tracking-normal text-muted-foreground/40">*</span>
-      )}
     </TableHead>
   );
 }
@@ -83,8 +75,8 @@ export default function VendorGrid({ vendors, sortKey, sortAsc, onSort, onRowCli
             <Th label="Lead Time (Days)" sortCol="leadTimeDays" align="right" activeSortKey={sortKey} sortAsc={sortAsc} onSort={onSort} />
             <Th label="Default Vendor For" sortCol="defaultVendorForCount" align="right" activeSortKey={sortKey} sortAsc={sortAsc} onSort={onSort} />
             <Th label="Open Supply Orders" sortCol="openSupplyOrderCount" align="right" activeSortKey={sortKey} sortAsc={sortAsc} onSort={onSort} />
-            <Th label="Website" exploratory activeSortKey={sortKey} sortAsc={sortAsc} onSort={onSort} />
-            <Th label="Location" exploratory activeSortKey={sortKey} sortAsc={sortAsc} onSort={onSort} />
+            <Th label="Website" activeSortKey={sortKey} sortAsc={sortAsc} onSort={onSort} />
+            <Th label="Location" activeSortKey={sortKey} sortAsc={sortAsc} onSort={onSort} />
             <Th label="Active" align="center" activeSortKey={sortKey} sortAsc={sortAsc} onSort={onSort} />
           </TableRow>
         </TableHeader>
@@ -144,11 +136,6 @@ export default function VendorGrid({ vendors, sortKey, sortAsc, onSort, onRowCli
           ))}
         </TableBody>
       </Table>
-      <div className="border-t border-border bg-card px-3 py-1.5">
-        <p className="text-xs text-muted-foreground/50">
-          * Exploratory — not in Rev 1 spec; present for design validation
-        </p>
-      </div>
     </div>
   );
 }

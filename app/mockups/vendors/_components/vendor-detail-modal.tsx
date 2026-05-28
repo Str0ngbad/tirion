@@ -121,7 +121,7 @@ export default function VendorDetailModal({ vendor, onClose, onUpdate, onDeactiv
   function renderField(
     label: string,
     field: EditableField,
-    opts: { multiline?: boolean; exploratory?: boolean } = {}
+    opts: { multiline?: boolean } = {}
   ) {
     const isEditing = editingField === field;
     const value = currentValueFor(vendor, field);
@@ -131,9 +131,6 @@ export default function VendorDetailModal({ vendor, onClose, onUpdate, onDeactiv
       <div className="py-3 border-b border-border last:border-0">
         <div className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
           {label}
-          {opts.exploratory && (
-            <span className="ml-0.5 font-normal normal-case tracking-normal text-muted-foreground/40"> *</span>
-          )}
         </div>
         {isEditing ? (
           <div className="flex items-start gap-2">
@@ -256,8 +253,8 @@ export default function VendorDetailModal({ vendor, onClose, onUpdate, onDeactiv
             {renderField("Contact Info", "contactInfo")}
             {renderField("Lead Time (Days)", "leadTimeDays")}
             {renderField("Notes", "notes", { multiline: true })}
-            {renderField("Website", "website", { exploratory: true })}
-            {renderField("Location", "location", { exploratory: true })}
+            {renderField("Website", "website")}
+            {renderField("Location", "location")}
           </div>
 
           {/* Reference list */}
@@ -268,9 +265,6 @@ export default function VendorDetailModal({ vendor, onClose, onUpdate, onDeactiv
           {/* Audit log */}
           <AuditLogSection auditLog={vendor.auditLog} />
 
-          <p className="mt-4 text-xs text-muted-foreground/50">
-            * Exploratory fields — not in Rev 1 spec
-          </p>
         </div>
 
         {/* Panel footer */}
