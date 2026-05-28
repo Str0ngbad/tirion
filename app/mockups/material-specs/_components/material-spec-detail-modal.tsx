@@ -1,11 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { MockMaterialSpec, MockAuditEntry } from "../_data";
+import { MockMaterialSpec } from "../_data";
 import MaterialSpecAuditLogSection from "./material-spec-audit-log-section";
 import MaterialSpecReferenceList from "./material-spec-reference-list";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Sheet,
   SheetContent,
@@ -14,136 +12,19 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 
-type EditableField = "materialName" | "form";
-
 type Props = {
   spec: MockMaterialSpec;
-  allSpecs: MockMaterialSpec[];
   onClose: () => void;
-  onUpdate: (updated: MockMaterialSpec) => void;
+  onEdit: (spec: MockMaterialSpec) => void;
   onDeactivate: (spec: MockMaterialSpec) => void;
 };
 
 export default function MaterialSpecDetailModal({
   spec,
-  allSpecs,
   onClose,
-  onUpdate,
+  onEdit,
   onDeactivate,
 }: Props) {
-  const [editingField, setEditingField] = useState<EditableField | null>(null);
-  const [editValue, setEditValue] = useState("");
-  const [editError, setEditError] = useState<string | null>(null);
-
-  function startEdit(field: EditableField) {
-    setEditValue(field === "materialName" ? spec.materialName : spec.form);
-    setEditError(null);
-    setEditingField(field);
-  }
-
-  function cancelEdit() {
-    setEditingField(null);
-    setEditError(null);
-  }
-
-  function saveEdit(field: EditableField) {
-    const trimmed = editValue.trim();
-    if (!trimmed) {
-      setEditError(`${field === "materialName" ? "Material Name" : "Form"} cannot be empty.`);
-      return;
-    }
-
-    const newMaterialName = field === "materialName" ? trimmed : spec.materialName;
-    const newForm = field === "form" ? trimmed : spec.form;
-
-    // Check uniqueness against other specs (not self)
-    const conflict = allSpecs.find(
-      (s) =>
-        s.materialSpecId !== spec.materialSpecId &&
-        s.materialName.toLowerCase() === newMaterialName.toLowerCase() &&
-        s.form.toLowerCase() === newForm.toLowerCase()
-    );
-    if (conflict) {
-      setEditError(
-        `The pair "${newMaterialName} · ${newForm}" already exists as MaterialSpec ${conflict.materialSpecId}.`
-      );
-      return;
-    }
-
-    const before = field === "materialName" ? spec.materialName : spec.form;
-    if (before === trimmed) {
-      cancelEdit();
-      return;
-    }
-
-    const entry: MockAuditEntry = {
-      timestamp: new Date().toISOString(),
-      userName: "Jane Chen",
-      action: "MaterialSpecUpdated",
-      changedFields: [{ field, before, after: trimmed }],
-    };
-
-    const updated: MockMaterialSpec = {
-      ...spec,
-      materialName: newMaterialName,
-      form: newForm,
-      auditLog: [entry, ...spec.auditLog],
-    };
-
-    onUpdate(updated);
-    setEditingField(null);
-    setEditError(null);
-  }
-
-  function renderField(label: string, field: EditableField) {
-    const isEditing = editingField === field;
-    const value = field === "materialName" ? spec.materialName : spec.form;
-    const canEdit = spec.isActive;
-
-    return (
-      <div className="py-3 border-b border-border last:border-0">
-        <div className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          {label}
-        </div>
-        {isEditing ? (
-          <div className="flex flex-col gap-1.5">
-            <div className="flex items-center gap-2">
-              <Input
-                autoFocus
-                type="text"
-                value={editValue}
-                onChange={(e) => { setEditValue(e.target.value); setEditError(null); }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") saveEdit(field);
-                  if (e.key === "Escape") cancelEdit();
-                }}
-                className="flex-1"
-                placeholder={`Enter ${label.toLowerCase()}…`}
-              />
-              <Button size="sm" variant="outline" onClick={() => saveEdit(field)}>
-                Save
-              </Button>
-              <Button size="sm" variant="ghost" onClick={cancelEdit}>
-                Cancel
-              </Button>
-            </div>
-            {editError && <p className="text-xs text-red-400">{editError}</p>}
-          </div>
-        ) : (
-          <div
-            className={`group flex items-center gap-2 ${canEdit ? "cursor-pointer" : ""}`}
-            onClick={() => { if (canEdit) startEdit(field); }}
-          >
-            <span className="text-sm text-foreground">{value}</span>
-            {canEdit && (
-              <span className="hidden text-xs text-muted-foreground/50 group-hover:inline">✎</span>
-            )}
-          </div>
-        )}
-      </div>
-    );
-  }
-
   return (
     <Sheet open={true} onOpenChange={(open) => { if (!open) onClose(); }}>
       <SheetContent
@@ -165,7 +46,7 @@ export default function MaterialSpecDetailModal({
             ) : (
               <>
                 <span className="inline-block h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
-                Inactive — editing disabled
+                Inactive
               </>
             )}
           </SheetDescription>
@@ -218,10 +99,20 @@ export default function MaterialSpecDetailModal({
             </div>
           </div>
 
-          {/* Editable fields */}
+          {/* Read-only fields */}
           <div className="mb-2">
-            {renderField("Material Name", "materialName")}
-            {renderField("Form", "form")}
+            <div className="py-3 border-b border-border">
+              <div className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Material Name
+              </div>
+              <span className="text-sm text-foreground">{spec.materialName}</span>
+            </div>
+            <div className="py-3 border-b border-border last:border-0">
+              <div className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Form
+              </div>
+              <span className="text-sm text-foreground">{spec.form}</span>
+            </div>
           </div>
 
           {/* Reference list */}
@@ -238,11 +129,16 @@ export default function MaterialSpecDetailModal({
         </div>
 
         {/* Panel footer */}
-        <div className="border-t border-border px-6 py-4">
+        <div className="border-t border-border px-6 py-4 flex items-center gap-3">
           {spec.isActive ? (
-            <Button variant="destructive" onClick={() => onDeactivate(spec)}>
-              Deactivate MaterialSpec
-            </Button>
+            <>
+              <Button variant="default" onClick={() => onEdit(spec)}>
+                Edit MaterialSpec
+              </Button>
+              <Button variant="destructive" onClick={() => onDeactivate(spec)}>
+                Deactivate MaterialSpec
+              </Button>
+            </>
           ) : (
             <span className="text-xs text-muted-foreground">
               MaterialSpec is inactive. To reactivate, use the API directly (reactivation flow not

@@ -5,7 +5,7 @@ import { MOCK_MATERIAL_SPECS, MockMaterialSpec, MockAuditEntry } from "./_data";
 import MaterialSpecGrid, { SortKey } from "./_components/material-spec-grid";
 import MaterialSpecDetailModal from "./_components/material-spec-detail-modal";
 import MaterialSpecDeactivateModal from "./_components/material-spec-deactivate-modal";
-import MaterialSpecCreateModal from "./_components/material-spec-create-modal";
+import MaterialSpecCascadeModal from "./_components/material-spec-cascade-modal";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -18,6 +18,7 @@ export default function MaterialSpecsPage() {
   const [selectedSpec, setSelectedSpec] = useState<MockMaterialSpec | null>(null);
   const [specToDeactivate, setSpecToDeactivate] = useState<MockMaterialSpec | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingSpec, setEditingSpec] = useState<MockMaterialSpec | null>(null);
 
   const displayed = specs
     .filter((s) => showInactive || s.isActive)
@@ -43,16 +44,37 @@ export default function MaterialSpecsPage() {
     else { setSortKey(key); setSortAsc(true); }
   }
 
-  function handleUpdate(updated: MockMaterialSpec) {
-    setSpecs((prev) =>
-      prev.map((s) => (s.materialSpecId === updated.materialSpecId ? updated : s))
-    );
-    setSelectedSpec(updated);
-  }
-
   function handleCreate(spec: MockMaterialSpec) {
     setSpecs((prev) => [...prev, spec]);
     setShowCreateModal(false);
+  }
+
+  function handleUpdate(materialSpecId: number, materialName: string, form: string) {
+    setSpecs((prev) =>
+      prev.map((s) => {
+        if (s.materialSpecId !== materialSpecId) return s;
+        const changedFields: MockAuditEntry["changedFields"] = [];
+        if (s.materialName !== materialName) {
+          changedFields.push({ field: "materialName", before: s.materialName, after: materialName });
+        }
+        if (s.form !== form) {
+          changedFields.push({ field: "form", before: s.form, after: form });
+        }
+        const entry: MockAuditEntry = {
+          timestamp: new Date().toISOString(),
+          userName: "Jane Chen",
+          action: "MaterialSpecUpdated",
+          changedFields,
+        };
+        return { ...s, materialName, form, auditLog: [entry, ...s.auditLog] };
+      })
+    );
+    setSpecs((prev) => {
+      const updated = prev.find((s) => s.materialSpecId === materialSpecId);
+      if (updated) setSelectedSpec(updated);
+      return prev;
+    });
+    setEditingSpec(null);
   }
 
   function handleDeactivateConfirm() {
@@ -136,9 +158,8 @@ export default function MaterialSpecsPage() {
       {selectedSpec !== null && (
         <MaterialSpecDetailModal
           spec={selectedSpec}
-          allSpecs={specs}
           onClose={() => { setSelectedSpec(null); setSpecToDeactivate(null); }}
-          onUpdate={handleUpdate}
+          onEdit={setEditingSpec}
           onDeactivate={setSpecToDeactivate}
         />
       )}
@@ -152,13 +173,15 @@ export default function MaterialSpecsPage() {
         />
       )}
 
-      {/* Create modal */}
-      {showCreateModal && (
-        <MaterialSpecCreateModal
-          allSpecs={specs}
+      {/* Create / edit cascade modal */}
+      {(showCreateModal || editingSpec !== null) && (
+        <MaterialSpecCascadeModal
+          existingSpecs={specs}
           maxSpecId={maxSpecId}
-          onClose={() => setShowCreateModal(false)}
+          editingSpec={editingSpec ?? undefined}
+          onClose={() => { setShowCreateModal(false); setEditingSpec(null); }}
           onCreate={handleCreate}
+          onUpdate={handleUpdate}
         />
       )}
     </div>

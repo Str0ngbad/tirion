@@ -29,10 +29,13 @@ import {
 import { ChevronsUpDownIcon } from "lucide-react";
 
 type Props = {
-  allSpecs: MockMaterialSpec[];
+  existingSpecs: MockMaterialSpec[];
   maxSpecId: number;
+  /** undefined = create mode; defined = edit mode */
+  editingSpec: MockMaterialSpec | undefined;
   onClose: () => void;
   onCreate: (spec: MockMaterialSpec) => void;
+  onUpdate: (materialSpecId: number, materialName: string, form: string) => void;
 };
 
 function matchesCriteria(candidate: string, query: string): boolean {
@@ -41,14 +44,18 @@ function matchesCriteria(candidate: string, query: string): boolean {
   return c.includes(q) || levenshtein(c, q) <= 2;
 }
 
-export default function MaterialSpecCreateModal({
-  allSpecs,
+export default function MaterialSpecCascadeModal({
+  existingSpecs,
   maxSpecId,
+  editingSpec,
   onClose,
   onCreate,
+  onUpdate,
 }: Props) {
-  const [materialName, setMaterialName] = useState("");
-  const [form, setForm] = useState("");
+  const isEditMode = editingSpec !== undefined;
+
+  const [materialName, setMaterialName] = useState(editingSpec?.materialName ?? "");
+  const [form, setForm] = useState(editingSpec?.form ?? "");
   const [materialNameOpen, setMaterialNameOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [materialNameSearch, setMaterialNameSearch] = useState("");
@@ -59,27 +66,27 @@ export default function MaterialSpecCreateModal({
   const activeMaterialNames = useMemo(() => {
     const seen = new Set<string>();
     const names: string[] = [];
-    for (const s of allSpecs.filter((s) => s.isActive)) {
+    for (const s of existingSpecs.filter((s) => s.isActive)) {
       if (!seen.has(s.materialName)) {
         seen.add(s.materialName);
         names.push(s.materialName);
       }
     }
     return names.sort((a, b) => a.localeCompare(b));
-  }, [allSpecs]);
+  }, [existingSpecs]);
 
   // Distinct active forms, sorted alphabetically
   const activeForms = useMemo(() => {
     const seen = new Set<string>();
     const forms: string[] = [];
-    for (const s of allSpecs.filter((s) => s.isActive)) {
+    for (const s of existingSpecs.filter((s) => s.isActive)) {
       if (!seen.has(s.form)) {
         seen.add(s.form);
         forms.push(s.form);
       }
     }
     return forms.sort((a, b) => a.localeCompare(b));
-  }, [allSpecs]);
+  }, [existingSpecs]);
 
   // Filtered material names: substring + edit-distance <= 2
   const filteredMaterialNames = useMemo(() => {
@@ -114,13 +121,23 @@ export default function MaterialSpecCreateModal({
       setPairMatch(null);
       return;
     }
-    const existing = allSpecs.find(
+    const existing = existingSpecs.find(
       (s) =>
         s.materialName.toLowerCase() === materialName.toLowerCase() &&
         s.form.toLowerCase() === form.toLowerCase()
     );
     setPairMatch(existing ?? null);
-  }, [materialName, form, allSpecs]);
+  }, [materialName, form, existingSpecs]);
+
+  // Edit mode: detect no-change and conflict states
+  const isNoChange =
+    isEditMode &&
+    materialName.toLowerCase() === editingSpec!.materialName.toLowerCase() &&
+    form.toLowerCase() === editingSpec!.form.toLowerCase();
+
+  // Conflict: pairMatch exists and it's NOT the spec being edited
+  const isConflict =
+    isEditMode && pairMatch !== null && pairMatch.materialSpecId !== editingSpec!.materialSpecId;
 
   function handleSelectMaterialName(value: string) {
     setMaterialName(value);
@@ -135,9 +152,14 @@ export default function MaterialSpecCreateModal({
   }
 
   function handleSubmit() {
+    if (isEditMode) {
+      if (isNoChange || isConflict || !materialName || !form) return;
+      onUpdate(editingSpec!.materialSpecId, materialName, form);
+      return;
+    }
+
+    // Create mode
     if (pairMatch) {
-      // In the real Part Form context, this returns the existing record's ID.
-      // Here we log the selection and close.
       console.log("Selected existing MaterialSpec:", pairMatch.materialSpecId);
       onClose();
       return;
@@ -168,14 +190,24 @@ export default function MaterialSpecCreateModal({
     onCreate(newSpec);
   }
 
-  const canSubmit = materialName !== "" && form !== "";
-  const buttonLabel = pairMatch ? "Use Existing MaterialSpec" : "Create MaterialSpec";
+  // Button state
+  const canSubmit = isEditMode
+    ? !isNoChange && !isConflict && materialName !== "" && form !== ""
+    : materialName !== "" && form !== "";
+
+  const buttonLabel = isEditMode
+    ? "Save Changes"
+    : pairMatch
+    ? "Use Existing MaterialSpec"
+    : "Create MaterialSpec";
+
+  const dialogTitle = isEditMode ? "Edit MaterialSpec" : "Add New MaterialSpec";
 
   return (
     <Dialog open={true} onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent className="max-w-md" showCloseButton={true}>
         <DialogHeader>
-          <DialogTitle>Add New MaterialSpec</DialogTitle>
+          <DialogTitle>{dialogTitle}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -327,14 +359,40 @@ export default function MaterialSpecCreateModal({
             </Popover>
           </div>
 
-          {/* Pair match banner */}
-          {pairMatch && (
+          {/* Banners — only one can appear at a time */}
+
+          {/* Create mode: existing pair found */}
+          {!isEditMode && pairMatch && (
             <div className="rounded-md border border-blue-900/50 bg-blue-950/30 px-4 py-3 text-sm text-blue-300">
               <strong className="font-medium">
                 This pair already exists as MaterialSpec {pairMatch.materialSpecId}.
               </strong>{" "}
               It&apos;s currently used by {pairMatch.usedByCount}{" "}
               {pairMatch.usedByCount === 1 ? "part" : "parts"}.
+            </div>
+          )}
+
+          {/* Edit mode: pair conflicts with a different spec */}
+          {isConflict && pairMatch && (
+            <div className="rounded-md border border-amber-900/50 bg-amber-950/30 px-4 py-3 text-sm text-amber-300">
+              <strong className="font-medium">
+                Cannot save — this combination already exists as MaterialSpec{" "}
+                {pairMatch.materialSpecId}.
+              </strong>{" "}
+              Currently used by {pairMatch.usedByCount}{" "}
+              {pairMatch.usedByCount === 1 ? "part" : "parts"}. To consolidate, edit each
+              part to use the existing MaterialSpec, then deactivate this one.{" "}
+              <button
+                onClick={() =>
+                  console.log(
+                    "[mockup] view parts using materialSpecId:",
+                    editingSpec!.materialSpecId
+                  )
+                }
+                className="underline hover:no-underline"
+              >
+                View parts using this MaterialSpec →
+              </button>
             </div>
           )}
         </div>
