@@ -127,28 +127,30 @@
  * selection that does not collide with these hues; the visual budget is
  * essentially full at 9 entries.
  */
-:root {
-  --process-purchase:     oklch(0.646 0.222 41.116);
-  --process-receive:      oklch(0.681 0.162 75.834);
-  --process-machine:      oklch(0.577 0.245 27.325);
-  --process-weld:         oklch(0.666 0.179 58.318);
-  --process-blacken:      oklch(0.541 0.281 293.009);
-  --process-paint:        oklch(0.558 0.288 302.321);
-  --process-3d-print:     oklch(0.609 0.126 221.723);
-  --process-assemble:     oklch(0.627 0.194 149.214);
-  --process-distribution: oklch(0.592 0.249 0.584);
-}
+@layer base {
+  :root {
+    --process-purchase:     oklch(0.646 0.222 41.116);
+    --process-receive:      oklch(0.681 0.162 75.834);
+    --process-machine:      oklch(0.577 0.245 27.325);
+    --process-weld:         oklch(0.666 0.179 58.318);
+    --process-blacken:      oklch(0.541 0.281 293.009);
+    --process-paint:        oklch(0.558 0.288 302.321);
+    --process-3d-print:     oklch(0.609 0.126 221.723);
+    --process-assemble:     oklch(0.627 0.194 149.214);
+    --process-distribution: oklch(0.592 0.249 0.584);
+  }
 
-.dark {
-  --process-purchase:     oklch(0.750 0.183 55.934);
-  --process-receive:      oklch(0.852 0.119 95.05);
-  --process-machine:      oklch(0.704 0.191 22.216);
-  --process-weld:         oklch(0.828 0.189 84.429);
-  --process-blacken:      oklch(0.702 0.183 293.501);
-  --process-paint:        oklch(0.740 0.238 322.16);
-  --process-3d-print:     oklch(0.789 0.154 211.53);
-  --process-assemble:     oklch(0.792 0.209 151.711);
-  --process-distribution: oklch(0.718 0.202 349.761);
+  .dark {
+    --process-purchase:     oklch(0.750 0.183 55.934);
+    --process-receive:      oklch(0.852 0.119 95.05);
+    --process-machine:      oklch(0.704 0.191 22.216);
+    --process-weld:         oklch(0.828 0.189 84.429);
+    --process-blacken:      oklch(0.702 0.183 293.501);
+    --process-paint:        oklch(0.740 0.238 322.16);
+    --process-3d-print:     oklch(0.789 0.154 211.53);
+    --process-assemble:     oklch(0.792 0.209 151.711);
+    --process-distribution: oklch(0.718 0.202 349.761);
+  }
 }
 
 @layer base {
