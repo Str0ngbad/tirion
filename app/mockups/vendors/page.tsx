@@ -78,7 +78,7 @@ export default function VendorsPage() {
   const maxVendorId = Math.max(...vendors.map((v) => v.vendorId));
 
   return (
-    <div className="min-h-screen bg-zinc-950 font-sans text-zinc-100">
+    <div className="min-h-screen bg-background font-sans text-foreground">
       {/* Mockup banner */}
       <div className="border-b border-amber-900/30 bg-amber-950/25 px-6 py-1.5 text-center">
         <span className="text-xs text-amber-400/70">
@@ -88,28 +88,28 @@ export default function VendorsPage() {
       </div>
 
       {/* Page header */}
-      <div className="border-b border-zinc-800 px-8 py-5">
+      <div className="border-b border-border px-8 py-5">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
           <div>
-            <h1 className="text-lg font-semibold text-zinc-100">Vendors</h1>
-            <p className="mt-0.5 text-xs text-zinc-500">
+            <h1 className="text-lg font-semibold text-foreground">Vendors</h1>
+            <p className="mt-0.5 text-xs text-muted-foreground">
               {activeCount} active
               {inactiveCount > 0 && `, ${inactiveCount} inactive`}
             </p>
           </div>
           <div className="flex items-center gap-5">
-            <label className="flex cursor-pointer select-none items-center gap-2 text-sm text-zinc-400">
+            <label className="flex cursor-pointer select-none items-center gap-2 text-sm text-muted-foreground">
               <input
                 type="checkbox"
                 checked={showInactive}
                 onChange={(e) => setShowInactive(e.target.checked)}
-                className="h-3.5 w-3.5 rounded border-zinc-700 bg-zinc-800 accent-zinc-400"
+                className="h-3.5 w-3.5 rounded border-border bg-card accent-zinc-400"
               />
               Show Inactive
             </label>
             <button
               onClick={() => setShowCreateModal(true)}
-              className="inline-flex items-center gap-1.5 rounded-md bg-zinc-100 px-3 py-1.5 text-sm font-medium text-zinc-900 transition-colors hover:bg-white"
+              className="inline-flex items-center gap-1.5 rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background transition-colors hover:bg-foreground/90"
             >
               <span className="text-base leading-none">+</span>
               Add New Vendor

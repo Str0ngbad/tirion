@@ -20,18 +20,18 @@ export default function VendorDeactivateModal({ vendor, onClose, onConfirm }: Pr
       {/* Modal */}
       <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
         <div
-          className="w-full max-w-md rounded-lg border border-zinc-800 bg-zinc-900 shadow-2xl"
+          className="w-full max-w-md rounded-lg border border-border bg-background shadow-2xl"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-start justify-between border-b border-zinc-800 px-5 py-4">
+          <div className="flex items-start justify-between border-b border-border px-5 py-4">
             <div>
-              <h2 className="text-sm font-semibold text-zinc-100">Deactivate Vendor</h2>
-              <p className="mt-0.5 text-xs text-zinc-500">{vendor.vendorName}</p>
+              <h2 className="text-sm font-semibold text-foreground">Deactivate Vendor</h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">{vendor.vendorName}</p>
             </div>
             <button
               onClick={onClose}
-              className="ml-4 rounded p-1 text-zinc-600 hover:text-zinc-300 transition-colors"
+              className="ml-4 rounded p-1 text-muted-foreground hover:text-foreground transition-colors"
             >
               ×
             </button>
@@ -41,7 +41,7 @@ export default function VendorDeactivateModal({ vendor, onClose, onConfirm }: Pr
           <div className="px-5 py-4">
             {hasBlockers ? (
               <>
-                <p className="mb-3 text-sm text-zinc-400">
+                <p className="mb-3 text-sm text-muted-foreground">
                   This vendor cannot be deactivated while active parts reference it as Default
                   Vendor. Reassign or deactivate the following parts first:
                 </p>
@@ -49,25 +49,25 @@ export default function VendorDeactivateModal({ vendor, onClose, onConfirm }: Pr
                   {vendor.referencingParts.map((part) => (
                     <li
                       key={part.partId}
-                      className="flex items-center gap-2.5 rounded-md border border-zinc-800 bg-zinc-800/40 px-3 py-2"
+                      className="flex items-center gap-2.5 rounded-md border border-border bg-card/40 px-3 py-2"
                     >
-                      <span className="font-mono text-xs text-zinc-500">{part.partNumber}</span>
-                      <span className="text-sm text-zinc-300">{part.partName}</span>
+                      <span className="font-mono text-xs text-muted-foreground">{part.partNumber}</span>
+                      <span className="text-sm text-foreground">{part.partName}</span>
                     </li>
                   ))}
                 </ul>
               </>
             ) : (
-              <p className="text-sm text-zinc-300">
+              <p className="text-sm text-foreground">
                 No blocking references. Vendor can be deactivated.
               </p>
             )}
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between border-t border-zinc-800 px-5 py-4">
+          <div className="flex items-center justify-between border-t border-border px-5 py-4">
             {hasBlockers ? (
-              <p className="text-xs text-zinc-600">
+              <p className="text-xs text-muted-foreground">
                 {vendor.referencingParts.length} part
                 {vendor.referencingParts.length !== 1 ? "s" : ""} must be resolved first.
               </p>
@@ -77,7 +77,7 @@ export default function VendorDeactivateModal({ vendor, onClose, onConfirm }: Pr
             <div className="flex items-center gap-3">
               <button
                 onClick={onClose}
-                className="rounded-md px-3 py-1.5 text-sm text-zinc-400 hover:text-zinc-200 transition-colors"
+                className="rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
                 Cancel
               </button>
@@ -86,7 +86,7 @@ export default function VendorDeactivateModal({ vendor, onClose, onConfirm }: Pr
                 disabled={hasBlockers}
                 className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
                   hasBlockers
-                    ? "cursor-not-allowed bg-zinc-800 text-zinc-600"
+                    ? "cursor-not-allowed bg-muted text-muted-foreground"
                     : "bg-red-700 text-white hover:bg-red-600"
                 }`}
               >

@@ -15,8 +15,8 @@ type Props = {
 };
 
 function SortIcon({ active, asc }: { active: boolean; asc: boolean }) {
-  if (!active) return <span className="ml-1 text-zinc-700">↕</span>;
-  return <span className="ml-1 text-zinc-400">{asc ? "↑" : "↓"}</span>;
+  if (!active) return <span className="ml-1 text-muted-foreground/30">↕</span>;
+  return <span className="ml-1 text-muted-foreground">{asc ? "↑" : "↓"}</span>;
 }
 
 function Th({
@@ -39,16 +39,16 @@ function Th({
   const alignClass =
     align === "right" ? "text-right" : align === "center" ? "text-center" : "text-left";
   const base =
-    "px-3 py-2.5 text-xs font-medium uppercase tracking-wide text-zinc-500 select-none";
+    "px-3 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground select-none";
 
   if (sortCol) {
     return (
       <th
-        className={`${base} ${alignClass} cursor-pointer hover:text-zinc-300 transition-colors`}
+        className={`${base} ${alignClass} cursor-pointer hover:text-foreground transition-colors`}
         onClick={() => onSort(sortCol)}
       >
         {label}
-        {exploratory && <span className="ml-0.5 font-normal normal-case tracking-normal text-zinc-700">*</span>}
+        {exploratory && <span className="ml-0.5 font-normal normal-case tracking-normal text-muted-foreground/40">*</span>}
         <SortIcon active={activeSortKey === sortCol} asc={sortAsc} />
       </th>
     );
@@ -56,17 +56,17 @@ function Th({
   return (
     <th className={`${base} ${alignClass}`}>
       {label}
-      {exploratory && <span className="ml-0.5 font-normal normal-case tracking-normal text-zinc-700">*</span>}
+      {exploratory && <span className="ml-0.5 font-normal normal-case tracking-normal text-muted-foreground/40">*</span>}
     </th>
   );
 }
 
 export default function VendorGrid({ vendors, sortKey, sortAsc, onSort, onRowClick }: Props) {
   return (
-    <div className="overflow-hidden rounded-lg border border-zinc-800">
+    <div className="overflow-hidden rounded-lg border border-border">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-zinc-800 bg-zinc-900">
+          <tr className="border-b border-border bg-card">
             <Th label="Vendor Name" sortCol="vendorName" activeSortKey={sortKey} sortAsc={sortAsc} onSort={onSort} />
             <Th label="Contact Info" activeSortKey={sortKey} sortAsc={sortAsc} onSort={onSort} />
             <Th label="Lead Time (Days)" sortCol="leadTimeDays" align="right" activeSortKey={sortKey} sortAsc={sortAsc} onSort={onSort} />
@@ -77,10 +77,10 @@ export default function VendorGrid({ vendors, sortKey, sortAsc, onSort, onRowCli
             <Th label="Active" align="center" activeSortKey={sortKey} sortAsc={sortAsc} onSort={onSort} />
           </tr>
         </thead>
-        <tbody className="divide-y divide-zinc-800/60 bg-zinc-900/40">
+        <tbody className="divide-y divide-border/60 bg-card/30">
           {vendors.length === 0 && (
             <tr>
-              <td colSpan={8} className="px-4 py-10 text-center text-xs text-zinc-600">
+              <td colSpan={8} className="px-4 py-10 text-center text-xs text-muted-foreground">
                 No vendors found.
               </td>
             </tr>
@@ -91,24 +91,24 @@ export default function VendorGrid({ vendors, sortKey, sortAsc, onSort, onRowCli
               onClick={() => onRowClick(v)}
               className={`cursor-pointer transition-colors ${
                 v.isActive
-                  ? "hover:bg-zinc-800/50"
+                  ? "hover:bg-muted/50"
                   : "opacity-40 hover:opacity-60"
               }`}
             >
               <td className="px-3 py-2.5">
-                <span className="font-medium text-zinc-100">{v.vendorName}</span>
+                <span className="font-medium text-foreground">{v.vendorName}</span>
               </td>
-              <td className="px-3 py-2.5 text-zinc-400">
-                {v.contactInfo ?? <span className="text-zinc-700">—</span>}
+              <td className="px-3 py-2.5 text-muted-foreground">
+                {v.contactInfo ?? <span className="text-muted-foreground/40">—</span>}
               </td>
-              <td className="px-3 py-2.5 text-right text-zinc-300">
-                {v.leadTimeDays !== null ? v.leadTimeDays : <span className="text-zinc-700">—</span>}
+              <td className="px-3 py-2.5 text-right text-foreground">
+                {v.leadTimeDays !== null ? v.leadTimeDays : <span className="text-muted-foreground/40">—</span>}
               </td>
               <td className="px-3 py-2.5 text-right">
                 {v.defaultVendorForCount > 0 ? (
-                  <span className="font-medium text-zinc-200">{v.defaultVendorForCount}</span>
+                  <span className="font-medium text-foreground">{v.defaultVendorForCount}</span>
                 ) : (
-                  <span className="text-zinc-700">0</span>
+                  <span className="text-muted-foreground/40">0</span>
                 )}
               </td>
               <td className="px-3 py-2.5 text-right">
@@ -117,14 +117,14 @@ export default function VendorGrid({ vendors, sortKey, sortAsc, onSort, onRowCli
                     {v.openSupplyOrderCount}
                   </span>
                 ) : (
-                  <span className="text-zinc-700">0</span>
+                  <span className="text-muted-foreground/40">0</span>
                 )}
               </td>
-              <td className="px-3 py-2.5 text-xs text-zinc-500">
-                {v.website ?? <span className="text-zinc-700">—</span>}
+              <td className="px-3 py-2.5 text-xs text-muted-foreground">
+                {v.website ?? <span className="text-muted-foreground/40">—</span>}
               </td>
-              <td className="px-3 py-2.5 text-xs text-zinc-500">
-                {v.location ?? <span className="text-zinc-700">—</span>}
+              <td className="px-3 py-2.5 text-xs text-muted-foreground">
+                {v.location ?? <span className="text-muted-foreground/40">—</span>}
               </td>
               <td className="px-3 py-2.5 text-center">
                 {v.isActive ? (
@@ -134,7 +134,7 @@ export default function VendorGrid({ vendors, sortKey, sortAsc, onSort, onRowCli
                   />
                 ) : (
                   <span
-                    className="inline-block h-2 w-2 rounded-full bg-zinc-600"
+                    className="inline-block h-2 w-2 rounded-full bg-muted-foreground/40"
                     title="Inactive"
                   />
                 )}
@@ -143,8 +143,8 @@ export default function VendorGrid({ vendors, sortKey, sortAsc, onSort, onRowCli
           ))}
         </tbody>
       </table>
-      <div className="border-t border-zinc-800 bg-zinc-900 px-3 py-1.5">
-        <p className="text-xs text-zinc-700">
+      <div className="border-t border-border bg-card px-3 py-1.5">
+        <p className="text-xs text-muted-foreground/50">
           * Exploratory — not in Rev 1 spec; present for design validation
         </p>
       </div>

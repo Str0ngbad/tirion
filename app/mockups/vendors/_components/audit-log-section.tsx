@@ -47,10 +47,10 @@ export default function AuditLogSection({ auditLog }: Props) {
   );
 
   return (
-    <div className="border-t border-zinc-800 pt-4">
+    <div className="border-t border-border pt-4">
       <button
         onClick={() => setExpanded((p) => !p)}
-        className="flex w-full items-center justify-between text-xs font-medium uppercase tracking-wide text-zinc-600 hover:text-zinc-400 transition-colors"
+        className="flex w-full items-center justify-between text-xs font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground transition-colors"
       >
         <span>Audit Log ({auditLog.length})</span>
         <span className={`transition-transform inline-block ${expanded ? "rotate-180" : ""}`}>▾</span>
@@ -59,22 +59,22 @@ export default function AuditLogSection({ auditLog }: Props) {
       {expanded && (
         <div className="mt-3 space-y-2">
           {sorted.map((entry, i) => (
-            <div key={i} className="rounded-md border border-zinc-800 bg-zinc-800/30 px-3 py-2.5">
+            <div key={i} className="rounded-md border border-border bg-card/30 px-3 py-2.5">
               <div className="flex items-baseline justify-between">
                 <span className={`text-xs font-medium ${actionColor(entry.action)}`}>
                   {actionLabel(entry.action)}
                 </span>
-                <span className="text-xs text-zinc-600">{formatTs(entry.timestamp)}</span>
+                <span className="text-xs text-muted-foreground">{formatTs(entry.timestamp)}</span>
               </div>
-              <div className="mt-0.5 text-xs text-zinc-500">{entry.userName}</div>
+              <div className="mt-0.5 text-xs text-muted-foreground">{entry.userName}</div>
               {entry.changedFields && entry.changedFields.length > 0 && (
-                <div className="mt-2 space-y-1 border-t border-zinc-800 pt-2">
+                <div className="mt-2 space-y-1 border-t border-border pt-2">
                   {entry.changedFields.map((cf, j) => (
                     <div key={j} className="text-xs">
-                      <span className="font-medium text-zinc-500">{cf.field}:</span>{" "}
-                      <span className="text-zinc-600 line-through">{cf.before ?? "—"}</span>
-                      <span className="text-zinc-600"> → </span>
-                      <span className="text-zinc-300">{cf.after ?? "—"}</span>
+                      <span className="font-medium text-muted-foreground">{cf.field}:</span>{" "}
+                      <span className="text-muted-foreground/70 line-through">{cf.before ?? "—"}</span>
+                      <span className="text-muted-foreground"> → </span>
+                      <span className="text-foreground">{cf.after ?? "—"}</span>
                     </div>
                   ))}
                 </div>
