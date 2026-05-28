@@ -15,16 +15,19 @@ export function levenshtein(a: string, b: string): number {
 
   for (let i = 1; i <= la; i++) {
     curr[0] = i;
+    // Non-null assertions on array reads below are safe — loop bounds ensure
+    // curr and prev are populated at all accessed indices. noUncheckedIndexedAccess
+    // can't infer this from the loop structure alone.
     for (let j = 1; j <= lb; j++) {
       const cost = a[i - 1] === b[j - 1] ? 0 : 1;
       curr[j] = Math.min(
-        curr[j - 1] + 1,      // insertion
-        prev[j] + 1,           // deletion
-        prev[j - 1] + cost     // substitution
+        curr[j - 1]! + 1,      // insertion
+        prev[j]! + 1,           // deletion
+        prev[j - 1]! + cost     // substitution
       );
     }
-    for (let j = 0; j <= lb; j++) prev[j] = curr[j];
+    for (let j = 0; j <= lb; j++) prev[j] = curr[j]!;
   }
 
-  return prev[lb];
+  return prev[lb]!;
 }
