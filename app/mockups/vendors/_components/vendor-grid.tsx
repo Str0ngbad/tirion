@@ -1,4 +1,12 @@
 import { MockVendor } from "../_data";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export type SortKey =
   | "vendorName"
@@ -38,35 +46,38 @@ function Th({
 }) {
   const alignClass =
     align === "right" ? "text-right" : align === "center" ? "text-center" : "text-left";
-  const base =
-    "px-3 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground select-none";
+  const headClass = `px-3 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground select-none ${alignClass}`;
 
   if (sortCol) {
     return (
-      <th
-        className={`${base} ${alignClass} cursor-pointer hover:text-foreground transition-colors`}
+      <TableHead
+        className={`${headClass} cursor-pointer hover:text-foreground transition-colors`}
         onClick={() => onSort(sortCol)}
       >
         {label}
-        {exploratory && <span className="ml-0.5 font-normal normal-case tracking-normal text-muted-foreground/40">*</span>}
+        {exploratory && (
+          <span className="ml-0.5 font-normal normal-case tracking-normal text-muted-foreground/40">*</span>
+        )}
         <SortIcon active={activeSortKey === sortCol} asc={sortAsc} />
-      </th>
+      </TableHead>
     );
   }
   return (
-    <th className={`${base} ${alignClass}`}>
+    <TableHead className={headClass}>
       {label}
-      {exploratory && <span className="ml-0.5 font-normal normal-case tracking-normal text-muted-foreground/40">*</span>}
-    </th>
+      {exploratory && (
+        <span className="ml-0.5 font-normal normal-case tracking-normal text-muted-foreground/40">*</span>
+      )}
+    </TableHead>
   );
 }
 
 export default function VendorGrid({ vendors, sortKey, sortAsc, onSort, onRowClick }: Props) {
   return (
     <div className="overflow-hidden rounded-lg border border-border">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-border bg-card">
+      <Table>
+        <TableHeader>
+          <TableRow className="bg-card hover:bg-card">
             <Th label="Vendor Name" sortCol="vendorName" activeSortKey={sortKey} sortAsc={sortAsc} onSort={onSort} />
             <Th label="Contact Info" activeSortKey={sortKey} sortAsc={sortAsc} onSort={onSort} />
             <Th label="Lead Time (Days)" sortCol="leadTimeDays" align="right" activeSortKey={sortKey} sortAsc={sortAsc} onSort={onSort} />
@@ -75,43 +86,39 @@ export default function VendorGrid({ vendors, sortKey, sortAsc, onSort, onRowCli
             <Th label="Website" exploratory activeSortKey={sortKey} sortAsc={sortAsc} onSort={onSort} />
             <Th label="Location" exploratory activeSortKey={sortKey} sortAsc={sortAsc} onSort={onSort} />
             <Th label="Active" align="center" activeSortKey={sortKey} sortAsc={sortAsc} onSort={onSort} />
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border/60 bg-card/30">
+          </TableRow>
+        </TableHeader>
+        <TableBody className="bg-card/30">
           {vendors.length === 0 && (
-            <tr>
-              <td colSpan={8} className="px-4 py-10 text-center text-xs text-muted-foreground">
+            <TableRow>
+              <TableCell colSpan={8} className="px-4 py-10 text-center text-xs text-muted-foreground">
                 No vendors found.
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           )}
           {vendors.map((v) => (
-            <tr
+            <TableRow
               key={v.vendorId}
               onClick={() => onRowClick(v)}
-              className={`cursor-pointer transition-colors ${
-                v.isActive
-                  ? "hover:bg-muted/50"
-                  : "opacity-40 hover:opacity-60"
-              }`}
+              className={`cursor-pointer ${v.isActive ? "" : "opacity-40 hover:opacity-60"}`}
             >
-              <td className="px-3 py-2.5">
+              <TableCell className="px-3 py-2.5">
                 <span className="font-medium text-foreground">{v.vendorName}</span>
-              </td>
-              <td className="px-3 py-2.5 text-muted-foreground">
+              </TableCell>
+              <TableCell className="px-3 py-2.5 text-muted-foreground">
                 {v.contactInfo ?? <span className="text-muted-foreground/40">—</span>}
-              </td>
-              <td className="px-3 py-2.5 text-right text-foreground">
+              </TableCell>
+              <TableCell className="px-3 py-2.5 text-right text-foreground">
                 {v.leadTimeDays !== null ? v.leadTimeDays : <span className="text-muted-foreground/40">—</span>}
-              </td>
-              <td className="px-3 py-2.5 text-right">
+              </TableCell>
+              <TableCell className="px-3 py-2.5 text-right">
                 {v.defaultVendorForCount > 0 ? (
                   <span className="font-medium text-foreground">{v.defaultVendorForCount}</span>
                 ) : (
                   <span className="text-muted-foreground/40">0</span>
                 )}
-              </td>
-              <td className="px-3 py-2.5 text-right">
+              </TableCell>
+              <TableCell className="px-3 py-2.5 text-right">
                 {v.openSupplyOrderCount > 0 ? (
                   <span className="inline-flex items-center justify-center rounded-full bg-blue-950 px-2 py-0.5 text-xs font-medium text-blue-300">
                     {v.openSupplyOrderCount}
@@ -119,30 +126,24 @@ export default function VendorGrid({ vendors, sortKey, sortAsc, onSort, onRowCli
                 ) : (
                   <span className="text-muted-foreground/40">0</span>
                 )}
-              </td>
-              <td className="px-3 py-2.5 text-xs text-muted-foreground">
+              </TableCell>
+              <TableCell className="px-3 py-2.5 text-xs text-muted-foreground">
                 {v.website ?? <span className="text-muted-foreground/40">—</span>}
-              </td>
-              <td className="px-3 py-2.5 text-xs text-muted-foreground">
+              </TableCell>
+              <TableCell className="px-3 py-2.5 text-xs text-muted-foreground">
                 {v.location ?? <span className="text-muted-foreground/40">—</span>}
-              </td>
-              <td className="px-3 py-2.5 text-center">
+              </TableCell>
+              <TableCell className="px-3 py-2.5 text-center">
                 {v.isActive ? (
-                  <span
-                    className="inline-block h-2 w-2 rounded-full bg-green-500"
-                    title="Active"
-                  />
+                  <span className="inline-block h-2 w-2 rounded-full bg-green-500" title="Active" />
                 ) : (
-                  <span
-                    className="inline-block h-2 w-2 rounded-full bg-muted-foreground/40"
-                    title="Inactive"
-                  />
+                  <span className="inline-block h-2 w-2 rounded-full bg-muted-foreground/40" title="Inactive" />
                 )}
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
       <div className="border-t border-border bg-card px-3 py-1.5">
         <p className="text-xs text-muted-foreground/50">
           * Exploratory — not in Rev 1 spec; present for design validation
