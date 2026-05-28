@@ -210,6 +210,32 @@ closing Phase 1A.
 
 ---
 
+### Vendor contactInfo decomposition deferred to Rev 1.5+
+
+The Vendor.contactInfo field is currently free text holding name,
+phone, and email as a single string. configuration_management_spec.md
+notes this is deferred to Rev 1.5+ to keep Rev 1 scope tight.
+
+Specification when implemented:
+- Decompose contactInfo into separate fields: contactName, phone,
+  email (all nullable)
+- Migration would parse existing free-text contactInfo into the
+  structured fields where possible, leaving unparseable values in
+  a fallback contactInfo field or flagging them for manual cleanup
+- Vendor grid would gain dedicated columns for phone and email
+  (clickable links for both — tel: and mailto:)
+- Vendor create/update forms would show structured inputs instead
+  of a single free-text field
+
+Trigger: when buyer or admin workflow needs reliable structured
+contact data (e.g., bulk emailing vendors, integrating with phone
+systems, or contact-info validation).
+
+Phase: Rev 1.5+ — deferred from Rev 1 (Vendor field additions commit
+3ce979c)
+
+---
+
 ## Operational Patterns
 
 ### Prisma migrations require manual handling in Claude Code's bash tool
