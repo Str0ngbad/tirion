@@ -83,8 +83,8 @@ export default function VendorsPage() {
   return (
     <div className="min-h-screen bg-background font-sans text-foreground">
       {/* Mockup banner */}
-      <div className="border-b border-amber-900/30 bg-amber-950/25 px-6 py-1.5 text-center">
-        <span className="text-xs text-amber-400/70">
+      <div className="border-b border-amber-900/30 bg-amber-500/10 px-6 py-1.5 text-center">
+        <span className="text-xs text-amber-700 dark:text-amber-400">
           <strong className="font-medium">Mockup — Vendor Configuration Grid</strong>
           {" · "}Spec validation, not production · in-memory state, resets on reload
         </span>
