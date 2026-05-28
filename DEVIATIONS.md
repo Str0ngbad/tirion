@@ -573,3 +573,69 @@ in future mockup work or contributor onboarding.
   explicit footer-convention guidance)
 
 ---
+
+## 2026-05-28 — Vendor gains location and website fields surfaced during mockup work
+
+**Phase:** 1A
+**Spec section:** schema.md (Vendor model) and configuration_management_spec.md (Vendor Management section)
+**Discovered by:** User, during Vendor configuration grid mockup work
+**Status:** Resolved-Spec-Updated
+**Commit:** 3ce979cc03f84aacfed2dfff8d28447cf555b3dd
+
+### What the spec said
+
+The Vendor model in schema.md defined six fields: vendorId, vendorName,
+contactInfo, leadTimeDays, notes, and isActive. The
+configuration_management_spec listed the corresponding columns in the
+Vendor grid. Neither spec referenced location or website as Vendor
+attributes.
+
+### What was discovered
+
+During Vendor configuration grid mockup work, the user referenced the
+predecessor spreadsheet system and identified that Location (city,
+state) and Website were fields that had earned operational value
+through years of real use. Both fields support distinct workflows:
+location for shipping context and regional awareness, website for
+direct navigation to vendor catalogs and ordering portals. Neither
+maps cleanly into the existing contactInfo free-text field.
+
+The discovery also surfaced that contactInfo itself is a free-text
+blob that would benefit from decomposition into structured fields
+(contactName, phone, email). That decomposition is deferred to Rev
+1.5+ to keep Rev 1 scope tight; location and website were treated as
+additive changes rather than folded into a contactInfo restructuring.
+
+### Resolution
+
+- schema.md Vendor model: added location String? and website String?
+  adjacent to contactInfo. Both nullable; both displayed in grid and
+  detail modal.
+- configuration_management_spec.md Vendor Management: updated grid
+  columns table, updated detail modal fields list, added a note
+  documenting the contactInfo decomposition deferral with rationale.
+- prisma/schema.prisma synced.
+- Migration 20260528143003_vendor_location_website applied to dev
+  branch (two ALTER TABLE ADD COLUMN statements; both columns
+  nullable, no risk to existing data).
+- Vendor service layer updated to handle both fields in create,
+  update, audit logging, and response shaping.
+- Vendor Zod schemas updated: light URL validation on website via
+  .url() in CreateVendorSchema and UpdateVendorSchema; bare nullable
+  in VendorWithCountsSchema.
+- Verification script updated to exercise both fields; all 15 steps
+  still pass.
+- TESTS_BACKLOG.md gained an entry for the contactInfo decomposition
+  Rev 1.5+ work (commit f72761c).
+
+### Files affected
+
+- spec/schema.md
+- spec/configuration_management_spec.md
+- prisma/schema.prisma
+- prisma/migrations/20260528143003_vendor_location_website/migration.sql
+- lib/vendors/schemas.ts
+- lib/vendors/service.ts
+- scripts/verify-vendor-service.ts
+
+---
