@@ -7,6 +7,13 @@ import ReferenceList from "./reference-list";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 
 type EditableField = "contactInfo" | "leadTimeDays" | "notes" | "website" | "location";
 
@@ -179,37 +186,29 @@ export default function VendorDetailModal({ vendor, onClose, onUpdate, onDeactiv
   }
 
   return (
-    <>
-      {/* Backdrop */}
-      <div className="fixed inset-0 z-40 bg-black/50" onClick={onClose} />
-
-      {/* Slide-over panel */}
-      <div className="fixed bottom-0 right-0 top-0 z-50 flex w-[580px] flex-col overflow-hidden border-l border-border bg-background shadow-2xl">
+    <Sheet open={true} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <SheetContent
+        side="right"
+        showCloseButton={false}
+        className="!w-[580px] sm:!max-w-[580px] gap-0 p-0 flex flex-col overflow-hidden"
+      >
         {/* Panel header */}
-        <div className="flex items-start justify-between border-b border-border px-6 py-4">
-          <div>
-            <h2 className="text-base font-semibold text-foreground">{vendor.vendorName}</h2>
-            <div className="mt-1 flex items-center gap-2">
-              {vendor.isActive ? (
-                <>
-                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-green-500" />
-                  <span className="text-xs text-muted-foreground">Active</span>
-                </>
-              ) : (
-                <>
-                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
-                  <span className="text-xs text-muted-foreground">Inactive — editing disabled</span>
-                </>
-              )}
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="ml-4 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-          >
-            ×
-          </button>
-        </div>
+        <SheetHeader className="border-b border-border px-6 py-4 gap-1.5">
+          <SheetTitle className="text-base font-semibold">{vendor.vendorName}</SheetTitle>
+          <SheetDescription className="flex items-center gap-2">
+            {vendor.isActive ? (
+              <>
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-green-500" />
+                Active
+              </>
+            ) : (
+              <>
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
+                Inactive — editing disabled
+              </>
+            )}
+          </SheetDescription>
+        </SheetHeader>
 
         {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto px-6 py-4">
@@ -286,7 +285,7 @@ export default function VendorDetailModal({ vendor, onClose, onUpdate, onDeactiv
             </span>
           )}
         </div>
-      </div>
-    </>
+      </SheetContent>
+    </Sheet>
   );
 }
