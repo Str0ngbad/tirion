@@ -5,6 +5,7 @@ import { MOCK_MATERIAL_SPECS, MockMaterialSpec, MockAuditEntry } from "./_data";
 import MaterialSpecGrid, { SortKey } from "./_components/material-spec-grid";
 import MaterialSpecDetailModal from "./_components/material-spec-detail-modal";
 import MaterialSpecDeactivateModal from "./_components/material-spec-deactivate-modal";
+import MaterialSpecCreateModal from "./_components/material-spec-create-modal";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -16,6 +17,7 @@ export default function MaterialSpecsPage() {
   const [sortAsc, setSortAsc] = useState(true);
   const [selectedSpec, setSelectedSpec] = useState<MockMaterialSpec | null>(null);
   const [specToDeactivate, setSpecToDeactivate] = useState<MockMaterialSpec | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const displayed = specs
     .filter((s) => showInactive || s.isActive)
@@ -48,6 +50,11 @@ export default function MaterialSpecsPage() {
     setSelectedSpec(updated);
   }
 
+  function handleCreate(spec: MockMaterialSpec) {
+    setSpecs((prev) => [...prev, spec]);
+    setShowCreateModal(false);
+  }
+
   function handleDeactivateConfirm() {
     if (!specToDeactivate) return;
     const entry: MockAuditEntry = {
@@ -69,6 +76,7 @@ export default function MaterialSpecsPage() {
 
   const activeCount = specs.filter((s) => s.isActive).length;
   const inactiveCount = specs.filter((s) => !s.isActive).length;
+  const maxSpecId = Math.max(...specs.map((s) => s.materialSpecId));
 
   return (
     <div className="min-h-screen bg-background font-sans text-foreground">
@@ -105,7 +113,7 @@ export default function MaterialSpecsPage() {
                 Show Inactive
               </Label>
             </div>
-            <Button disabled title="Cascade create modal — coming in next commit">
+            <Button onClick={() => setShowCreateModal(true)}>
               <span className="text-base leading-none">+</span>
               Add New MaterialSpec
             </Button>
@@ -141,6 +149,16 @@ export default function MaterialSpecsPage() {
           spec={specToDeactivate}
           onClose={() => setSpecToDeactivate(null)}
           onConfirm={handleDeactivateConfirm}
+        />
+      )}
+
+      {/* Create modal */}
+      {showCreateModal && (
+        <MaterialSpecCreateModal
+          allSpecs={specs}
+          maxSpecId={maxSpecId}
+          onClose={() => setShowCreateModal(false)}
+          onCreate={handleCreate}
         />
       )}
     </div>
