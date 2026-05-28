@@ -1,4 +1,5 @@
 import { MockVendor } from "../_data";
+import { Button } from "@/components/ui/button";
 
 type Props = {
   vendor: MockVendor;
@@ -75,23 +76,16 @@ export default function VendorDeactivateModal({ vendor, onClose, onConfirm }: Pr
               <span />
             )}
             <div className="flex items-center gap-3">
-              <button
-                onClick={onClose}
-                className="rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
+              <Button variant="ghost" onClick={onClose}>
                 Cancel
-              </button>
-              <button
-                onClick={hasBlockers ? undefined : onConfirm}
+              </Button>
+              <Button
+                variant="destructive"
                 disabled={hasBlockers}
-                className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                  hasBlockers
-                    ? "cursor-not-allowed bg-muted text-muted-foreground"
-                    : "bg-red-700 text-white hover:bg-red-600"
-                }`}
+                onClick={hasBlockers ? undefined : onConfirm}
               >
                 Deactivate
-              </button>
+              </Button>
             </div>
           </div>
         </div>

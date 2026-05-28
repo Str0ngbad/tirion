@@ -6,6 +6,9 @@ import VendorGrid, { SortKey } from "./_components/vendor-grid";
 import VendorDetailModal from "./_components/vendor-detail-modal";
 import VendorDeactivateModal from "./_components/vendor-deactivate-modal";
 import VendorCreateModal from "./_components/vendor-create-modal";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 export default function VendorsPage() {
   const [vendors, setVendors] = useState<MockVendor[]>(MOCK_VENDORS);
@@ -98,22 +101,24 @@ export default function VendorsPage() {
             </p>
           </div>
           <div className="flex items-center gap-5">
-            <label className="flex cursor-pointer select-none items-center gap-2 text-sm text-muted-foreground">
-              <input
-                type="checkbox"
+            <div className="flex items-center gap-2">
+              <Switch
+                id="show-inactive"
+                size="sm"
                 checked={showInactive}
-                onChange={(e) => setShowInactive(e.target.checked)}
-                className="h-3.5 w-3.5 rounded border-border bg-card accent-zinc-400"
+                onCheckedChange={setShowInactive}
               />
-              Show Inactive
-            </label>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="inline-flex items-center gap-1.5 rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background transition-colors hover:bg-foreground/90"
-            >
+              <Label
+                htmlFor="show-inactive"
+                className="cursor-pointer font-normal text-sm text-muted-foreground"
+              >
+                Show Inactive
+              </Label>
+            </div>
+            <Button onClick={() => setShowCreateModal(true)}>
               <span className="text-base leading-none">+</span>
               Add New Vendor
-            </button>
+            </Button>
           </div>
         </div>
       </div>

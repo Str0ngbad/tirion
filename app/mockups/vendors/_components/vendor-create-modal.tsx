@@ -2,6 +2,10 @@
 
 import { useState } from "react";
 import { MockVendor } from "../_data";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 
 type Props = {
   existingVendorNames: string[];
@@ -95,19 +99,19 @@ export default function VendorCreateModal({
             <div className="space-y-4 px-6 py-4">
               {/* Vendor Name — required */}
               <div>
-                <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <Label
+                  htmlFor="vendor-name"
+                  className="mb-1 text-xs uppercase tracking-wide text-muted-foreground"
+                >
                   Vendor Name{" "}
                   <span className="font-normal normal-case tracking-normal text-red-500">*</span>
-                </label>
-                <input
+                </Label>
+                <Input
+                  id="vendor-name"
                   type="text"
                   value={vendorName}
                   onChange={(e) => { setVendorName(e.target.value); setNameError(null); }}
-                  className={`w-full rounded-md border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 ${
-                    nameError
-                      ? "border-red-700 focus:border-red-600 focus:ring-red-900"
-                      : "border-border focus:border-ring focus:ring-ring/50"
-                  }`}
+                  aria-invalid={!!nameError}
                   placeholder="e.g., Acme Supply Co."
                 />
                 {nameError && (
@@ -117,43 +121,52 @@ export default function VendorCreateModal({
 
               {/* Contact Info */}
               <div>
-                <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <Label
+                  htmlFor="contact-info"
+                  className="mb-1 text-xs uppercase tracking-wide text-muted-foreground"
+                >
                   Contact Info
-                </label>
-                <input
+                </Label>
+                <Input
+                  id="contact-info"
                   type="text"
                   value={contactInfo}
                   onChange={(e) => setContactInfo(e.target.value)}
-                  className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring/50"
                   placeholder="Name, phone, email, or URL"
                 />
               </div>
 
               {/* Lead Time */}
               <div>
-                <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <Label
+                  htmlFor="lead-time"
+                  className="mb-1 text-xs uppercase tracking-wide text-muted-foreground"
+                >
                   Lead Time (Days)
-                </label>
-                <input
+                </Label>
+                <Input
+                  id="lead-time"
                   type="number"
                   min={0}
                   value={leadTimeDays}
                   onChange={(e) => setLeadTimeDays(e.target.value)}
-                  className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring/50"
                   placeholder="e.g., 14"
                 />
               </div>
 
               {/* Notes */}
               <div>
-                <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <Label
+                  htmlFor="notes"
+                  className="mb-1 text-xs uppercase tracking-wide text-muted-foreground"
+                >
                   Notes
-                </label>
-                <textarea
+                </Label>
+                <Textarea
+                  id="notes"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   rows={2}
-                  className="w-full resize-none rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring/50"
                   placeholder="Ordering notes, contacts, caveats…"
                 />
               </div>
@@ -161,28 +174,34 @@ export default function VendorCreateModal({
               {/* Exploratory fields */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <Label
+                    htmlFor="website"
+                    className="mb-1 text-xs uppercase tracking-wide text-muted-foreground"
+                  >
                     Website{" "}
                     <span className="font-normal normal-case tracking-normal text-muted-foreground/40">*</span>
-                  </label>
-                  <input
+                  </Label>
+                  <Input
+                    id="website"
                     type="text"
                     value={website}
                     onChange={(e) => setWebsite(e.target.value)}
-                    className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-ring focus:outline-none"
                     placeholder="vendor.com"
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <Label
+                    htmlFor="location"
+                    className="mb-1 text-xs uppercase tracking-wide text-muted-foreground"
+                  >
                     Location{" "}
                     <span className="font-normal normal-case tracking-normal text-muted-foreground/40">*</span>
-                  </label>
-                  <input
+                  </Label>
+                  <Input
+                    id="location"
                     type="text"
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
-                    className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-ring focus:outline-none"
                     placeholder="City, ST"
                   />
                 </div>
@@ -192,19 +211,12 @@ export default function VendorCreateModal({
 
             {/* Footer */}
             <div className="flex items-center justify-end gap-3 border-t border-border px-6 py-4">
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
+              <Button type="button" variant="ghost" onClick={onClose}>
                 Cancel
-              </button>
-              <button
-                type="submit"
-                className="rounded-md bg-foreground px-4 py-1.5 text-sm font-medium text-background hover:bg-foreground/90 transition-colors"
-              >
+              </Button>
+              <Button type="submit">
                 Create Vendor
-              </button>
+              </Button>
             </div>
           </form>
         </div>

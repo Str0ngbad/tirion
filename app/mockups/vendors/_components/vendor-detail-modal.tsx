@@ -4,6 +4,9 @@ import { useState } from "react";
 import { MockVendor, MockAuditEntry } from "../_data";
 import AuditLogSection from "./audit-log-section";
 import ReferenceList from "./reference-list";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 type EditableField = "contactInfo" | "leadTimeDays" | "notes" | "website" | "location";
 
@@ -128,17 +131,17 @@ export default function VendorDetailModal({ vendor, onClose, onUpdate, onDeactiv
         {isEditing ? (
           <div className="flex items-start gap-2">
             {opts.multiline ? (
-              <textarea
+              <Textarea
                 autoFocus
                 value={editValue}
                 onChange={(e) => setEditValue(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Escape") cancelEdit(); }}
                 rows={3}
-                className="flex-1 resize-none rounded-md border border-border bg-card px-2.5 py-1.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-ring focus:outline-none"
+                className="flex-1"
                 placeholder={`Enter ${label.toLowerCase()}…`}
               />
             ) : (
-              <input
+              <Input
                 autoFocus
                 type={field === "leadTimeDays" ? "number" : "text"}
                 value={editValue}
@@ -147,22 +150,16 @@ export default function VendorDetailModal({ vendor, onClose, onUpdate, onDeactiv
                   if (e.key === "Enter") saveEdit(field);
                   if (e.key === "Escape") cancelEdit();
                 }}
-                className="flex-1 rounded-md border border-border bg-card px-2.5 py-1.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-ring focus:outline-none"
+                className="flex-1"
                 placeholder={`Enter ${label.toLowerCase()}…`}
               />
             )}
-            <button
-              onClick={() => saveEdit(field)}
-              className="rounded-md bg-muted px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-muted/80 transition-colors"
-            >
+            <Button size="sm" variant="outline" onClick={() => saveEdit(field)}>
               Save
-            </button>
-            <button
-              onClick={cancelEdit}
-              className="rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
+            </Button>
+            <Button size="sm" variant="ghost" onClick={cancelEdit}>
               Cancel
-            </button>
+            </Button>
           </div>
         ) : (
           <div
@@ -280,12 +277,9 @@ export default function VendorDetailModal({ vendor, onClose, onUpdate, onDeactiv
         {/* Panel footer */}
         <div className="border-t border-border px-6 py-4">
           {vendor.isActive ? (
-            <button
-              onClick={() => onDeactivate(vendor)}
-              className="rounded-md border border-red-900/50 px-3 py-1.5 text-sm font-medium text-red-400 transition-colors hover:border-red-700/60 hover:bg-red-950/30"
-            >
+            <Button variant="destructive" onClick={() => onDeactivate(vendor)}>
               Deactivate Vendor
-            </button>
+            </Button>
           ) : (
             <span className="text-xs text-muted-foreground">
               Vendor is inactive. To reactivate, use the API directly (reactivation flow not in this mockup).
