@@ -159,12 +159,14 @@ Existing schema per `schema.md`:
 
 ```prisma
 model Vendor {
-  vendorId    Int      @id @default(autoincrement())
-  vendorName  String   @unique
-  contactInfo String?
-  leadTimeDays Int?
-  notes       String?
-  isActive    Boolean  @default(true)
+  vendorId      Int      @id @default(autoincrement())
+  vendorName    String   @unique
+  contactInfo   String?
+  location      String?
+  website       String?
+  leadTimeDays  Int?
+  notes         String?
+  isActive      Boolean  @default(true)
 
   // Relations
   parts          Part[]
@@ -178,6 +180,8 @@ model Vendor {
 |--------|-------|
 | Vendor Name | Required, unique |
 | Contact Info | Display only — name, phone, email as free text |
+| Location | Free text — e.g., "Denton, TX" |
+| Website | Free text, light URL validation — clickable link in UI |
 | Lead Time (Days) | Reference for buyer planning |
 | Default Vendor For | Count of active Parts referencing this vendor |
 | Open Supply Orders | Count of Supply Orders in Ordered or Partial Received state |
@@ -195,6 +199,17 @@ All grid columns plus:
   (WOs in the ordered-not-yet-received state) and "awaiting purchase" (WOs
   in the not-yet-ordered state). Includes a link to the Operations Lens
   filtered by this vendor for the full breakdown.
+
+### Contact Info Decomposition Deferred to Rev 1.5+
+
+The contactInfo field remains free-text in Rev 1, holding name,
+phone, and email as a single string. Decomposition into structured
+fields (separate contactName, phone, email) is deferred to Rev 1.5+
+to keep Rev 1 scope tight. Location and Website were added as
+separate structured fields rather than folded into contactInfo
+because they have distinct operational uses (location for shipping/
+regional context, website for direct navigation to vendor catalogs
+and ordering portals).
 
 The Active Work summary is informational, not a blocker. Vendor deactivation
 rules and reassignment rules are unchanged: WIP impact is awareness, not

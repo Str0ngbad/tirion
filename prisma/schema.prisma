@@ -99,12 +99,14 @@ model MaterialSpec {
 }
 
 model Vendor {
-  vendorId     Int     @id @default(autoincrement())
-  vendorName   String  @unique
-  contactInfo  String?
-  leadTimeDays Int?
-  notes        String?
-  isActive     Boolean @default(true)
+  vendorId      Int     @id @default(autoincrement())
+  vendorName    String  @unique
+  contactInfo   String?
+  location      String?
+  website       String?
+  leadTimeDays  Int?
+  notes         String?
+  isActive      Boolean @default(true)
 
   // Relations
   parts        Part[]

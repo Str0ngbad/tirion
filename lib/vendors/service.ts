@@ -20,6 +20,8 @@ type VendorWithCountsRaw = {
   vendorId: number;
   vendorName: string;
   contactInfo: string | null;
+  location: string | null;
+  website: string | null;
   leadTimeDays: number | null;
   notes: string | null;
   isActive: boolean;
@@ -34,6 +36,8 @@ function toVendorWithCounts(raw: VendorWithCountsRaw): VendorWithCounts {
     vendorId: raw.vendorId,
     vendorName: raw.vendorName,
     contactInfo: raw.contactInfo,
+    location: raw.location,
+    website: raw.website,
     leadTimeDays: raw.leadTimeDays,
     notes: raw.notes,
     isActive: raw.isActive,
@@ -134,6 +138,8 @@ export async function createVendor(
           data: {
             vendorName: input.vendorName,
             contactInfo: input.contactInfo ?? null,
+            location: input.location ?? null,
+            website: input.website ?? null,
             leadTimeDays: input.leadTimeDays ?? null,
             notes: input.notes ?? null,
           },
@@ -143,6 +149,8 @@ export async function createVendor(
           vendorId: created.vendorId,
           vendorName: created.vendorName,
           contactInfo: created.contactInfo,
+          location: created.location,
+          website: created.website,
           leadTimeDays: created.leadTimeDays,
           notes: created.notes,
           isActive: created.isActive,
@@ -156,6 +164,8 @@ export async function createVendor(
           newValue: {
             vendorName: created.vendorName,
             contactInfo: created.contactInfo,
+            location: created.location,
+            website: created.website,
             leadTimeDays: created.leadTimeDays,
             notes: created.notes,
             isActive: created.isActive,
@@ -187,6 +197,8 @@ export async function updateVendor(
         const previousValue = {
           vendorName: vendor.vendorName,
           contactInfo: vendor.contactInfo,
+          location: vendor.location,
+          website: vendor.website,
           leadTimeDays: vendor.leadTimeDays,
           notes: vendor.notes,
         };
@@ -202,6 +214,8 @@ export async function updateVendor(
           newValue: {
             vendorName: refreshed.vendorName,
             contactInfo: refreshed.contactInfo,
+            location: refreshed.location,
+            website: refreshed.website,
             leadTimeDays: refreshed.leadTimeDays,
             notes: refreshed.notes,
           },

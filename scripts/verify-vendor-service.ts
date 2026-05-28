@@ -36,7 +36,15 @@ async function main() {
     console.log(`a) Initial active vendor count: ${initialList.length} (expected 0)`);
 
     // b) Create vendor A.
-    const vendorA = await createVendor({ vendorName: "Test Vendor A", leadTimeDays: 14 }, USER_ID);
+    const vendorA = await createVendor(
+      {
+        vendorName: "Test Vendor A",
+        leadTimeDays: 14,
+        location: "Denton, TX",
+        website: "https://example.com",
+      },
+      USER_ID
+    );
     vendorAId = vendorA.vendorId;
     console.log("b) Created vendor A:", JSON.stringify(vendorA, null, 2));
 
@@ -85,7 +93,7 @@ async function main() {
     // h) Update vendor A.
     const updatedA = await updateVendor(
       vendorAId,
-      { leadTimeDays: 21, notes: "Updated for verification" },
+      { leadTimeDays: 21, notes: "Updated for verification", location: "Austin, TX" },
       USER_ID
     );
     console.log("h) Updated vendor A:", JSON.stringify(updatedA, null, 2));

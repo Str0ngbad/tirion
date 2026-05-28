@@ -242,16 +242,18 @@ Suppliers of purchased parts and raw materials.
 
 ```prisma
 model Vendor {
-  vendorId     Int     @id @default(autoincrement())
-  vendorName   String  @unique
-  contactInfo  String?
-  leadTimeDays Int?
-  notes        String?
-  isActive     Boolean @default(true)
+  vendorId      Int      @id @default(autoincrement())
+  vendorName    String   @unique
+  contactInfo   String?
+  location      String?
+  website       String?
+  leadTimeDays  Int?
+  notes         String?
+  isActive      Boolean  @default(true)
 
   // Relations
-  parts        Part[]
-  supplyOrders SupplyOrder[]
+  parts          Part[]
+  supplyOrders   SupplyOrder[]
 }
 ```
 
@@ -1270,5 +1272,17 @@ spec drift in how dimensional information and default vendor are modeled.
 | RD18 | `MaterialSpec.@@unique([materialName, form])` composite unique constraint added | MaterialSpec reconciliation |
 
 Total MaterialSpec Reconciliation: 3 changes applied.
+
+---
+
+## Mockup Work Change Summary
+
+Changes surfaced during mockup development work.
+
+| # | Change | Source |
+|---|--------|--------|
+| RD19 | `Vendor.location` and `Vendor.website` added — surfaced during mockup work as fields with proven operational value from the predecessor system | Vendor field additions |
+
+Total Mockup Work: 1 change applied.
 
 The schema is build-ready.
