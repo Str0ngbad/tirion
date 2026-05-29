@@ -12,6 +12,7 @@ export default function EditTimePartsView({ parts }: Props) {
   }
 
   return (
+    <div className="w-full max-w-3xl">
     <table className="w-full text-sm">
       <thead>
         <tr className="border-b border-border">
@@ -38,5 +39,6 @@ export default function EditTimePartsView({ parts }: Props) {
         ))}
       </tbody>
     </table>
+    </div>
   );
 }
