@@ -78,7 +78,6 @@ export default function ProcessTypeMultiSelect({ selected, onChange, disabled }:
                         {isSelected && <CheckIcon className="h-3 w-3" />}
                       </div>
                       <ProcessTypeChip processType={key} />
-                      <span className="text-sm">{key}</span>
                     </div>
                   </CommandItem>
                 );
