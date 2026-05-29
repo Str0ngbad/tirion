@@ -18,6 +18,7 @@ export default function RoutingTemplatesPage() {
   const [sortKey, setSortKey] = useState<TemplateSortKey>("templateName");
   const [sortAsc, setSortAsc] = useState(true);
   const [dialogTemplate, setDialogTemplate] = useState<MockTemplate | null>(null);
+  const [retiringTemplate, setRetiringTemplate] = useState<MockTemplate | null>(null);
   const [condensed, setCondensed] = useState(false);
 
   const displayed = templates
@@ -60,6 +61,63 @@ export default function RoutingTemplatesPage() {
     if (!dialogTemplate) return;
     setDialogTemplate(null);
     router.push(`/mockups/routing-templates/${dialogTemplate.templateId}`);
+  }
+
+  function handleRetireClick(template: MockTemplate) {
+    const hasImpact = template.partsReferencingCount > 0 || template.openWoCount > 0;
+    if (hasImpact) {
+      setRetiringTemplate(template);
+    } else {
+      retireTemplate(template.templateId);
+    }
+  }
+
+  function retireTemplate(templateId: number) {
+    setTemplates((prev) =>
+      prev.map((t) =>
+        t.templateId === templateId
+          ? {
+              ...t,
+              isActive: false,
+              auditLog: [
+                {
+                  timestamp: new Date().toISOString(),
+                  userName: "Marcus Hill",
+                  action: "TemplateRetired" as const,
+                },
+                ...t.auditLog,
+              ],
+            }
+          : t
+      )
+    );
+  }
+
+  function handleRetireConfirm() {
+    if (!retiringTemplate) return;
+    retireTemplate(retiringTemplate.templateId);
+    setRetiringTemplate(null);
+  }
+
+  function handleReactivate(template: MockTemplate) {
+    setTemplates((prev) =>
+      prev.map((t) =>
+        t.templateId === template.templateId
+          ? {
+              ...t,
+              isActive: true,
+              auditLog: [
+                {
+                  timestamp: new Date().toISOString(),
+                  userName: "Marcus Hill",
+                  action: "TemplateReactivated" as const,
+                },
+                ...t.auditLog,
+              ],
+            }
+          : t
+      )
+    );
   }
 
   const activeCount = templates.filter((t) => t.isActive).length;
@@ -136,6 +194,8 @@ export default function RoutingTemplatesPage() {
           onSort={handleSort}
           onRowClick={handleRowClick}
           condensed={condensed}
+          onRetire={handleRetireClick}
+          onReactivate={handleReactivate}
         />
       </div>
 
@@ -143,7 +203,15 @@ export default function RoutingTemplatesPage() {
         template={dialogTemplate}
         open={dialogTemplate !== null}
         onOpenChange={(open) => { if (!open) setDialogTemplate(null); }}
+        mode="edit"
         onConfirm={handleDialogConfirm}
+      />
+      <EditTimeDialog
+        template={retiringTemplate}
+        open={retiringTemplate !== null}
+        onOpenChange={(open) => { if (!open) setRetiringTemplate(null); }}
+        mode="retire"
+        onConfirm={handleRetireConfirm}
       />
     </div>
   );

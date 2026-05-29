@@ -17,10 +17,13 @@ import EditTimeStockView from "./edit-time-stock-view";
 
 type ActiveView = "parts" | "wos" | "stock" | null;
 
+type DialogMode = "edit" | "retire";
+
 type Props = {
   template: MockTemplate | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  mode: DialogMode;
   onConfirm: () => void;
 };
 
@@ -52,7 +55,7 @@ function CountCard({ count, label, isActive, onClick }: CountCardProps) {
   );
 }
 
-export default function EditTimeDialog({ template, open, onOpenChange, onConfirm }: Props) {
+export default function EditTimeDialog({ template, open, onOpenChange, mode, onConfirm }: Props) {
   const [activeView, setActiveView] = useState<ActiveView>(null);
 
   function handleOpenChange(next: boolean) {
@@ -70,11 +73,24 @@ export default function EditTimeDialog({ template, open, onOpenChange, onConfirm
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-5xl">
         <DialogHeader>
-          <DialogTitle>This change has downstream impact</DialogTitle>
-          <p className="text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">{template.templateName}</span> is being
-            edited. Review the affected work before proceeding.
-          </p>
+          {mode === "edit" ? (
+            <>
+              <DialogTitle>This change has downstream impact</DialogTitle>
+              <p className="text-sm text-muted-foreground">
+                <span className="font-medium text-foreground">{template.templateName}</span> is being
+                edited. Review the affected work before proceeding.
+              </p>
+            </>
+          ) : (
+            <>
+              <DialogTitle>Retire this template?</DialogTitle>
+              <p className="text-sm text-muted-foreground">
+                <span className="font-medium text-foreground">{template.templateName}</span> will no
+                longer be available for new Parts. Existing Work Orders are unaffected. Parts
+                referencing this template must be reassigned before new Work Orders can be compiled.
+              </p>
+            </>
+          )}
         </DialogHeader>
 
         {/* Count card bar */}
@@ -118,7 +134,13 @@ export default function EditTimeDialog({ template, open, onOpenChange, onConfirm
           <Button variant="outline" onClick={() => handleOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={onConfirm}>Confirm Change</Button>
+          {mode === "edit" ? (
+            <Button onClick={onConfirm}>Confirm Change</Button>
+          ) : (
+            <Button variant="destructive" onClick={onConfirm}>
+              Retire Template
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -11,6 +11,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+import { MoreHorizontal } from "lucide-react";
 
 export type TemplateSortKey = "templateName" | "stepCount" | "partsReferencingCount";
 
@@ -21,6 +29,8 @@ type Props = {
   onSort: (key: TemplateSortKey) => void;
   onRowClick: (template: MockTemplate) => void;
   condensed: boolean;
+  onRetire: (template: MockTemplate) => void;
+  onReactivate: (template: MockTemplate) => void;
 };
 
 function SortIcon({ active, asc }: { active: boolean; asc: boolean }) {
@@ -75,6 +85,8 @@ export default function TemplateLibraryGrid({
   onSort,
   onRowClick,
   condensed,
+  onRetire,
+  onReactivate,
 }: Props) {
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
@@ -121,13 +133,14 @@ export default function TemplateLibraryGrid({
             <TableHead className="w-16 px-3 py-2.5 text-center text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Active
             </TableHead>
+            <TableHead className="w-10 px-1 py-2.5" />
           </TableRow>
         </TableHeader>
         <TableBody className="bg-card/30">
           {templates.length === 0 && (
             <TableRow>
               <TableCell
-                colSpan={6}
+                colSpan={7}
                 className="px-4 py-10 text-center text-xs text-muted-foreground"
               >
                 No templates found.
@@ -190,6 +203,33 @@ export default function TemplateLibraryGrid({
                     title="Inactive"
                   />
                 )}
+              </TableCell>
+              <TableCell className="w-10 px-1 py-2.5 text-center">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-muted-foreground/40 hover:text-muted-foreground"
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                    {t.isActive ? (
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onSelect={() => onRetire(t)}
+                      >
+                        Retire Template
+                      </DropdownMenuItem>
+                    ) : (
+                      <DropdownMenuItem onSelect={() => onReactivate(t)}>
+                        Reactivate Template
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </TableCell>
             </TableRow>
           ))}
