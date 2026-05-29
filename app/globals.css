@@ -129,27 +129,27 @@
  */
 @layer base {
   :root {
-    --process-purchase:     oklch(0.646 0.222 41.116);
-    --process-receive:      oklch(0.681 0.162 75.834);
-    --process-machine:      oklch(0.577 0.245 27.325);
-    --process-weld:         oklch(0.666 0.179 58.318);
-    --process-blacken:      oklch(0.541 0.281 293.009);
-    --process-paint:        oklch(0.558 0.288 302.321);
-    --process-3d-print:     oklch(0.609 0.126 221.723);
-    --process-assemble:     oklch(0.627 0.194 149.214);
-    --process-distribution: oklch(0.592 0.249 0.584);
+    --process-purchase:     oklch(0.546 0.245 262.881);  /* blue-600 */
+    --process-receive:      oklch(0.746 0.16  232.661);  /* sky-400 */
+    --process-machine:      oklch(0.577 0.245 27.325);   /* red-600 */
+    --process-weld:         oklch(0.646 0.222 41.116);   /* orange-600 */
+    --process-blacken:      oklch(0.496 0.265 301.924);  /* purple-700 */
+    --process-paint:        oklch(0.718 0.202 349.761);  /* pink-400 */
+    --process-3d-print:     oklch(0.827 0.119 306.383);  /* purple-300 */
+    --process-assemble:     oklch(0.554 0.135 66.442);   /* yellow-700 */
+    --process-distribution: oklch(0.627 0.194 149.214);  /* green-600 */
   }
 
   .dark {
-    --process-purchase:     oklch(0.750 0.183 55.934);
-    --process-receive:      oklch(0.852 0.119 95.05);
-    --process-machine:      oklch(0.704 0.191 22.216);
-    --process-weld:         oklch(0.828 0.189 84.429);
-    --process-blacken:      oklch(0.702 0.183 293.501);
-    --process-paint:        oklch(0.740 0.238 322.16);
-    --process-3d-print:     oklch(0.789 0.154 211.53);
-    --process-assemble:     oklch(0.792 0.209 151.711);
-    --process-distribution: oklch(0.718 0.202 349.761);
+    --process-purchase:     oklch(0.707 0.165 254.624);  /* blue-400 */
+    --process-receive:      oklch(0.901 0.058 230.902);  /* sky-200 */
+    --process-machine:      oklch(0.704 0.191 22.216);   /* red-400 */
+    --process-weld:         oklch(0.75  0.183 55.934);   /* orange-400 */
+    --process-blacken:      oklch(0.714 0.203 305.504);  /* purple-400 */
+    --process-paint:        oklch(0.823 0.12  346.018);  /* pink-300 */
+    --process-3d-print:     oklch(0.902 0.063 306.703);  /* purple-200 */
+    --process-assemble:     oklch(0.852 0.199 91.936);   /* yellow-400 */
+    --process-distribution: oklch(0.792 0.209 151.711);  /* green-400 */
   }
 }
 
