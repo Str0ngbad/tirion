@@ -68,7 +68,7 @@ export default function EditTimeDialog({ template, open, onOpenChange, onConfirm
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="sm:max-w-5xl">
         <DialogHeader>
           <DialogTitle>This change has downstream impact</DialogTitle>
           <p className="text-sm text-muted-foreground">

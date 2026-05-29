@@ -47,14 +47,11 @@ export default function EditTimeWosView({ wos }: Props) {
         {sorted.map((wo) => (
           <tr key={wo.woId} className="border-b border-border/50 last:border-0">
             <td className="py-2 pr-3 font-mono text-xs text-foreground">{wo.woNumber}</td>
-            <td className="py-2 pr-3">
-              <span className="flex items-center gap-1.5 text-xs text-foreground">
-                <span
-                  className="inline-block h-2 w-2 shrink-0 rounded-full"
-                  style={{ backgroundColor: wo.projectColor }}
-                />
-                {wo.projectReference}
-              </span>
+            <td
+              className="px-2 py-2 pr-3 text-xs text-foreground"
+              style={{ backgroundColor: `${wo.projectColor}26` }}
+            >
+              {wo.projectReference}
             </td>
             <td className="py-2 pr-3 font-mono text-xs text-muted-foreground">
               {wo.topLevelReference}
