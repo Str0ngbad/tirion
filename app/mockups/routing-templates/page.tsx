@@ -18,6 +18,7 @@ export default function RoutingTemplatesPage() {
   const [sortKey, setSortKey] = useState<TemplateSortKey>("templateName");
   const [sortAsc, setSortAsc] = useState(true);
   const [dialogTemplate, setDialogTemplate] = useState<MockTemplate | null>(null);
+  const [condensed, setCondensed] = useState(true);
 
   const displayed = templates
     .filter((t) => showInactive || t.isActive)
@@ -112,12 +113,27 @@ export default function RoutingTemplatesPage() {
 
       {/* Grid */}
       <div className="mx-auto max-w-7xl px-8 py-6">
+        <div className="mb-4 flex items-center gap-2">
+          <Label
+            htmlFor="condense"
+            className="cursor-pointer font-normal text-sm text-muted-foreground"
+          >
+            Condense
+          </Label>
+          <Switch
+            id="condense"
+            size="sm"
+            checked={condensed}
+            onCheckedChange={setCondensed}
+          />
+        </div>
         <TemplateLibraryGrid
           templates={displayed}
           sortKey={sortKey}
           sortAsc={sortAsc}
           onSort={handleSort}
           onRowClick={handleRowClick}
+          condensed={condensed}
         />
       </div>
 

@@ -1,5 +1,8 @@
+"use client";
+
 import { MockTemplate } from "../_data";
 import ProcessTypeChip from "@/app/mockups/users/_components/process-type-chip";
+import { useTruncatedTitle } from "@/app/_lib/use-truncated-title";
 import {
   Table,
   TableBody,
@@ -17,6 +20,7 @@ type Props = {
   sortAsc: boolean;
   onSort: (key: TemplateSortKey) => void;
   onRowClick: (template: MockTemplate) => void;
+  condensed: boolean;
 };
 
 function SortIcon({ active, asc }: { active: boolean; asc: boolean }) {
@@ -55,15 +59,25 @@ function Th({
   return <TableHead className={`${base} ${className ?? ""}`}>{label}</TableHead>;
 }
 
+function TruncatedCell({ text, className }: { text: string; className?: string }) {
+  const { ref, title } = useTruncatedTitle<HTMLSpanElement>(text);
+  return (
+    <span ref={ref} title={title} className={`block truncate ${className ?? ""}`}>
+      {text}
+    </span>
+  );
+}
+
 export default function TemplateLibraryGrid({
   templates,
   sortKey,
   sortAsc,
   onSort,
   onRowClick,
+  condensed,
 }: Props) {
   return (
-    <div className="overflow-hidden rounded-lg border border-border">
+    <div className="overflow-x-auto rounded-lg border border-border">
       <Table>
         <TableHeader>
           <TableRow className="bg-card hover:bg-card">
@@ -73,13 +87,14 @@ export default function TemplateLibraryGrid({
               activeSortKey={sortKey}
               sortAsc={sortAsc}
               onSort={onSort}
+              className="min-w-[200px] max-w-[280px]"
             />
             <Th
               label="Description"
               activeSortKey={sortKey}
               sortAsc={sortAsc}
               onSort={onSort}
-              className="max-w-xs"
+              className="min-w-[200px] max-w-[400px]"
             />
             <Th
               label="Steps"
@@ -87,6 +102,7 @@ export default function TemplateLibraryGrid({
               activeSortKey={sortKey}
               sortAsc={sortAsc}
               onSort={onSort}
+              className="w-20"
             />
             <Th
               label="Sequence"
@@ -100,8 +116,9 @@ export default function TemplateLibraryGrid({
               activeSortKey={sortKey}
               sortAsc={sortAsc}
               onSort={onSort}
+              className="w-20"
             />
-            <TableHead className="px-3 py-2.5 text-center text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <TableHead className="w-16 px-3 py-2.5 text-center text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Active
             </TableHead>
           </TableRow>
@@ -123,19 +140,23 @@ export default function TemplateLibraryGrid({
               onClick={() => onRowClick(t)}
               className={`cursor-pointer ${t.isActive ? "" : "opacity-40 hover:opacity-60"}`}
             >
-              <TableCell className="px-3 py-2.5">
-                <span className="font-medium text-foreground">{t.templateName}</span>
+              <TableCell className="min-w-[200px] max-w-[280px] px-3 py-2.5">
+                <TruncatedCell
+                  text={t.templateName}
+                  className="max-w-[280px] font-medium text-foreground"
+                />
               </TableCell>
-              <TableCell className="max-w-xs px-3 py-2.5">
+              <TableCell className="min-w-[200px] max-w-[400px] px-3 py-2.5">
                 {t.description ? (
-                  <span className="line-clamp-1 text-sm text-muted-foreground">
-                    {t.description}
-                  </span>
+                  <TruncatedCell
+                    text={t.description}
+                    className="max-w-[400px] text-sm text-muted-foreground"
+                  />
                 ) : (
                   <span className="text-xs text-muted-foreground/40">—</span>
                 )}
               </TableCell>
-              <TableCell className="px-3 py-2.5 text-sm text-muted-foreground">
+              <TableCell className="w-20 px-3 py-2.5 text-sm text-muted-foreground">
                 {t.steps.length === 0 ? (
                   <span className="text-xs text-muted-foreground/40">—</span>
                 ) : (
@@ -148,15 +169,19 @@ export default function TemplateLibraryGrid({
                 ) : (
                   <div className="flex items-center gap-0.5">
                     {t.steps.map((s) => (
-                      <ProcessTypeChip key={s.stepId} processType={s.processType} compact />
+                      <ProcessTypeChip
+                        key={s.stepId}
+                        processType={s.processType}
+                        compact={condensed}
+                      />
                     ))}
                   </div>
                 )}
               </TableCell>
-              <TableCell className="px-3 py-2.5 text-sm text-muted-foreground">
+              <TableCell className="w-20 px-3 py-2.5 text-sm text-muted-foreground">
                 {t.partsReferencingCount}
               </TableCell>
-              <TableCell className="px-3 py-2.5 text-center">
+              <TableCell className="w-16 px-3 py-2.5 text-center">
                 {t.isActive ? (
                   <span className="inline-block h-2 w-2 rounded-full bg-green-500" title="Active" />
                 ) : (

@@ -1,8 +1,20 @@
+"use client";
+
 import { MockReferencingPart } from "../_data";
+import { useTruncatedTitle } from "@/app/_lib/use-truncated-title";
 
 type Props = {
   parts: MockReferencingPart[];
 };
+
+function PartNameCell({ name }: { name: string }) {
+  const { ref, title } = useTruncatedTitle<HTMLSpanElement>(name);
+  return (
+    <span ref={ref} title={title} className="block truncate">
+      {name}
+    </span>
+  );
+}
 
 export default function EditTimeStockView({ parts }: Props) {
   const withStock = [...parts]
@@ -33,7 +45,9 @@ export default function EditTimeStockView({ parts }: Props) {
           {withStock.map((p) => (
             <tr key={p.partId} className="border-b border-border/50 last:border-0">
               <td className="py-2 pr-4 font-mono text-xs text-foreground">{p.partNumber}</td>
-              <td className="py-2 pr-4 text-xs text-foreground">{p.partName}</td>
+              <td className="py-2 pr-4 text-xs text-foreground">
+                <PartNameCell name={p.partName} />
+              </td>
               <td className="py-2 text-right text-xs font-semibold text-foreground">
                 {p.stockOnHand}
               </td>

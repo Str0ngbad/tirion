@@ -11,16 +11,11 @@ export default function ProcessTypeChip({ processType, compact = false }: Props)
   if (compact) {
     return (
       <span
-        className="relative inline-flex h-6 w-5 shrink-0 overflow-hidden rounded-sm border border-border/50 bg-card"
+        className="inline-block h-5 w-5 shrink-0 rounded-sm"
+        style={{ backgroundColor: `var(${meta.cssVar})` }}
         title={meta.label}
         aria-label={meta.label}
-      >
-        <span
-          className="absolute inset-0"
-          style={{ backgroundColor: `var(${meta.cssVar})` }}
-        />
-        <span className="absolute inset-0 left-[5px] rounded-l-sm bg-card" />
-      </span>
+      />
     );
   }
 
