@@ -2,10 +2,28 @@ import { PROCESS_TYPE_META, ProcessTypeKey } from "../_data";
 
 type Props = {
   processType: ProcessTypeKey;
+  compact?: boolean;
 };
 
-export default function ProcessTypeChip({ processType }: Props) {
+export default function ProcessTypeChip({ processType, compact = false }: Props) {
   const meta = PROCESS_TYPE_META[processType];
+
+  if (compact) {
+    return (
+      <span
+        className="relative inline-flex h-6 w-5 shrink-0 overflow-hidden rounded-sm border border-border/50 bg-card"
+        title={meta.label}
+        aria-label={meta.label}
+      >
+        <span
+          className="absolute inset-0"
+          style={{ backgroundColor: `var(${meta.cssVar})` }}
+        />
+        <span className="absolute inset-0 left-[5px] rounded-l-sm bg-card" />
+      </span>
+    );
+  }
+
   return (
     <span className="relative inline-flex items-center overflow-hidden rounded-sm border border-border/50 bg-card text-sm text-foreground">
       <span
