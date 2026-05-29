@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 type Props = {
   allTemplates: MockTemplate[];
+  editingTemplate?: MockTemplate;
   onSave: (template: MockTemplate) => void;
   onCancel: () => void;
 };
@@ -20,10 +21,21 @@ function renumber(arr: MockTemplateStep[]): MockTemplateStep[] {
   return arr.map((s, i) => ({ ...s, stepNumber: i + 1 }));
 }
 
-export default function TemplateEditorForm({ allTemplates, onSave, onCancel }: Props) {
-  const [templateName, setTemplateName] = useState("");
-  const [description, setDescription] = useState("");
-  const [steps, setSteps] = useState<MockTemplateStep[]>([]);
+function stepsLabel(steps: MockTemplateStep[]): string {
+  return steps.map((s) => s.processType).join(", ");
+}
+
+export default function TemplateEditorForm({
+  allTemplates,
+  editingTemplate,
+  onSave,
+  onCancel,
+}: Props) {
+  const isEdit = editingTemplate !== undefined;
+
+  const [templateName, setTemplateName] = useState(editingTemplate?.templateName ?? "");
+  const [description, setDescription] = useState(editingTemplate?.description ?? "");
+  const [steps, setSteps] = useState<MockTemplateStep[]>(editingTemplate?.steps ?? []);
   const [addStepOpen, setAddStepOpen] = useState(false);
   const nextStepId = useRef(9000);
 
@@ -32,8 +44,19 @@ export default function TemplateEditorForm({ allTemplates, onSave, onCancel }: P
   const trimmedName = templateName.trim();
   const isDuplicate =
     trimmedName.length > 0 &&
-    allTemplates.some((t) => t.templateName.toLowerCase() === trimmedName.toLowerCase());
+    allTemplates.some(
+      (t) =>
+        t.templateName.toLowerCase() === trimmedName.toLowerCase() &&
+        t.templateId !== editingTemplate?.templateId,
+    );
   const canSave = trimmedName.length > 0 && !isDuplicate;
+
+  // No-change detection for edit mode
+  const hasChanges = isEdit
+    ? trimmedName !== editingTemplate.templateName ||
+      (description.trim() || null) !== (editingTemplate.description ?? null) ||
+      stepsLabel(steps) !== stepsLabel(editingTemplate.steps)
+    : true;
 
   function handleAddStep(processType: ProcessTypeKey) {
     const newStep: MockTemplateStep = {
@@ -73,27 +96,61 @@ export default function TemplateEditorForm({ allTemplates, onSave, onCancel }: P
   }
 
   function handleSave() {
-    if (!canSave) return;
-    const newTemplate: MockTemplate = {
-      templateId: maxTemplateId + 1,
-      templateName: trimmedName,
-      description: description.trim() || null,
-      isActive: true,
-      steps,
-      partsReferencingCount: 0,
-      openWoCount: 0,
-      affectedStockCount: 0,
-      referencingParts: [],
-      affectedWos: [],
-      auditLog: [
-        {
-          timestamp: new Date().toISOString(),
-          userName: "Jane Chen",
-          action: "TemplateCreated",
-        },
-      ],
-    };
-    onSave(newTemplate);
+    if (!canSave || !hasChanges) return;
+
+    if (isEdit) {
+      const changedFields: MockTemplate["auditLog"][number]["changedFields"] = [];
+      if (trimmedName !== editingTemplate.templateName) {
+        changedFields.push({ field: "templateName", before: editingTemplate.templateName, after: trimmedName });
+      }
+      const newDesc = description.trim() || null;
+      if (newDesc !== (editingTemplate.description ?? null)) {
+        changedFields.push({ field: "description", before: editingTemplate.description ?? null, after: newDesc });
+      }
+      const beforeSteps = stepsLabel(editingTemplate.steps);
+      const afterSteps = stepsLabel(steps);
+      if (beforeSteps !== afterSteps) {
+        changedFields.push({ field: "steps", before: beforeSteps || null, after: afterSteps || null });
+      }
+
+      const updated: MockTemplate = {
+        ...editingTemplate,
+        templateName: trimmedName,
+        description: description.trim() || null,
+        steps,
+        auditLog: [
+          {
+            timestamp: new Date().toISOString(),
+            userName: "Jane Chen",
+            action: "TemplateUpdated",
+            changedFields,
+          },
+          ...editingTemplate.auditLog,
+        ],
+      };
+      onSave(updated);
+    } else {
+      const newTemplate: MockTemplate = {
+        templateId: maxTemplateId + 1,
+        templateName: trimmedName,
+        description: description.trim() || null,
+        isActive: true,
+        steps,
+        partsReferencingCount: 0,
+        openWoCount: 0,
+        affectedStockCount: 0,
+        referencingParts: [],
+        affectedWos: [],
+        auditLog: [
+          {
+            timestamp: new Date().toISOString(),
+            userName: "Jane Chen",
+            action: "TemplateCreated",
+          },
+        ],
+      };
+      onSave(newTemplate);
+    }
   }
 
   return (
@@ -173,8 +230,8 @@ export default function TemplateEditorForm({ allTemplates, onSave, onCancel }: P
         <Button variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        <Button onClick={handleSave} disabled={!canSave}>
-          Save Template
+        <Button onClick={handleSave} disabled={!canSave || !hasChanges}>
+          {isEdit ? "Save Changes" : "Save Template"}
         </Button>
       </div>
 

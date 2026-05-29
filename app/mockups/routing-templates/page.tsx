@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { MOCK_TEMPLATES, MockTemplate } from "./_data";
 import TemplateLibraryGrid, { TemplateSortKey } from "./_components/template-library-grid";
 import ProcessTypeLegend from "./_components/process-type-legend";
+import EditTimeDialog from "./_components/edit-time-dialog";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -16,6 +17,7 @@ export default function RoutingTemplatesPage() {
   const [showInactive, setShowInactive] = useState(false);
   const [sortKey, setSortKey] = useState<TemplateSortKey>("templateName");
   const [sortAsc, setSortAsc] = useState(true);
+  const [dialogTemplate, setDialogTemplate] = useState<MockTemplate | null>(null);
 
   const displayed = templates
     .filter((t) => showInactive || t.isActive)
@@ -45,8 +47,18 @@ export default function RoutingTemplatesPage() {
   }
 
   function handleRowClick(template: MockTemplate) {
-    // Edit mode deferred to Commit 2
-    console.log("Edit mode deferred to next commit — template:", template.templateName);
+    const hasImpact = template.partsReferencingCount > 0 || template.openWoCount > 0;
+    if (hasImpact) {
+      setDialogTemplate(template);
+    } else {
+      router.push(`/mockups/routing-templates/${template.templateId}`);
+    }
+  }
+
+  function handleDialogConfirm() {
+    if (!dialogTemplate) return;
+    setDialogTemplate(null);
+    router.push(`/mockups/routing-templates/${dialogTemplate.templateId}`);
   }
 
   const activeCount = templates.filter((t) => t.isActive).length;
@@ -108,6 +120,13 @@ export default function RoutingTemplatesPage() {
           onRowClick={handleRowClick}
         />
       </div>
+
+      <EditTimeDialog
+        template={dialogTemplate}
+        open={dialogTemplate !== null}
+        onOpenChange={(open) => { if (!open) setDialogTemplate(null); }}
+        onConfirm={handleDialogConfirm}
+      />
     </div>
   );
 }
