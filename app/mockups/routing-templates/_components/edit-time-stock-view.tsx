@@ -14,7 +14,7 @@ export default function EditTimeStockView({ parts }: Props) {
   }
 
   return (
-    <div className="w-full max-w-3xl">
+    <div className="w-full max-w-2xl">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-border">
