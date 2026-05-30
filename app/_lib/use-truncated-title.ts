@@ -11,7 +11,7 @@ import { useRef, useEffect, useState, RefObject } from "react";
  */
 export function useTruncatedTitle<T extends HTMLElement = HTMLElement>(
   fullText: string
-): { ref: RefObject<T>; title: string | undefined } {
+): { ref: RefObject<T | null>; title: string | undefined } {
   const ref = useRef<T>(null);
   const [isTruncated, setIsTruncated] = useState(false);
 
