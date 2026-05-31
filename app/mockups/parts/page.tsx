@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   MOCK_PARTS,
   MockPart,
@@ -24,12 +24,42 @@ import PartsGrid from "./_components/parts-grid";
 import ViewSwitcher from "./_components/view-switcher";
 import ViewManagementModal from "./_components/view-management-modal";
 import ColumnsButton from "./_components/columns-button";
-import PartFormSheet from "./_components/part-form-sheet";
+import PartFormSheet, { SECTION_IDS, type SectionId } from "./_components/part-form-sheet";
 import ProcessTypeLegend from "@/app/mockups/routing-templates/_components/process-type-legend";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+
+// ─── Column → panel section mapping ──────────────────────────────────────────
+
+const INLINE_EDIT_COLS = new Set<ColumnId>(["stockCount", "location"]);
+
+const COLUMN_SECTION: Record<ColumnId, SectionId> = {
+  partNumber: SECTION_IDS.header,
+  partName: SECTION_IDS.header,
+  partType: SECTION_IDS.header,
+  procurement: SECTION_IDS.coreDetails,
+  material: SECTION_IDS.materialVendor,
+  materialForm: SECTION_IDS.materialVendor,
+  vendor: SECTION_IDS.materialVendor,
+  vendorPartNumber: SECTION_IDS.materialVendor,
+  routing: SECTION_IDS.routing,
+  stockCount: SECTION_IDS.inventory,   // inline edit — handled separately
+  location: SECTION_IDS.inventory,     // inline edit — handled separately
+  stockSize: SECTION_IDS.materialVendor,
+  blankLength: SECTION_IDS.coreDetails,
+  modelLink: SECTION_IDS.header,
+  drawingLink: SECTION_IDS.header,
+  binMin: SECTION_IDS.inventory,
+  binMax: SECTION_IDS.inventory,
+  cost: SECTION_IDS.materialVendor,
+  costLastUpdated: SECTION_IDS.materialVendor,
+  assembliesUsedInCount: SECTION_IDS.parents,
+  machineCycleTime: SECTION_IDS.routing,
+  numberOfSetups: SECTION_IDS.routing,
+  active: SECTION_IDS.header,
+};
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -40,13 +70,11 @@ export default function PartsPage() {
 
   // ── Views state ──────────────────────────────────────────────────────────────
 
-  // Mutable list of all views (in-memory, resets on reload)
   const [viewsList, setViewsList] = useState<View[]>(() =>
     SEEDED_VIEWS.map((v) => ({ ...v }))
   );
   const [activeViewId, setActiveViewId] = useState<number>(DEFAULT_VIEW.viewId);
 
-  // Derived: always look up the current version of the active view
   const activeView = viewsList.find((v) => v.viewId === activeViewId) ?? viewsList[0]!;
 
   const [showManageViews, setShowManageViews] = useState(false);
@@ -56,16 +84,27 @@ export default function PartsPage() {
   const [search, setSearch] = useState("");
   const [sortCol, setSortCol] = useState<ColumnId>(DEFAULT_VIEW.defaultSort.columnId);
   const [sortAsc, setSortAsc] = useState(DEFAULT_VIEW.defaultSort.direction === "asc");
-  const [selectedPart, setSelectedPart] = useState<MockPart | null>(null);
   const [condensed, setCondensed] = useState(true);
 
-  // Active filters — start from view's saved filters; ad-hoc changes update this array.
   const [activeFilters, setActiveFilters] = useState<Filter[]>(DEFAULT_VIEW.filters);
-
-  // Session-level column visibility override — null means "use the view's columns".
   const [sessionColumns, setSessionColumns] = useState<ColumnId[] | null>(null);
 
+  // ── Panel state ──────────────────────────────────────────────────────────────
+
+  const [selectedPart, setSelectedPart] = useState<MockPart | null>(null);
+  const [panelSection, setPanelSection] = useState<SectionId | null>(null);
+
   const actorName = "Jane Chen";
+
+  // ── ESC key closes panel ─────────────────────────────────────────────────────
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape" && selectedPart) setSelectedPart(null);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [selectedPart]);
 
   // ── Derived visible columns ──────────────────────────────────────────────────
 
@@ -120,7 +159,6 @@ export default function PartsPage() {
       filters: activeFilters,
     };
     setViewsList((prev) => updateView(prev, updated));
-    // visibleColumns are now part of the saved view — sessionColumns no longer needed
     setSessionColumns(null);
   }
 
@@ -199,7 +237,6 @@ export default function PartsPage() {
     if (base.includes(col)) {
       setSessionColumns(base.filter((c) => c !== col));
     } else {
-      // Re-insert in the canonical ALL_COLUMNS order
       const allIds = ALL_COLUMNS.map((c) => c.id);
       const withCol = [...base, col];
       setSessionColumns(allIds.filter((id) => withCol.includes(id)));
@@ -254,13 +291,26 @@ export default function PartsPage() {
     setSelectedPart(updated);
   }
 
+  // ── Row click handler ────────────────────────────────────────────────────────
+
+  function handleRowClick(part: MockPart, col: ColumnId) {
+    if (INLINE_EDIT_COLS.has(col)) return;
+    const section = COLUMN_SECTION[col];
+    if (selectedPart?.partId === part.partId) {
+      // Same part — just scroll to the new section
+      setPanelSection(section);
+    } else {
+      // New part — update and scroll
+      setSelectedPart(part);
+      setPanelSection(section);
+    }
+  }
+
   // ── Filtered + sorted parts ──────────────────────────────────────────────────
 
   const displayed = useMemo(() => {
-    // 1. Apply column-level filters
     let result = applyFilters(parts, activeFilters);
 
-    // 2. Apply global text search (part number or name)
     if (search.trim()) {
       const s = search.toLowerCase();
       result = result.filter(
@@ -270,7 +320,6 @@ export default function PartsPage() {
       );
     }
 
-    // 3. Sort
     result = [...result].sort((a, b) => {
       const dir = sortAsc ? 1 : -1;
       switch (sortCol) {
@@ -318,19 +367,25 @@ export default function PartsPage() {
   const hasActiveFilters = activeFilters.length > 0 || search.trim() !== "";
   const activeCount = parts.filter((p) => p.isActive).length;
   const inactiveCount = parts.filter((p) => !p.isActive).length;
+  const panelOpen = selectedPart !== null;
 
   return (
-    <div className="min-h-screen bg-background font-sans text-foreground">
+    <div className="flex min-h-screen flex-col bg-background font-sans text-foreground">
       {/* Mockup banner */}
-      <div className="border-b border-amber-900/30 bg-amber-500/10 px-6 py-1.5 text-center">
+      <div className="border-b border-amber-900/30 bg-amber-500/10 px-6 py-1.5 text-center shrink-0">
         <span className="text-xs text-amber-700 dark:text-amber-400">
           <strong className="font-medium">Mockup — Parts Master Configuration Grid</strong>
           {" · "}Spec validation, not production · in-memory state, resets on reload
         </span>
       </div>
 
-      {/* Page header */}
-      <div className="border-b border-border px-8 py-5">
+      {/* Page header — clicking empty area closes panel */}
+      <div
+        className="border-b border-border px-8 py-5 shrink-0"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) setSelectedPart(null);
+        }}
+      >
         <div className="mx-auto flex max-w-screen-2xl items-center justify-between gap-4">
           <div>
             <h1 className="text-lg font-semibold text-foreground">Parts</h1>
@@ -355,8 +410,13 @@ export default function PartsPage() {
         </div>
       </div>
 
-      {/* View switcher + Columns button row */}
-      <div className="border-b border-border bg-muted/20 px-8 py-2.5">
+      {/* View switcher + Columns button row — clicking empty area closes panel */}
+      <div
+        className="border-b border-border bg-muted/20 px-8 py-2.5 shrink-0"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) setSelectedPart(null);
+        }}
+      >
         <div className="mx-auto flex max-w-screen-2xl items-center gap-3">
           <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide shrink-0">
             View
@@ -393,7 +453,7 @@ export default function PartsPage() {
       </div>
 
       {/* ProcessType legend + Condense toggle */}
-      <div className="relative">
+      <div className="relative shrink-0">
         <ProcessTypeLegend />
         <div className="absolute right-8 top-3 flex items-center gap-2">
           <Label
@@ -411,60 +471,66 @@ export default function PartsPage() {
         </div>
       </div>
 
-      {/* Grid */}
-      <div className="mx-auto max-w-screen-2xl px-8 py-6">
-        {displayed.length === 0 && !hasActiveFilters ? (
-          <div className="py-20 text-center">
-            <p className="text-sm text-muted-foreground">
-              No parts found. Add your first part to get started.
-            </p>
-            <Button className="mt-4">
-              <span className="text-base leading-none">+</span>
-              Add Part
-            </Button>
+      {/* Grid + Panel — push-grid layout */}
+      <div className="flex flex-1 min-h-0">
+        {/* Grid area */}
+        <div className="flex-1 min-w-0 overflow-x-auto px-8 py-6">
+          {displayed.length === 0 && !hasActiveFilters ? (
+            <div className="py-20 text-center">
+              <p className="text-sm text-muted-foreground">
+                No parts found. Add your first part to get started.
+              </p>
+              <Button className="mt-4">
+                <span className="text-base leading-none">+</span>
+                Add Part
+              </Button>
+            </div>
+          ) : displayed.length === 0 ? (
+            <div className="py-20 text-center">
+              <p className="text-sm text-muted-foreground">No parts match the current filters.</p>
+              <button
+                type="button"
+                onClick={() => { setActiveFilters(activeView.filters); setSearch(""); }}
+                className="mt-2 text-xs text-muted-foreground underline hover:text-foreground transition-colors"
+              >
+                Clear filters
+              </button>
+            </div>
+          ) : (
+            <PartsGrid
+              parts={displayed}
+              allParts={parts}
+              visibleColumns={visibleColumns}
+              sortCol={sortCol}
+              sortAsc={sortAsc}
+              activeFilters={activeFilters}
+              onSort={handleSort}
+              onSortDir={handleSortDir}
+              onClearSort={handleClearSort}
+              onHideColumn={handleHideColumn}
+              onApplyFilter={handleApplyFilter}
+              onRemoveFilter={handleRemoveFilter}
+              onRowClick={handleRowClick}
+              onUpdateStock={handleUpdateStock}
+              onUpdateLocation={handleUpdateLocation}
+              condensed={condensed}
+            />
+          )}
+        </div>
+
+        {/* Side panel */}
+        {panelOpen && (
+          <div className="w-1/3 shrink-0 border-l border-border overflow-hidden">
+            <PartFormSheet
+              part={selectedPart}
+              actorName={actorName}
+              scrollToSectionId={panelSection}
+              onClose={() => setSelectedPart(null)}
+              onUpdate={handleUpdate}
+            />
           </div>
-        ) : displayed.length === 0 ? (
-          <div className="py-20 text-center">
-            <p className="text-sm text-muted-foreground">No parts match the current filters.</p>
-            <button
-              type="button"
-              onClick={() => { setActiveFilters(activeView.filters); setSearch(""); }}
-              className="mt-2 text-xs text-muted-foreground underline hover:text-foreground transition-colors"
-            >
-              Clear filters
-            </button>
-          </div>
-        ) : (
-          <PartsGrid
-            parts={displayed}
-            allParts={parts}
-            visibleColumns={visibleColumns}
-            sortCol={sortCol}
-            sortAsc={sortAsc}
-            activeFilters={activeFilters}
-            onSort={handleSort}
-            onSortDir={handleSortDir}
-            onClearSort={handleClearSort}
-            onHideColumn={handleHideColumn}
-            onApplyFilter={handleApplyFilter}
-            onRemoveFilter={handleRemoveFilter}
-            onRowClick={setSelectedPart}
-            onUpdateStock={handleUpdateStock}
-            onUpdateLocation={handleUpdateLocation}
-            condensed={condensed}
-          />
         )}
       </div>
-
-      {/* Part Form Sheet */}
-      {selectedPart !== null && (
-        <PartFormSheet
-          part={selectedPart}
-          actorName={actorName}
-          onClose={() => setSelectedPart(null)}
-          onUpdate={handleUpdate}
-        />
-      )}
 
       {/* Manage Views modal */}
       <ViewManagementModal

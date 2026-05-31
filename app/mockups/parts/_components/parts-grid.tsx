@@ -309,7 +309,7 @@ type Props = {
   onHideColumn: (col: ColumnId) => void;
   onApplyFilter: (filter: Filter) => void;
   onRemoveFilter: (col: ColumnId) => void;
-  onRowClick: (part: MockPart) => void;
+  onRowClick: (part: MockPart, col: ColumnId) => void;
   onUpdateStock: (partId: number, stockCount: number) => void;
   onUpdateLocation: (partId: number, inventoryLocation: string) => void;
   condensed: boolean;
@@ -378,9 +378,7 @@ export default function PartsGrid({
           {parts.map((p) => (
             <TableRow
               key={p.partId}
-              onClick={() => onRowClick(p)}
               className={[
-                "cursor-pointer",
                 p.isActive ? "" : "opacity-40 hover:opacity-60",
                 p.partType === "Assembly" ? "bg-muted/30" : "",
               ].join(" ")}
@@ -389,6 +387,7 @@ export default function PartsGrid({
                 const meta = COLUMN_BY_ID.get(col)!;
                 const isRight = RIGHT_ALIGNED_COLUMNS.has(col);
                 const isCenter = CENTER_COLUMNS.has(col);
+                const isInlineEdit = STOP_PROP_COLS.has(col);
                 return (
                   <TableCell
                     key={col}
@@ -396,8 +395,9 @@ export default function PartsGrid({
                       meta.defaultWidth,
                       "px-3 py-2",
                       isRight ? "text-right" : isCenter ? "text-center" : "",
+                      isInlineEdit ? "" : "cursor-pointer",
                     ].join(" ")}
-                    onClick={STOP_PROP_COLS.has(col) ? (e) => e.stopPropagation() : undefined}
+                    onClick={isInlineEdit ? undefined : () => onRowClick(p, col)}
                   >
                     {renderCell(col, p, cellProps)}
                   </TableCell>
