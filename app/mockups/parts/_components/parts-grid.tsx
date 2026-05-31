@@ -2,33 +2,27 @@
 
 import { useState, useRef, useEffect } from "react";
 import type { MockPart } from "../_data";
-import type { View } from "../_lib/views";
 import {
   type ColumnId,
   COLUMN_BY_ID,
-  SORTABLE_COLUMNS,
   RIGHT_ALIGNED_COLUMNS,
   CENTER_COLUMNS,
 } from "../_lib/columns";
+import type { Filter } from "../_lib/filter-engine";
 import ProcessTypeChip from "@/app/mockups/users/_components/process-type-chip";
 import { useTruncatedTitle } from "@/app/_lib/use-truncated-title";
 import {
   Table,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import ColumnHeaderMenu from "./column-header-menu";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function SortIcon({ active, asc }: { active: boolean; asc: boolean }) {
-  if (!active) return <span className="ml-1 text-muted-foreground/30">↕</span>;
-  return <span className="ml-1 text-muted-foreground">{asc ? "↑" : "↓"}</span>;
-}
 
 function Dash() {
   return <span className="text-xs text-muted-foreground/40">—</span>;
@@ -53,45 +47,6 @@ function formatDate(iso: string): string {
   } catch {
     return iso;
   }
-}
-
-// ─── Column header ────────────────────────────────────────────────────────────
-
-function ColHeader({
-  col,
-  activeSortCol,
-  sortAsc,
-  onSort,
-}: {
-  col: ColumnId;
-  activeSortCol: ColumnId;
-  sortAsc: boolean;
-  onSort: (col: ColumnId) => void;
-}) {
-  const meta = COLUMN_BY_ID.get(col)!;
-  const sortable = SORTABLE_COLUMNS.has(col);
-  const isRight = RIGHT_ALIGNED_COLUMNS.has(col);
-  const isCenter = CENTER_COLUMNS.has(col);
-
-  const base = [
-    "px-3 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground select-none",
-    isRight ? "text-right" : isCenter ? "text-center" : "text-left",
-    meta.defaultWidth,
-  ].join(" ");
-
-  if (sortable) {
-    return (
-      <TableHead
-        className={`${base} cursor-pointer hover:text-foreground transition-colors`}
-        onClick={() => onSort(col)}
-      >
-        {meta.label}
-        <SortIcon active={activeSortCol === col} asc={sortAsc} />
-      </TableHead>
-    );
-  }
-
-  return <TableHead className={base}>{meta.label}</TableHead>;
 }
 
 // ─── Inline edit cell ─────────────────────────────────────────────────────────
@@ -343,31 +298,43 @@ function renderCell(col: ColumnId, part: MockPart, cp: CellProps): React.ReactNo
 
 type Props = {
   parts: MockPart[];
-  activeView: View;
+  allParts: MockPart[];
+  visibleColumns: ColumnId[];
   sortCol: ColumnId;
   sortAsc: boolean;
+  activeFilters: Filter[];
   onSort: (col: ColumnId) => void;
+  onSortDir: (col: ColumnId, asc: boolean) => void;
+  onClearSort: () => void;
+  onHideColumn: (col: ColumnId) => void;
+  onApplyFilter: (filter: Filter) => void;
+  onRemoveFilter: (col: ColumnId) => void;
   onRowClick: (part: MockPart) => void;
   onUpdateStock: (partId: number, stockCount: number) => void;
   onUpdateLocation: (partId: number, inventoryLocation: string) => void;
   condensed: boolean;
 };
 
-// Cells for these columns stop row-level click propagation
 const STOP_PROP_COLS = new Set<ColumnId>(["stockCount", "location"]);
 
 export default function PartsGrid({
   parts,
-  activeView,
+  allParts,
+  visibleColumns,
   sortCol,
   sortAsc,
+  activeFilters,
   onSort,
+  onSortDir,
+  onClearSort,
+  onHideColumn,
+  onApplyFilter,
+  onRemoveFilter,
   onRowClick,
   onUpdateStock,
   onUpdateLocation,
   condensed,
 }: Props) {
-  const { visibleColumns } = activeView;
   const cellProps: CellProps = { condensed, onUpdateStock, onUpdateLocation };
 
   return (
@@ -375,15 +342,26 @@ export default function PartsGrid({
       <Table>
         <TableHeader>
           <TableRow className="bg-card hover:bg-card">
-            {visibleColumns.map((col) => (
-              <ColHeader
-                key={col}
-                col={col}
-                activeSortCol={sortCol}
-                sortAsc={sortAsc}
-                onSort={onSort}
-              />
-            ))}
+            {visibleColumns.map((col) => {
+              const meta = COLUMN_BY_ID.get(col)!;
+              const activeFilter = activeFilters.find((f) => f.columnId === col) ?? null;
+              return (
+                <ColumnHeaderMenu
+                  key={col}
+                  meta={meta}
+                  activeSortCol={sortCol}
+                  sortAsc={sortAsc}
+                  activeFilter={activeFilter}
+                  allParts={allParts}
+                  onSort={onSort}
+                  onSortDir={onSortDir}
+                  onClearSort={onClearSort}
+                  onHide={onHideColumn}
+                  onApplyFilter={onApplyFilter}
+                  onRemoveFilter={onRemoveFilter}
+                />
+              );
+            })}
           </TableRow>
         </TableHeader>
         <TableBody className="bg-card/30">

@@ -1,16 +1,13 @@
 import type { ColumnId } from './columns';
+import type { Filter } from './filter-engine';
+
+export type { Filter } from './filter-engine';
 
 export type SortDirection = 'asc' | 'desc';
 
 export type Sort = {
   columnId: ColumnId;
   direction: SortDirection;
-};
-
-export type Filter = {
-  columnId: ColumnId;
-  operator: string;
-  value: unknown;
 };
 
 export type View = {
@@ -47,7 +44,9 @@ export const SEEDED_VIEWS: View[] = [
       'blankLength', 'stockCount', 'binMin', 'binMax', 'active',
     ],
     defaultSort: { columnId: 'material', direction: 'asc' },
-    filters: [],
+    filters: [
+      { columnId: 'active', operator: 'isTrue', value: null },
+    ],
   },
   {
     viewId: 3,
@@ -58,7 +57,9 @@ export const SEEDED_VIEWS: View[] = [
       'procurement', 'cost', 'costLastUpdated', 'stockCount', 'active',
     ],
     defaultSort: { columnId: 'vendor', direction: 'asc' },
-    filters: [],
+    filters: [
+      { columnId: 'active', operator: 'isTrue', value: null },
+    ],
   },
   {
     viewId: 4,
@@ -68,7 +69,10 @@ export const SEEDED_VIEWS: View[] = [
       'partName', 'partNumber', 'stockCount', 'location', 'active',
     ],
     defaultSort: { columnId: 'location', direction: 'asc' },
-    filters: [],
+    filters: [
+      { columnId: 'active', operator: 'isTrue', value: null },
+      { columnId: 'stockCount', operator: 'lt', value: { value: 5 } },
+    ],
   },
   {
     viewId: 5,

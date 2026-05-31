@@ -3,245 +3,110 @@
 import { useState, useMemo } from "react";
 import {
   MOCK_PARTS,
-  MOCK_VENDORS,
-  MOCK_MATERIAL_SPECS,
   MockPart,
   MockPartAuditEntry,
 } from "./_data";
 import type { ColumnId } from "./_lib/columns";
+import { ALL_COLUMNS } from "./_lib/columns";
+import type { Filter } from "./_lib/filter-engine";
+import { applyFilters } from "./_lib/filter-engine";
 import { SEEDED_VIEWS, type View } from "./_lib/views";
 import PartsGrid from "./_components/parts-grid";
 import ViewSwitcher from "./_components/view-switcher";
+import ColumnsButton from "./_components/columns-button";
 import PartFormSheet from "./_components/part-form-sheet";
 import ProcessTypeLegend from "@/app/mockups/routing-templates/_components/process-type-legend";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import { ChevronDownIcon } from "lucide-react";
-
-// ─── Filter toggle group ──────────────────────────────────────────────────────
-
-function ToggleGroup<T extends string>({
-  options,
-  value,
-  onChange,
-}: {
-  options: { value: T; label: string }[];
-  value: T;
-  onChange: (v: T) => void;
-}) {
-  return (
-    <div className="flex rounded-md border border-border overflow-hidden">
-      {options.map((opt, i) => (
-        <button
-          key={opt.value}
-          type="button"
-          onClick={() => onChange(opt.value)}
-          className={[
-            "px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap",
-            i > 0 ? "border-l border-border" : "",
-            value === opt.value
-              ? "bg-foreground text-background"
-              : "bg-card text-muted-foreground hover:text-foreground hover:bg-muted",
-          ].join(" ")}
-        >
-          {opt.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-// ─── Combobox filter ─────────────────────────────────────────────────────────
-
-function ComboFilter({
-  placeholder,
-  selectedLabel,
-  options,
-  onSelect,
-  onClear,
-  hasValue,
-}: {
-  placeholder: string;
-  selectedLabel: string;
-  options: { value: string; label: string }[];
-  onSelect: (value: string) => void;
-  onClear: () => void;
-  hasValue: boolean;
-}) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          className={[
-            "flex h-8 items-center gap-1.5 rounded-md border border-border bg-card px-3 text-xs font-medium transition-colors hover:bg-muted",
-            hasValue ? "text-foreground border-foreground/30" : "text-muted-foreground",
-          ].join(" ")}
-        >
-          <span>{hasValue ? selectedLabel : placeholder}</span>
-          <ChevronDownIcon className="h-3.5 w-3.5 shrink-0 opacity-50" />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-52 p-0" align="start">
-        <Command>
-          <CommandInput placeholder={`Search ${placeholder.toLowerCase()}…`} />
-          <CommandList>
-            <CommandEmpty>No results found.</CommandEmpty>
-            <CommandGroup>
-              {hasValue && (
-                <CommandItem
-                  onSelect={() => { onClear(); setOpen(false); }}
-                  className="text-muted-foreground italic"
-                >
-                  Clear filter
-                </CommandItem>
-              )}
-              {options.map((opt) => (
-                <CommandItem
-                  key={opt.value}
-                  value={opt.label}
-                  data-checked={selectedLabel === opt.label}
-                  onSelect={() => { onSelect(opt.value); setOpen(false); }}
-                >
-                  {opt.label}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  );
-}
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
-
-type PartTypeFilter = "all" | "parts" | "assemblies";
-type ActiveFilter = "active" | "inactive" | "both";
 
 const DEFAULT_VIEW = SEEDED_VIEWS.find((v) => v.isDefault)!;
 
 export default function PartsPage() {
   const [parts, setParts] = useState<MockPart[]>(MOCK_PARTS);
   const [activeView, setActiveView] = useState<View>(DEFAULT_VIEW);
-  const [partTypeFilter, setPartTypeFilter] = useState<PartTypeFilter>("all");
-  const [activeFilter, setActiveFilter] = useState<ActiveFilter>("active");
-  const [vendorFilter, setVendorFilter] = useState<number | null>(null);
-  const [materialFilter, setMaterialFilter] = useState<number | null>(null);
-  const [stockSizeFilter, setStockSizeFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [sortCol, setSortCol] = useState<ColumnId>(DEFAULT_VIEW.defaultSort.columnId);
   const [sortAsc, setSortAsc] = useState(DEFAULT_VIEW.defaultSort.direction === "asc");
   const [selectedPart, setSelectedPart] = useState<MockPart | null>(null);
   const [condensed, setCondensed] = useState(true);
 
+  // Active filters — start from view's saved filters; ad-hoc changes update this array.
+  const [activeFilters, setActiveFilters] = useState<Filter[]>(DEFAULT_VIEW.filters);
+
+  // Session-level column visibility override — null means "use the view's columns".
+  const [sessionColumns, setSessionColumns] = useState<ColumnId[] | null>(null);
+
   const actorName = "Jane Chen";
 
-  const distinctStockSizes = useMemo(() => {
-    const sizes = new Set<string>();
-    parts.forEach((p) => { if (p.stockSize) sizes.add(p.stockSize); });
-    return Array.from(sizes).sort((a, b) => parseFloat(a) - parseFloat(b));
-  }, [parts]);
+  // ── Derived visible columns ──────────────────────────────────────────────────
+  const visibleColumns = sessionColumns ?? activeView.visibleColumns;
 
-  const displayed = useMemo(() => {
-    return parts
-      .filter((p) => {
-        if (activeFilter === "active") return p.isActive;
-        if (activeFilter === "inactive") return !p.isActive;
-        return true;
-      })
-      .filter((p) => {
-        if (partTypeFilter === "parts") return p.partType === "Part";
-        if (partTypeFilter === "assemblies") return p.partType === "Assembly";
-        return true;
-      })
-      .filter((p) => vendorFilter === null || p.defaultVendor?.vendorId === vendorFilter)
-      .filter((p) => materialFilter === null || p.materialSpec?.materialSpecId === materialFilter)
-      .filter((p) => stockSizeFilter === "all" || p.stockSize === stockSizeFilter)
-      .filter((p) => {
-        if (!search.trim()) return true;
-        const s = search.toLowerCase();
-        return (
-          p.partNumber.toLowerCase().includes(s) ||
-          p.partName.toLowerCase().includes(s)
-        );
-      })
-      .sort((a, b) => {
-        const dir = sortAsc ? 1 : -1;
-        switch (sortCol) {
-          case "partNumber":
-            return dir * a.partNumber.localeCompare(b.partNumber);
-          case "partName":
-            return dir * a.partName.localeCompare(b.partName);
-          case "material": {
-            const ma = a.materialSpec?.materialName ?? "";
-            const mb = b.materialSpec?.materialName ?? "";
-            return dir * ma.localeCompare(mb);
-          }
-          case "vendor": {
-            const va = a.defaultVendor?.vendorName ?? "";
-            const vb = b.defaultVendor?.vendorName ?? "";
-            return dir * va.localeCompare(vb);
-          }
-          case "stockCount":
-            return dir * (a.stockCount - b.stockCount);
-          case "location": {
-            const la = a.inventoryLocation ?? "";
-            const lb = b.inventoryLocation ?? "";
-            return dir * la.localeCompare(lb);
-          }
-          case "cost": {
-            const ca = a.cost ?? -Infinity;
-            const cb = b.cost ?? -Infinity;
-            return dir * (ca - cb);
-          }
-          case "costLastUpdated": {
-            const da = a.costLastUpdated ?? "";
-            const db = b.costLastUpdated ?? "";
-            return dir * da.localeCompare(db);
-          }
-          case "assembliesUsedInCount":
-            return dir * (a.assembliesUsedInCount - b.assembliesUsedInCount);
-          default:
-            return 0;
-        }
-      });
-  }, [parts, activeFilter, partTypeFilter, vendorFilter, materialFilter, stockSizeFilter, search, sortCol, sortAsc]);
+  // ── Sort handlers ────────────────────────────────────────────────────────────
 
   function handleSort(col: ColumnId) {
     if (sortCol === col) setSortAsc((p) => !p);
     else { setSortCol(col); setSortAsc(true); }
   }
 
+  function handleSortDir(col: ColumnId, asc: boolean) {
+    setSortCol(col);
+    setSortAsc(asc);
+  }
+
+  function handleClearSort() {
+    setSortCol(activeView.defaultSort.columnId);
+    setSortAsc(activeView.defaultSort.direction === "asc");
+  }
+
+  // ── View change ──────────────────────────────────────────────────────────────
+
   function handleViewChange(v: View) {
     setActiveView(v);
     setSortCol(v.defaultSort.columnId);
     setSortAsc(v.defaultSort.direction === "asc");
+    // Replace active filters with the view's saved filters (clears ad-hoc)
+    setActiveFilters(v.filters);
+    // Reset session column overrides so the view's column set takes effect
+    setSessionColumns(null);
   }
+
+  // ── Filter handlers ──────────────────────────────────────────────────────────
+
+  function handleApplyFilter(filter: Filter) {
+    setActiveFilters((prev) => {
+      const without = prev.filter((f) => f.columnId !== filter.columnId);
+      return [...without, filter];
+    });
+  }
+
+  function handleRemoveFilter(col: ColumnId) {
+    setActiveFilters((prev) => prev.filter((f) => f.columnId !== col));
+  }
+
+  // ── Column visibility handlers ───────────────────────────────────────────────
+
+  function handleHideColumn(col: ColumnId) {
+    const base = sessionColumns ?? activeView.visibleColumns;
+    setSessionColumns(base.filter((c) => c !== col));
+  }
+
+  function handleToggleColumn(col: ColumnId) {
+    const base = sessionColumns ?? activeView.visibleColumns;
+    if (base.includes(col)) {
+      setSessionColumns(base.filter((c) => c !== col));
+    } else {
+      // Re-insert in the canonical ALL_COLUMNS order
+      const allIds = ALL_COLUMNS.map((c) => c.id);
+      const withCol = [...base, col];
+      setSessionColumns(allIds.filter((id) => withCol.includes(id)));
+    }
+  }
+
+  // ── Inline edit handlers ─────────────────────────────────────────────────────
 
   function handleUpdateStock(partId: number, stockCount: number) {
     setParts((prev) =>
@@ -289,42 +154,70 @@ export default function PartsPage() {
     setSelectedPart(updated);
   }
 
-  function clearAllFilters() {
-    setPartTypeFilter("all");
-    setActiveFilter("active");
-    setVendorFilter(null);
-    setMaterialFilter(null);
-    setStockSizeFilter("all");
-    setSearch("");
-  }
+  // ── Filtered + sorted parts ──────────────────────────────────────────────────
 
+  const displayed = useMemo(() => {
+    // 1. Apply column-level filters
+    let result = applyFilters(parts, activeFilters);
+
+    // 2. Apply global text search (part number or name)
+    if (search.trim()) {
+      const s = search.toLowerCase();
+      result = result.filter(
+        (p) =>
+          p.partNumber.toLowerCase().includes(s) ||
+          p.partName.toLowerCase().includes(s)
+      );
+    }
+
+    // 3. Sort
+    result = [...result].sort((a, b) => {
+      const dir = sortAsc ? 1 : -1;
+      switch (sortCol) {
+        case "partNumber":
+          return dir * a.partNumber.localeCompare(b.partNumber);
+        case "partName":
+          return dir * a.partName.localeCompare(b.partName);
+        case "material": {
+          const ma = a.materialSpec?.materialName ?? "";
+          const mb = b.materialSpec?.materialName ?? "";
+          return dir * ma.localeCompare(mb);
+        }
+        case "vendor": {
+          const va = a.defaultVendor?.vendorName ?? "";
+          const vb = b.defaultVendor?.vendorName ?? "";
+          return dir * va.localeCompare(vb);
+        }
+        case "stockCount":
+          return dir * (a.stockCount - b.stockCount);
+        case "location": {
+          const la = a.inventoryLocation ?? "";
+          const lb = b.inventoryLocation ?? "";
+          return dir * la.localeCompare(lb);
+        }
+        case "cost": {
+          const ca = a.cost ?? -Infinity;
+          const cb = b.cost ?? -Infinity;
+          return dir * (ca - cb);
+        }
+        case "costLastUpdated": {
+          const da = a.costLastUpdated ?? "";
+          const db = b.costLastUpdated ?? "";
+          return dir * da.localeCompare(db);
+        }
+        case "assembliesUsedInCount":
+          return dir * (a.assembliesUsedInCount - b.assembliesUsedInCount);
+        default:
+          return 0;
+      }
+    });
+
+    return result;
+  }, [parts, activeFilters, search, sortCol, sortAsc]);
+
+  const hasActiveFilters = activeFilters.length > 0 || search.trim() !== "";
   const activeCount = parts.filter((p) => p.isActive).length;
   const inactiveCount = parts.filter((p) => !p.isActive).length;
-
-  const vendorOptions = MOCK_VENDORS.map((v) => ({
-    value: v.vendorId.toString(),
-    label: v.vendorName,
-  }));
-  const materialOptions = MOCK_MATERIAL_SPECS.map((m) => ({
-    value: m.materialSpecId.toString(),
-    label: `${m.materialName} — ${m.form}`,
-  }));
-  const selectedVendorLabel =
-    MOCK_VENDORS.find((v) => v.vendorId === vendorFilter)?.vendorName ?? "";
-  const selectedMaterialSpec = MOCK_MATERIAL_SPECS.find(
-    (m) => m.materialSpecId === materialFilter
-  );
-  const selectedMaterialLabel = selectedMaterialSpec
-    ? `${selectedMaterialSpec.materialName} — ${selectedMaterialSpec.form}`
-    : "";
-
-  const hasActiveFilters =
-    partTypeFilter !== "all" ||
-    activeFilter !== "active" ||
-    vendorFilter !== null ||
-    materialFilter !== null ||
-    stockSizeFilter !== "all" ||
-    search.trim() !== "";
 
   return (
     <div className="min-h-screen bg-background font-sans text-foreground">
@@ -346,14 +239,23 @@ export default function PartsPage() {
               {inactiveCount > 0 && `, ${inactiveCount} inactive`}
             </p>
           </div>
-          <Button>
-            <span className="text-base leading-none">+</span>
-            Add Part
-          </Button>
+          <div className="flex items-center gap-3">
+            <Input
+              type="search"
+              placeholder="Search part number or name…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-8 w-64 text-xs"
+            />
+            <Button>
+              <span className="text-base leading-none">+</span>
+              Add Part
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* View switcher row */}
+      {/* View switcher + Columns button row */}
       <div className="border-b border-border bg-muted/20 px-8 py-2.5">
         <div className="mx-auto flex max-w-screen-2xl items-center gap-3">
           <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -364,88 +266,22 @@ export default function PartsPage() {
             activeView={activeView}
             onViewChange={handleViewChange}
           />
-        </div>
-      </div>
-
-      {/* Filter bar */}
-      <div className="border-b border-border bg-card/40 px-8 py-3">
-        <div className="mx-auto flex max-w-screen-2xl flex-wrap items-center gap-3">
-          {/* Part / Assembly toggle */}
-          <ToggleGroup
-            options={[
-              { value: "all", label: "All" },
-              { value: "parts", label: "Parts" },
-              { value: "assemblies", label: "Assemblies" },
-            ]}
-            value={partTypeFilter}
-            onChange={setPartTypeFilter}
-          />
-
-          {/* Active state toggle */}
-          <ToggleGroup
-            options={[
-              { value: "active", label: "Active" },
-              { value: "inactive", label: "Inactive" },
-              { value: "both", label: "Both" },
-            ]}
-            value={activeFilter}
-            onChange={setActiveFilter}
-          />
-
-          <div className="h-5 w-px bg-border" />
-
-          {/* Vendor combobox */}
-          <ComboFilter
-            placeholder="Vendor"
-            selectedLabel={selectedVendorLabel}
-            options={vendorOptions}
-            onSelect={(v) => setVendorFilter(parseInt(v, 10))}
-            onClear={() => setVendorFilter(null)}
-            hasValue={vendorFilter !== null}
-          />
-
-          {/* Material combobox */}
-          <ComboFilter
-            placeholder="Material"
-            selectedLabel={selectedMaterialLabel}
-            options={materialOptions}
-            onSelect={(v) => setMaterialFilter(parseInt(v, 10))}
-            onClear={() => setMaterialFilter(null)}
-            hasValue={materialFilter !== null}
-          />
-
-          {/* Stock size select */}
-          <Select value={stockSizeFilter} onValueChange={setStockSizeFilter}>
-            <SelectTrigger className="h-8 w-36 text-xs">
-              <SelectValue placeholder="Stock Size" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Sizes</SelectItem>
-              {distinctStockSizes.map((size) => (
-                <SelectItem key={size} value={size}>
-                  {size}″
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {/* Spacer + search on the right */}
           <div className="ml-auto flex items-center gap-3">
             {hasActiveFilters && (
               <button
                 type="button"
-                onClick={clearAllFilters}
+                onClick={() => {
+                  setActiveFilters(activeView.filters);
+                  setSearch("");
+                }}
                 className="text-xs text-muted-foreground underline-offset-2 hover:underline hover:text-foreground transition-colors"
               >
                 Clear filters
               </button>
             )}
-            <Input
-              type="search"
-              placeholder="Search part number or name…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="h-8 w-64 text-xs"
+            <ColumnsButton
+              visibleColumns={visibleColumns}
+              onToggle={handleToggleColumn}
             />
           </div>
         </div>
@@ -487,7 +323,7 @@ export default function PartsPage() {
             <p className="text-sm text-muted-foreground">No parts match the current filters.</p>
             <button
               type="button"
-              onClick={clearAllFilters}
+              onClick={() => { setActiveFilters(activeView.filters); setSearch(""); }}
               className="mt-2 text-xs text-muted-foreground underline hover:text-foreground transition-colors"
             >
               Clear filters
@@ -496,10 +332,17 @@ export default function PartsPage() {
         ) : (
           <PartsGrid
             parts={displayed}
-            activeView={activeView}
+            allParts={parts}
+            visibleColumns={visibleColumns}
             sortCol={sortCol}
             sortAsc={sortAsc}
+            activeFilters={activeFilters}
             onSort={handleSort}
+            onSortDir={handleSortDir}
+            onClearSort={handleClearSort}
+            onHideColumn={handleHideColumn}
+            onApplyFilter={handleApplyFilter}
+            onRemoveFilter={handleRemoveFilter}
             onRowClick={setSelectedPart}
             onUpdateStock={handleUpdateStock}
             onUpdateLocation={handleUpdateLocation}
