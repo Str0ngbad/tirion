@@ -112,10 +112,59 @@ Routing Template, and other details later by reopening the form.
 
 ## Opening the Part Form
 
-Clicking any row in the grid opens the Part Form for that record. The form takes
-up most of the screen — this is the primary editing surface. The grid remains
-visible but de-emphasized behind it. Full-screen slide-in panel from the right
-is preferred.
+Clicking any row in the grid opens the Part Form for that record.
+
+### Surface Pattern
+
+The Part Form is a side panel that opens at approximately 33% of the viewport
+width when a user clicks a row in the Parts grid. The grid is pushed to the
+remaining ~67% rather than overlaid; the grid stays interactive while the panel
+is open. A selected-row indicator (left-edge accent and subtle background tint)
+marks which Part the panel is currently showing.
+
+This pattern differs from the modal-overlay pattern used by the Configuration
+surfaces (Vendor, MaterialSpec, User, Sub-Status detail modals). The Part Form
+is a long-lived navigation surface, not a one-shot edit modal — users frequently
+click between Parts while the panel is open, scroll between sections, and use the
+panel as a working context for cross-surface navigation (per ADR-013).
+
+Rationale:
+- The grid stays interactive so the user can navigate to a different Part by
+  clicking another row, without the open-close-reopen cycle of modal-based editing.
+- The side panel pattern is intended to be the canonical long-lived navigation
+  surface for surfaces with similar interaction patterns — initially the Part Form,
+  eventually the execution lenses' detail views.
+- Single-column layout within the panel is an accepted trade-off for the narrower
+  width; horizontal scroll on the grid for wide Views is also accepted.
+
+The panel and the grid scroll independently. The grid scrolls vertically and
+horizontally as needed for its content; the panel scrolls vertically as needed for
+its content. Neither scroll position affects the other.
+
+### Click-to-Section Navigation
+
+When a user clicks a specific column in a Parts grid row, the Part Form opens
+(or stays open) and scrolls to the section of the form that corresponds to that
+column. The column-to-section mapping is:
+
+| Grid Column | Form Section |
+|-------------|--------------|
+| Material, Stock Size | Material & Vendor |
+| Default Vendor, Vendor Part Number | Material & Vendor |
+| Routing Template, Routing chip column | Routing Template |
+| Bin Min, Bin Max, Inventory Location, Stock Count | Inventory |
+| Model, Drawing | Documentation |
+| Cost, Cost Last Updated | Cost |
+| Machine Cycle Time, Number of Setups | Manufacturing |
+| Part Number, Part Name, Description, all other columns | Header (top) |
+
+Each form section has a stable HTML id used by the click-to-scroll behavior. The
+mapping is declared per surface; when execution lenses adopt the same side panel
+pattern, they will declare their own column-to-section maps.
+
+When the panel is closed and the user clicks any column other than identification
+columns (Part Number, Part Name), the panel opens scrolled to the relevant section
+rather than at the top.
 
 ---
 
@@ -195,6 +244,42 @@ The dialog has no "apply to WIP" option. The user's only choices are confirm
 (saves the change, creates flags for affected open WOs) or cancel (discards
 the change entirely).
 
+### Definition Change Flag Dialog — Operationalized
+
+When the user clicks Save on the Part Form, the system evaluates two conditions:
+
+1. Did any of the definition fields change? Definition fields are:
+   materialSpecId, defaultVendorId, routingTemplateDefinitionId, stockSize,
+   blankLength.
+
+2. Does this Part have any downstream impact? Downstream impact means at least
+   one of:
+   - The Part is referenced as a child in at least one BOM record
+   - The Part has at least one open Work Order
+   - The Part has stockCount > 0
+
+If BOTH conditions are true, the Definition Change Flag Dialog is presented before
+the save commits. The dialog shows three count cards summarizing the impact:
+- Parent Assemblies count (the BOM child references)
+- Open WO count (production currently using this Part definition)
+- Stock count (inventory based on this Part definition)
+
+The dialog requires the user (Manager role or above) to acknowledge the change
+before the save proceeds. The dialog can be canceled, which discards the save
+attempt and returns to the Part Form with edits intact.
+
+If EITHER condition is false (no definition fields changed, OR the Part has no
+downstream impact), the save commits silently without the dialog. Non-definition
+field changes (Name, Description, Notes, vendorPartNumber, modelLink, drawingLink,
+partCost, machineCycleTime, numberOfSetups, binMin, binMax) never trigger the
+dialog regardless of Part impact.
+
+The dialog parallels the Routing Template Editor's Edit-Time Dialog (which has
+analogous logic for routing template definition changes affecting open WOs). Both
+dialogs share approximately 80% of design language but operate on different data.
+Implementation is encouraged to consolidate these into a shared component (e.g.,
+an `ImpactDialog` taking data sources as props) rather than building them separately.
+
 ### Inactive Vendor Edge Case
 
 If `defaultVendorId` is being set to an inactive vendor, the system errors at
@@ -260,6 +345,34 @@ See `definition_change_flag_spec.md` for the full Cancel specification.
   `defaultVendorId` is populated; hidden or visually de-emphasized when no default
   vendor is set. Used by purchasing to identify the SKU when ordering. Nullable.)
 
+### In-Context Creation (Material & Vendor)
+
+When editing a Part's Material or Default Vendor field, the user can create new
+MaterialSpec or Vendor records inline without leaving the Part Form.
+
+**MaterialSpec inline creation:**
+Invokes the cascade modal documented in configuration_management_spec.md
+(MaterialSpec Management — Cascade Modal Behavior). The cascade modal in the Part
+Form context is create-only. Full MaterialSpec edit and deactivation operations
+require navigating to the MaterialSpec Management surface.
+
+**Vendor inline creation:**
+Invokes a minimal Vendor create modal with the following fields:
+- vendorName (required)
+- contactInfo (optional)
+- leadTimeDays (optional)
+- notes (optional)
+
+The website and location fields are not exposed in the Part Form's in-context
+Vendor creation. Users who want to populate those fields should navigate to the
+Vendors surface. The reasoning: the Part Form in-context flow is optimized for
+"I need to add this vendor so I can save this Part" workflows; the comprehensive
+Vendor record can be filled in later.
+
+Both creation paths add real records to the database via the standard Vendor and
+MaterialSpec API endpoints. The new records are immediately available everywhere —
+the Vendor list, the MaterialSpec cascade dropdowns on other Parts, etc.
+
 ### Documentation
 - Model Link (`modelLink` — text input, URL. Light Zod URL validation (must be a
   valid URL if non-empty). Displayed as a clickable link in the Part Form and grid,
@@ -306,6 +419,33 @@ If no parents: "This part has no parent assemblies."
 This section answers "where is this part used?" — high value for understanding
 impact before editing a part definition.
 
+### Bidirectional BOM Traversal
+
+The Part Form's BOM-related sections support traversal in both directions of the
+BOM hierarchy:
+
+**Parent Assemblies section (all Parts):**
+Shows the parent Assemblies that reference this Part as a child. Listed regardless
+of Part type — Parts (leaf nodes) and Assemblies (which may themselves be children
+of larger Assemblies) both show this section. Each row is clickable; clicking
+navigates the side panel to the parent Assembly's Part Form without closing the
+panel or losing context.
+
+**Child Parts section (Assemblies only):**
+Shows the Parts that this Assembly is composed of. Only displayed when the current
+Part has partType: "Assembly". Each row is clickable; clicking navigates the side
+panel to the child Part's Part Form.
+
+Together, these sections enable full BOM tree traversal via the side panel: a user
+can navigate up from a leaf Part to its parent Assembly, up again to a grandparent
+Assembly, then down to a sibling component, all without leaving the panel. The BOM
+is the relational backbone of the Part model; the panel respects that.
+
+Implementation note: parent assemblies are queried as BOM records where this Part
+is the child; child parts are queried as BOM records where this Assembly is the
+parent. Both queries should be efficient for typical Part hierarchies (tens of
+parents, tens of children).
+
 ### Manufacturing
 - Machine Cycle Time (`machineCycleTime` — integer input, minutes per part for the
   dominant machining operation. Nullable.)
@@ -321,9 +461,12 @@ impact before editing a part definition.
     `binMax < binMin`, the UI surfaces a warning but does not block save
     (trust the user with tools).
 
-These fields are also available as inline edits in the grid (Inventory Location
-and Stock Count only). The form shows all inventory fields here for completeness
-and for users working in the form context.
+Inventory fields (stockCount, inventoryLocation, binMin, binMax) are
+inline-editable in the Parts grid and editable via the Part Form's Inventory
+section. The two surfaces operate on the same record in memory: edits in the
+grid reflect immediately in the open Part Form panel, and edits in the panel
+reflect immediately in the grid row. The grid is the fast path for single-field
+edits; the form is the comprehensive edit context.
 
 ### Cost
 - Part Cost (`partCost` — decimal input, nullable. Uses `Decimal(10,2)` in the
