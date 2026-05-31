@@ -10,8 +10,11 @@ import {
 } from "./_data";
 import PartsGrid, { PartSortKey } from "./_components/parts-grid";
 import PartFormSheet from "./_components/part-form-sheet";
+import ProcessTypeLegend from "@/app/mockups/routing-templates/_components/process-type-legend";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -148,6 +151,7 @@ export default function PartsPage() {
   const [sortKey, setSortKey] = useState<PartSortKey>("partNumber");
   const [sortAsc, setSortAsc] = useState(true);
   const [selectedPart, setSelectedPart] = useState<MockPart | null>(null);
+  const [condensed, setCondensed] = useState(true);
 
   // Mockup-only: active user for audit entries
   const actorName = "Jane Chen";
@@ -415,6 +419,25 @@ export default function PartsPage() {
         </div>
       </div>
 
+      {/* ProcessType legend + Condense toggle */}
+      <div className="relative">
+        <ProcessTypeLegend />
+        <div className="absolute right-8 top-3 flex items-center gap-2">
+          <Label
+            htmlFor="parts-condense"
+            className="cursor-pointer font-normal text-sm text-muted-foreground"
+          >
+            Condense
+          </Label>
+          <Switch
+            id="parts-condense"
+            size="sm"
+            checked={condensed}
+            onCheckedChange={setCondensed}
+          />
+        </div>
+      </div>
+
       {/* Grid */}
       <div className="mx-auto max-w-screen-2xl px-8 py-6">
         {displayed.length === 0 && !hasActiveFilters ? (
@@ -447,6 +470,7 @@ export default function PartsPage() {
             onRowClick={setSelectedPart}
             onUpdateStock={handleUpdateStock}
             onUpdateLocation={handleUpdateLocation}
+            condensed={condensed}
           />
         )}
       </div>

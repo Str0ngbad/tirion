@@ -31,6 +31,7 @@ type Props = {
   onRowClick: (part: MockPart) => void;
   onUpdateStock: (partId: number, stockCount: number) => void;
   onUpdateLocation: (partId: number, inventoryLocation: string) => void;
+  condensed: boolean;
 };
 
 function SortIcon({ active, asc }: { active: boolean; asc: boolean }) {
@@ -151,6 +152,7 @@ export default function PartsGrid({
   onRowClick,
   onUpdateStock,
   onUpdateLocation,
+  condensed,
 }: Props) {
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
@@ -309,7 +311,7 @@ export default function PartsGrid({
                 {p.routingTemplate && p.routingTemplate.steps.length > 0 ? (
                   <div className="flex items-center gap-0.5">
                     {p.routingTemplate.steps.map((step, i) => (
-                      <ProcessTypeChip key={i} processType={step} compact={true} />
+                      <ProcessTypeChip key={i} processType={step} compact={condensed} />
                     ))}
                   </div>
                 ) : (
