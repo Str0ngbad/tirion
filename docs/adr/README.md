@@ -30,6 +30,7 @@ All ADRs in Rev 1 are currently Accepted.
 | [010](./ADR-010-conventional-commits.md) | Conventional Commits | Accepted | Conventional Commits format (`feat:`, `fix:`, `chore:`, etc.) for scannable history and tooling compatibility, enforced by discipline rather than commitlint in Rev 1. |
 | [011](./ADR-011-neon-branches-for-isolation.md) | Neon Branches for Dev/Test/Prod | Accepted | Three Neon database branches (`main`, `dev`, `test`) replace planned Docker Compose; migrations flow dev → main → test via standard Prisma commands. |
 | [012](./ADR-012-commits-via-claude-code.md) | All Commits Routed Through Claude Code | Accepted | All Rev 1 commits go through Claude Code's commit workflow so `PostToolUse` hooks fire; recovery path documented for direct-terminal commits when unavoidable. |
+| [013](./ADR-013-cross-surface-navigation.md) | Cross-surface navigation via layered modals | Accepted | 2026-05-31 |
 
 ## Adding a new ADR
 
