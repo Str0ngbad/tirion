@@ -339,7 +339,7 @@ export default function PartsGrid({
 
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
-      <Table>
+      <Table className="w-auto">
         <TableHeader>
           <TableRow className="bg-card hover:bg-card">
             {visibleColumns.map((col) => {

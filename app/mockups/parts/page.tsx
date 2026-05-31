@@ -10,9 +10,19 @@ import type { ColumnId } from "./_lib/columns";
 import { ALL_COLUMNS } from "./_lib/columns";
 import type { Filter } from "./_lib/filter-engine";
 import { applyFilters } from "./_lib/filter-engine";
-import { SEEDED_VIEWS, type View } from "./_lib/views";
+import {
+  SEEDED_VIEWS,
+  type View,
+  nextViewId,
+  updateView,
+  setDefaultView,
+  deleteViewById,
+  duplicateView,
+} from "./_lib/views";
+import { isViewDirty } from "./_lib/view-diff";
 import PartsGrid from "./_components/parts-grid";
 import ViewSwitcher from "./_components/view-switcher";
+import ViewManagementModal from "./_components/view-management-modal";
 import ColumnsButton from "./_components/columns-button";
 import PartFormSheet from "./_components/part-form-sheet";
 import ProcessTypeLegend from "@/app/mockups/routing-templates/_components/process-type-legend";
@@ -27,7 +37,22 @@ const DEFAULT_VIEW = SEEDED_VIEWS.find((v) => v.isDefault)!;
 
 export default function PartsPage() {
   const [parts, setParts] = useState<MockPart[]>(MOCK_PARTS);
-  const [activeView, setActiveView] = useState<View>(DEFAULT_VIEW);
+
+  // ── Views state ──────────────────────────────────────────────────────────────
+
+  // Mutable list of all views (in-memory, resets on reload)
+  const [viewsList, setViewsList] = useState<View[]>(() =>
+    SEEDED_VIEWS.map((v) => ({ ...v }))
+  );
+  const [activeViewId, setActiveViewId] = useState<number>(DEFAULT_VIEW.viewId);
+
+  // Derived: always look up the current version of the active view
+  const activeView = viewsList.find((v) => v.viewId === activeViewId) ?? viewsList[0]!;
+
+  const [showManageViews, setShowManageViews] = useState(false);
+
+  // ── Grid state ───────────────────────────────────────────────────────────────
+
   const [search, setSearch] = useState("");
   const [sortCol, setSortCol] = useState<ColumnId>(DEFAULT_VIEW.defaultSort.columnId);
   const [sortAsc, setSortAsc] = useState(DEFAULT_VIEW.defaultSort.direction === "asc");
@@ -43,7 +68,20 @@ export default function PartsPage() {
   const actorName = "Jane Chen";
 
   // ── Derived visible columns ──────────────────────────────────────────────────
+
   const visibleColumns = sessionColumns ?? activeView.visibleColumns;
+
+  // ── Dirty state ──────────────────────────────────────────────────────────────
+
+  const isDirty = useMemo(
+    () =>
+      isViewDirty(activeView, {
+        visibleColumns,
+        sort: { columnId: sortCol, direction: sortAsc ? "asc" : "desc" },
+        filters: activeFilters,
+      }),
+    [activeView, visibleColumns, sortCol, sortAsc, activeFilters]
+  );
 
   // ── Sort handlers ────────────────────────────────────────────────────────────
 
@@ -65,13 +103,75 @@ export default function PartsPage() {
   // ── View change ──────────────────────────────────────────────────────────────
 
   function handleViewChange(v: View) {
-    setActiveView(v);
+    setActiveViewId(v.viewId);
     setSortCol(v.defaultSort.columnId);
     setSortAsc(v.defaultSort.direction === "asc");
-    // Replace active filters with the view's saved filters (clears ad-hoc)
     setActiveFilters(v.filters);
-    // Reset session column overrides so the view's column set takes effect
     setSessionColumns(null);
+  }
+
+  // ── View modification actions ────────────────────────────────────────────────
+
+  function handleSaveOverwrite() {
+    const updated: View = {
+      ...activeView,
+      visibleColumns,
+      defaultSort: { columnId: sortCol, direction: sortAsc ? "asc" : "desc" },
+      filters: activeFilters,
+    };
+    setViewsList((prev) => updateView(prev, updated));
+    // visibleColumns are now part of the saved view — sessionColumns no longer needed
+    setSessionColumns(null);
+  }
+
+  function handleSaveAsNew(name: string) {
+    const newView: View = {
+      viewId: nextViewId(viewsList),
+      name,
+      isDefault: false,
+      visibleColumns,
+      defaultSort: { columnId: sortCol, direction: sortAsc ? "asc" : "desc" },
+      filters: activeFilters,
+    };
+    setViewsList((prev) => [...prev, newView]);
+    setActiveViewId(newView.viewId);
+    setSessionColumns(null);
+  }
+
+  function handleRevert() {
+    setSortCol(activeView.defaultSort.columnId);
+    setSortAsc(activeView.defaultSort.direction === "asc");
+    setActiveFilters(activeView.filters);
+    setSessionColumns(null);
+  }
+
+  // ── Manage views modal handlers ──────────────────────────────────────────────
+
+  function handleRename(viewId: number, name: string) {
+    setViewsList((prev) => prev.map((v) => (v.viewId === viewId ? { ...v, name } : v)));
+  }
+
+  function handleSetDefault(viewId: number) {
+    setViewsList((prev) => setDefaultView(prev, viewId));
+  }
+
+  function handleDuplicate(viewId: number) {
+    setViewsList((prev) => duplicateView(prev, viewId));
+  }
+
+  function handleDelete(viewId: number) {
+    const newList = deleteViewById(viewsList, viewId);
+    setViewsList(newList);
+    if (activeViewId === viewId) {
+      const fallback = newList.find((v) => v.isDefault) ?? newList[0];
+      if (fallback) {
+        setActiveViewId(fallback.viewId);
+        setSortCol(fallback.defaultSort.columnId);
+        setSortAsc(fallback.defaultSort.direction === "asc");
+        setActiveFilters(fallback.filters);
+        setSessionColumns(null);
+      }
+    }
   }
 
   // ── Filter handlers ──────────────────────────────────────────────────────────
@@ -258,13 +358,18 @@ export default function PartsPage() {
       {/* View switcher + Columns button row */}
       <div className="border-b border-border bg-muted/20 px-8 py-2.5">
         <div className="mx-auto flex max-w-screen-2xl items-center gap-3">
-          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide shrink-0">
             View
           </span>
           <ViewSwitcher
-            views={SEEDED_VIEWS}
+            views={viewsList}
             activeView={activeView}
+            isDirty={isDirty}
             onViewChange={handleViewChange}
+            onSaveConfirmed={handleSaveOverwrite}
+            onSaveAsNew={handleSaveAsNew}
+            onRevert={handleRevert}
+            onManageViews={() => setShowManageViews(true)}
           />
           <div className="ml-auto flex items-center gap-3">
             {hasActiveFilters && (
@@ -360,6 +465,17 @@ export default function PartsPage() {
           onUpdate={handleUpdate}
         />
       )}
+
+      {/* Manage Views modal */}
+      <ViewManagementModal
+        views={viewsList}
+        open={showManageViews}
+        onClose={() => setShowManageViews(false)}
+        onRename={handleRename}
+        onSetDefault={handleSetDefault}
+        onDuplicate={handleDuplicate}
+        onDelete={handleDelete}
+      />
     </div>
   );
 }

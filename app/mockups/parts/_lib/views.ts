@@ -19,6 +19,34 @@ export type View = {
   filters: Filter[];
 };
 
+export function nextViewId(views: View[]): number {
+  return views.reduce((max, v) => Math.max(max, v.viewId), 0) + 1;
+}
+
+export function updateView(views: View[], updated: View): View[] {
+  return views.map((v) => (v.viewId === updated.viewId ? updated : v));
+}
+
+export function setDefaultView(views: View[], viewId: number): View[] {
+  return views.map((v) => ({ ...v, isDefault: v.viewId === viewId }));
+}
+
+export function deleteViewById(views: View[], viewId: number): View[] {
+  return views.filter((v) => v.viewId !== viewId);
+}
+
+export function duplicateView(views: View[], viewId: number): View[] {
+  const source = views.find((v) => v.viewId === viewId);
+  if (!source) return views;
+  const newView: View = {
+    ...source,
+    viewId: nextViewId(views),
+    name: `${source.name} copy`,
+    isDefault: false,
+  };
+  return [...views, newView];
+}
+
 export const SEEDED_VIEWS: View[] = [
   {
     viewId: 1,
