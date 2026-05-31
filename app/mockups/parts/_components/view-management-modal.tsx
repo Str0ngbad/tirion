@@ -109,25 +109,6 @@ function DeleteConfirm({ viewName, open, onConfirm, onCancel }: DeleteConfirmPro
   );
 }
 
-// ─── Sort summary helper ───────────────────────────────────────────────────────
-
-const SORT_LABELS: Partial<Record<string, string>> = {
-  partNumber: 'Part #',
-  partName: 'Part Name',
-  material: 'Material',
-  vendor: 'Vendor',
-  stockCount: 'Stock',
-  location: 'Location',
-  cost: 'Cost',
-  costLastUpdated: 'Cost Updated',
-  assembliesUsedInCount: 'Used In',
-};
-
-function sortSummary(view: View): string {
-  const { columnId, direction } = view.defaultSort;
-  return `${SORT_LABELS[columnId] ?? columnId} ${direction}`;
-}
-
 // ─── Modal ────────────────────────────────────────────────────────────────────
 
 type Props = {
@@ -156,7 +137,7 @@ export default function ViewManagementModal({
   return (
     <>
       <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
-        <DialogContent className="max-w-3xl" showCloseButton={false}>
+        <DialogContent className="max-w-lg" showCloseButton={false}>
           <DialogHeader>
             <DialogTitle>Manage Views</DialogTitle>
           </DialogHeader>
@@ -166,9 +147,6 @@ export default function ViewManagementModal({
                 <tr className="border-b border-border text-left">
                   <th className="pb-2 pl-1 pr-3 text-xs font-medium text-muted-foreground">Name</th>
                   <th className="pb-2 px-3 text-xs font-medium text-muted-foreground text-center">Default</th>
-                  <th className="pb-2 px-3 text-xs font-medium text-muted-foreground">Columns</th>
-                  <th className="pb-2 px-3 text-xs font-medium text-muted-foreground">Default Sort</th>
-                  <th className="pb-2 px-3 text-xs font-medium text-muted-foreground">Filters</th>
                   <th className="pb-2 px-3"></th>
                 </tr>
               </thead>
@@ -191,17 +169,6 @@ export default function ViewManagementModal({
                         onChange={() => onSetDefault(v.viewId)}
                         className="cursor-pointer accent-primary"
                       />
-                    </td>
-                    <td className="py-2 px-3 text-xs text-muted-foreground whitespace-nowrap">
-                      {v.visibleColumns.length} columns
-                    </td>
-                    <td className="py-2 px-3 text-xs text-muted-foreground whitespace-nowrap">
-                      {sortSummary(v)}
-                    </td>
-                    <td className="py-2 px-3 text-xs text-muted-foreground whitespace-nowrap">
-                      {v.filters.length === 0
-                        ? 'No filters'
-                        : `${v.filters.length} filter${v.filters.length === 1 ? '' : 's'}`}
                     </td>
                     <td className="py-2 px-3">
                       <div className="flex items-center gap-1">
