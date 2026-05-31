@@ -99,6 +99,41 @@ Phase: 1A — observed but deferred
 
 ---
 
+### Deviation-Summary footer line length too restrictive
+
+The commitlint configuration applies the standard 100-character body
+line limit to all commit message body lines, including the
+Deviation-Summary: footer line. This has hit the limit three times
+in close succession (commits e2a363d, fc67c29, c98ac7e), each
+requiring manual wrapping or summary truncation.
+
+The Deviation-Summary line's purpose is to provide a meaningful
+one-line summary that becomes the title of the auto-appended
+DEVIATIONS.md stub. A 100-character cap forces summaries to be
+shorter than the substance warrants — for changes spanning multiple
+models or surfaces, a clean summary often needs more room.
+
+Possible resolutions (deferred):
+- Configure commitlint to apply a longer max-line-length rule
+  specifically to footer lines containing Deviation-Summary, while
+  keeping the 100-char default on regular body lines
+- Configure commitlint to skip body-line-length checks on footer
+  lines entirely (footers have their own semantic meaning, line
+  length less critical)
+- Adopt a discipline of summary truncation in commit messages,
+  accepting that the full summary lives in the DEVIATIONS.md entry's
+  header
+
+Resolution path: explore commitlint's footer-specific config options.
+The commitlint-config-conventional rules support per-rule overrides
+for footers; the right config change is likely a one-line addition
+to commitlint.config.js (or wherever the project's commitlint config
+lives).
+
+Phase: 1A — observed and operational
+
+---
+
 ### project_tracker.md has no "In Progress" status
 
 The tracker script reports each phase as either "Not Started" or

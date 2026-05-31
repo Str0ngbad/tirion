@@ -879,3 +879,104 @@ operationalization of patterns the spec implied but did not specify:
   in the Part Form section)
 
 ---
+
+## 2026-05-31 — ProcurementType enum replaced by ProcurementCategory configurable lookup
+
+**Phase:** 1A
+**Spec section:** schema.md (Part model, ProcurementCategory model);
+  configuration_management_spec.md (new ProcurementCategory Management
+  section); seed_data_spec.md (new Section 3, AuditAction count update)
+**Discovered by:** User, during Parts Master Grid spec drafting
+**Status:** Resolved-Spec-Updated
+**Commit:** c98ac7e
+
+### What the spec said
+
+schema.md defined Part.procurementType as a three-value enum:
+ProcurementType { Make, Buy, MakeBuy }. The grid spec's column
+inventory drafting referenced this field as a categorical column for
+the Parts Master Grid.
+
+### What was discovered
+
+The three-value enum was operationally insufficient. The user's
+predecessor system used five categories that distinguish how a Part
+is procured at meaningful granularity:
+
+- CTL (Cut to Length): material cut to length by a vendor specifically
+  for this Part
+- PO (Part Off): material cut in-house from stocked material
+- P (Purchased): finished purchased component
+- SM (Sheet Metal): sheet metal stock
+- HW (Hardware): fasteners, fittings, off-the-shelf components
+
+These distinctions matter operationally. "Cut to Length" and "Part Off"
+look similar to a generic Make/Buy enum but have different vendor and
+inventory implications. "Purchased" is genuinely different from
+hardware purchasing because hardware tends to be standardized and
+ordered in bulk. The enum collapsed these distinctions and forced
+operational workflows to lose information.
+
+Making the categorization admin-configurable rather than enum-fixed
+also accommodates future evolution. If the shop's procurement
+patterns shift, admins can add categories without requiring a schema
+migration. This matches the broader pattern in Tirion of moving
+business categorization out of enums and into lookup tables (the
+prior MaterialSpec reconciliation followed a similar shape, replacing
+implicit material categorization with a configurable model).
+
+### Resolution
+
+- schema.md: new ProcurementCategory model with categoryCode (unique),
+  categoryName (unique), description, displayOrder, isActive. Part
+  model gains procurementCategoryId Int? with relation. The
+  ProcurementType enum is removed.
+- configuration_management_spec.md: new ProcurementCategory Management
+  section documenting Purpose, Schema, Grid Columns, Detail Modal
+  Fields, Creation, Editing, Deactivation Rules, and Initial Seed.
+  Configuration surfaces count updated from five to six. Permissions
+  table extended.
+- prisma/schema.prisma: synced with schema.md changes.
+- Migration 20260531145717_introduce_procurement_category applied to
+  dev branch. Creates ProcurementCategory table with seed-friendly
+  structure; adds procurementCategoryId column to Part with foreign
+  key; drops procurementType column from Part; drops ProcurementType
+  enum type. All DROP statements use IF EXISTS for idempotency.
+- No Part records existed in the database, so the procurementType
+  column drop required no data migration.
+- prisma/seed.ts: new seedProcurementCategories function upserts the
+  five starting categories keyed on categoryCode. Four new AuditActions
+  added to the Configuration category. The main seed entry point
+  calls seedProcurementCategories alongside the other seed functions.
+  Verification log updated.
+- seed_data_spec.md: new Section 3 documents ProcurementCategory seed
+  values (the five categories with their codes, names, descriptions,
+  and displayOrder). AuditAction total updated from 63 to 67 in two
+  places. Section numbering for downstream sections (AuditAction,
+  Initial Admin, What Is NOT Seeded) shifted by one.
+- Two stale references to procurementType in scripts/verify-vendor-
+  service.ts and scripts/verify-vendor-actions.ts were removed during
+  the type-check step. These were test fixture artifacts; the field is
+  now absent from Part creation in test code, which works correctly
+  since procurementCategoryId is nullable.
+- All verification passes: tsc clean, 15-step Vendor service
+  verification clean, seed produces expected counts (9 ProcessTypes,
+  16 sub-statuses, 67 AuditActions, 5 ProcurementCategories, 1 admin).
+
+The ProcurementCategory backend (service, routes, verification script,
+configuration management surface implementation) follows in a separate
+commit, applying the established pattern from Vendor and MaterialSpec
+work.
+
+### Files affected
+
+- spec/schema.md
+- spec/configuration_management_spec.md
+- spec/seed_data_spec.md
+- prisma/schema.prisma
+- prisma/migrations/20260531145717_introduce_procurement_category/migration.sql
+- prisma/seed.ts
+- scripts/verify-vendor-service.ts
+- scripts/verify-vendor-actions.ts
+
+---
