@@ -17,16 +17,25 @@ model Part {
   partName        String
   partType        PartType          // 'Part' | 'Assembly'
   description     String?
+  modelLink                   String?
+  drawingLink                 String?
   defaultVendorId             Int?
+  vendorPartNumber            String?
   materialSpecId              Int?
   stockSize                   String?
   routingTemplateDefinitionId Int?
   blankLength                 Decimal?  // length of raw material consumed per piece; nullable
+  machineCycleTime            Int?
+  numberOfSetups              Int?
   procurementType             ProcurementType  // 'Make' | 'Buy' | 'MakeBuy'
   inventoryLocation           String?   @unique  // enforced unique; default sort field for Parts Master
   stockCount                  Decimal?  @default(0)  // current on-hand count; core for distribution and stock fulfillment
+  binMin                      Int?
+  binMax                      Int?
   isActive                    Boolean   @default(true)
   notes                       String?
+  partCost                    Decimal?  @db.Decimal(10, 2)
+  partCostUpdatedAt           DateTime?
 
   // Relations
   defaultVendor     Vendor?           @relation(fields: [defaultVendorId], references: [vendorId])

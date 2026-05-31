@@ -81,7 +81,10 @@ model Part {
   partName        String
   partType        PartType          // 'Part' | 'Assembly'
   description     String?
+  modelLink                   String?   // URL to 3D model or CAD file; nullable
+  drawingLink                 String?   // URL to engineering drawing; nullable
   defaultVendorId             Int?
+  vendorPartNumber            String?   // vendor's SKU for this part; used by purchasing when ordering
   materialSpecId              Int?
   stockSize                   String?   // Free text describing material dimensions
                                         // (e.g., "1 x 2", "2 OD x 1.5 ID"). Nullable;
@@ -91,11 +94,17 @@ model Part {
                                         // via Zod, not via a database constraint.
   routingTemplateDefinitionId Int?
   blankLength                 Decimal?  // length of raw material consumed per piece; nullable
+  machineCycleTime            Int?      // minutes per part for dominant machining operation; nullable
+  numberOfSetups              Int?      // count of separate setups required to make the part; nullable
   procurementType             ProcurementType  // 'Make' | 'Buy' | 'MakeBuy'
   inventoryLocation           String?   @unique  // enforced unique; default sort field for Parts Master
   stockCount                  Decimal?  @default(0)  // current on-hand count; core for distribution and stock fulfillment
+  binMin                      Int?      // minimum inventory threshold; informational, no auto-replenishment in Rev 1
+  binMax                      Int?      // maximum inventory threshold; informational
   isActive                    Boolean   @default(true)
   notes                       String?
+  partCost                    Decimal?  @db.Decimal(10, 2)  // unit cost; Decimal preserves currency precision
+  partCostUpdatedAt           DateTime? // auto-set by service layer whenever partCost changes; not directly editable
 
   // Relations
   defaultVendor     Vendor?           @relation(fields: [defaultVendorId], references: [vendorId])
@@ -1282,7 +1291,8 @@ Changes surfaced during mockup development work.
 | # | Change | Source |
 |---|--------|--------|
 | RD19 | `Vendor.location` and `Vendor.website` added — surfaced during mockup work as fields with proven operational value from the predecessor system | Vendor field additions |
+| RD20 | `Part` gains nine fields: `vendorPartNumber`, `binMin`, `binMax`, `modelLink`, `drawingLink`, `partCost`, `partCostUpdatedAt`, `machineCycleTime`, `numberOfSetups`. All nullable. Surfaced during Part Form mockup work with proven operational value from predecessor system. | Part field additions |
 
-Total Mockup Work: 1 change applied.
+Total Mockup Work: 2 changes applied.
 
 The schema is build-ready.

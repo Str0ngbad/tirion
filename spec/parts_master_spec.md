@@ -49,6 +49,21 @@ The color-coding visual system supports approximately 8 ProcessTypes effectively
 Beyond that, color differentiation becomes unreliable — a design constraint to
 be aware of when adding new ProcessTypes.
 
+**Additional columns available via the Views system** (hidden by default; shown
+when included in a saved View):
+
+| Column | Source | Sortable | Filterable | Notes |
+|--------|--------|----------|------------|-------|
+| Vendor Part Number | `vendorPartNumber` | Yes | Yes | |
+| Bin Min | `binMin` | Yes | Yes (range) | |
+| Bin Max | `binMax` | Yes | Yes (range) | |
+| Model | `modelLink` | No | No | Clickable link, opens in new tab |
+| Drawing | `drawingLink` | No | No | Clickable link, opens in new tab |
+| Cost | `partCost` | Yes | Yes (range) | |
+| Cost Last Updated | `partCostUpdatedAt` | Yes | No | |
+| Machine Cycle Time | `machineCycleTime` | Yes | Yes (range) | Minutes per part |
+| Number of Setups | `numberOfSetups` | Yes | Yes (range) | |
+
 ---
 
 ## Filter Bar
@@ -143,6 +158,16 @@ and modifications go through the Reconcile Stock workflow.
 `isActive` cannot be set to false while the Part has open Work Orders (per existing
 Soft Delete rule); therefore deactivation cannot trigger flags.
 
+The nine fields added during mockup work (`vendorPartNumber`, `binMin`, `binMax`,
+`modelLink`, `drawingLink`, `partCost`, `partCostUpdatedAt`, `machineCycleTime`,
+`numberOfSetups`) are reference, inventory threshold, pricing, and operational metric
+data — not Part identity. Changes to these fields do **not** trigger the Definition
+Change Flag system regardless of downstream impact.
+
+This is consistent with the existing rule that flag triggers are scoped to fields
+that affect Part identity (Material Spec, Default Vendor, Routing Template, Stock
+Size, Blank Length).
+
 ### Dialog Layout
 
 A modal overlay on the Part form, blocking save until acknowledged.
@@ -231,6 +256,16 @@ See `definition_change_flag_spec.md` for the full Cancel specification.
   MaterialSpec has been selected; hidden or blank for Parts where
   `materialSpecId` is null — Assemblies, finished purchased components)
 - Default Vendor (searchable dropdown → Vendors table)
+- Vendor Part Number (`vendorPartNumber` — text input, free text. Displayed when
+  `defaultVendorId` is populated; hidden or visually de-emphasized when no default
+  vendor is set. Used by purchasing to identify the SKU when ordering. Nullable.)
+
+### Documentation
+- Model Link (`modelLink` — text input, URL. Light Zod URL validation (must be a
+  valid URL if non-empty). Displayed as a clickable link in the Part Form and grid,
+  opening in a new tab. Nullable.)
+- Drawing Link (`drawingLink` — text input, URL. Same validation and display rules
+  as Model Link. Nullable.)
 
 ### Routing Template
 Shows the Routing Template currently assigned to this Part. The Part references
@@ -271,12 +306,33 @@ If no parents: "This part has no parent assemblies."
 This section answers "where is this part used?" — high value for understanding
 impact before editing a part definition.
 
+### Manufacturing
+- Machine Cycle Time (`machineCycleTime` — integer input, minutes per part for the
+  dominant machining operation. Nullable.)
+- Number of Setups (`numberOfSetups` — integer input, count of separate setups
+  required to make the part. Nullable.)
+
 ### Inventory
 - Inventory Location (text, editable)
 - Stock Count (numeric, editable)
+- Bin Min (`binMin` — integer input, minimum inventory threshold. Nullable.)
+- Bin Max (`binMax` — integer input, maximum inventory threshold. Nullable.)
+  - Application-layer rule: if both Bin Min and Bin Max are set and
+    `binMax < binMin`, the UI surfaces a warning but does not block save
+    (trust the user with tools).
 
-These fields are also available as inline edits in the grid. The form shows
-them here for completeness and for users working in the form context.
+These fields are also available as inline edits in the grid (Inventory Location
+and Stock Count only). The form shows all inventory fields here for completeness
+and for users working in the form context.
+
+### Cost
+- Part Cost (`partCost` — decimal input, nullable. Uses `Decimal(10,2)` in the
+  database to preserve currency precision. Supports values up to $99,999,999.99.)
+- Cost Last Updated (`partCostUpdatedAt` — read-only display field. Auto-managed
+  by the Part service layer when built in Phase 1B: any update path that writes a
+  value to `partCost` which differs from the current value also sets
+  `partCostUpdatedAt` to `NOW()`. Manual edits to `partCostUpdatedAt` are not
+  exposed via the Part Form.)
 
 ---
 
