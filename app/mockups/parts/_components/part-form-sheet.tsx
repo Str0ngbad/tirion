@@ -1,8 +1,15 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { MockPart, MockPartAuditEntry, ProcurementType } from "../_data";
+import {
+  MockPart,
+  MockPartAuditEntry,
+  MockMinimalMaterialSpec,
+  MockMinimalVendor,
+  ProcurementType,
+} from "../_data";
 import PartAuditLogSection from "./part-audit-log-section";
+import PartFormMaterialVendorSection from "./part-form-material-vendor-section";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,8 +45,12 @@ type Props = {
   part: MockPart;
   actorName: string;
   scrollToSectionId: SectionId | null;
+  materialSpecs: MockMinimalMaterialSpec[];
+  vendors: MockMinimalVendor[];
   onClose: () => void;
   onUpdate: (updated: MockPart) => void;
+  onAddMaterialSpec: (spec: MockMinimalMaterialSpec) => void;
+  onAddVendor: (vendor: MockMinimalVendor) => void;
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -86,8 +97,12 @@ export default function PartFormSheet({
   part,
   actorName,
   scrollToSectionId,
+  materialSpecs,
+  vendors,
   onClose,
   onUpdate,
+  onAddMaterialSpec,
+  onAddVendor,
 }: Props) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
@@ -103,6 +118,11 @@ export default function PartFormSheet({
   );
   const [notes, setNotes] = useState(part.notes ?? "");
 
+  // Editable material & vendor fields
+  const [formMaterialSpec, setFormMaterialSpec] = useState<MockMinimalMaterialSpec | null>(part.materialSpec);
+  const [formStockSize, setFormStockSize] = useState(part.stockSize ?? "");
+  const [formVendor, setFormVendor] = useState<MockMinimalVendor | null>(part.defaultVendor);
+
   // When part changes, reset editable fields
   useEffect(() => {
     setPartName(part.partName);
@@ -111,6 +131,9 @@ export default function PartFormSheet({
     setProcurementType(part.procurementType);
     setBlankLength(part.blankLength !== null ? part.blankLength.toString() : "");
     setNotes(part.notes ?? "");
+    setFormMaterialSpec(part.materialSpec);
+    setFormStockSize(part.stockSize ?? "");
+    setFormVendor(part.defaultVendor);
   }, [part.partId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Scroll to section when scrollToSectionId changes
@@ -147,6 +170,31 @@ export default function PartFormSheet({
       changedFields.push({ field: "notes", before: part.notes, after: notes || null });
     }
 
+    const prevSpecLabel = part.materialSpec
+      ? `${part.materialSpec.materialName} — ${part.materialSpec.form}`
+      : null;
+    const nextSpecLabel = formMaterialSpec
+      ? `${formMaterialSpec.materialName} — ${formMaterialSpec.form}`
+      : null;
+    if (prevSpecLabel !== nextSpecLabel) {
+      changedFields.push({ field: "materialSpec", before: prevSpecLabel, after: nextSpecLabel });
+    }
+
+    const prevStockSize = part.stockSize ?? "";
+    if (formStockSize !== prevStockSize) {
+      changedFields.push({
+        field: "stockSize",
+        before: part.stockSize,
+        after: formStockSize || null,
+      });
+    }
+
+    const prevVendorName = part.defaultVendor?.vendorName ?? null;
+    const nextVendorName = formVendor?.vendorName ?? null;
+    if (prevVendorName !== nextVendorName) {
+      changedFields.push({ field: "defaultVendor", before: prevVendorName, after: nextVendorName });
+    }
+
     const activeChanged = isActive !== part.isActive;
     const definitionChanged = changedFields.length > 0;
 
@@ -177,6 +225,9 @@ export default function PartFormSheet({
       procurementType,
       blankLength: parsedLength,
       notes: notes || null,
+      materialSpec: formMaterialSpec,
+      stockSize: formStockSize || null,
+      defaultVendor: formVendor,
       auditLog: [...newLog, ...part.auditLog],
     };
 
@@ -189,7 +240,10 @@ export default function PartFormSheet({
     description !== (part.description ?? "") ||
     procurementType !== part.procurementType ||
     blankLength !== (part.blankLength !== null ? part.blankLength.toString() : "") ||
-    notes !== (part.notes ?? "");
+    notes !== (part.notes ?? "") ||
+    formMaterialSpec?.materialSpecId !== part.materialSpec?.materialSpecId ||
+    formStockSize !== (part.stockSize ?? "") ||
+    formVendor?.vendorId !== part.defaultVendor?.vendorId;
 
   return (
     <div className="flex h-full flex-col bg-background">
@@ -315,40 +369,22 @@ export default function PartFormSheet({
           </FormField>
         </section>
 
-        {/* ── Section 3: Material & Vendor (placeholder) ────────────── */}
+        {/* ── Section 3: Material & Vendor ──────────────────────────── */}
         <section id={SECTION_IDS.materialVendor}>
           <SectionHeader title="Material & Vendor" />
-          <div className="rounded-md border border-dashed border-border bg-muted/20 px-4 py-4">
-            <p className="text-xs text-muted-foreground">Coming in a later commit.</p>
-            {(part.materialSpec || part.defaultVendor || part.stockSize) && (
-              <div className="mt-3 space-y-1.5 border-t border-border pt-3">
-                {part.materialSpec && (
-                  <div className="flex gap-2 text-xs">
-                    <span className="font-medium text-muted-foreground w-20">Material:</span>
-                    <span className="text-foreground">{part.materialSpec.materialName} — {part.materialSpec.form}</span>
-                  </div>
-                )}
-                {part.stockSize && (
-                  <div className="flex gap-2 text-xs">
-                    <span className="font-medium text-muted-foreground w-20">Stock Size:</span>
-                    <span className="text-foreground">{part.stockSize}</span>
-                  </div>
-                )}
-                {part.defaultVendor && (
-                  <div className="flex gap-2 text-xs">
-                    <span className="font-medium text-muted-foreground w-20">Vendor:</span>
-                    <span className="text-foreground">{part.defaultVendor.vendorName}</span>
-                  </div>
-                )}
-                {part.cost !== null && (
-                  <div className="flex gap-2 text-xs">
-                    <span className="font-medium text-muted-foreground w-20">Cost:</span>
-                    <span className="text-foreground">${part.cost.toFixed(2)}</span>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+          <PartFormMaterialVendorSection
+            partType={part.partType}
+            materialSpec={formMaterialSpec}
+            stockSize={formStockSize}
+            defaultVendor={formVendor}
+            materialSpecs={materialSpecs}
+            vendors={vendors}
+            onMaterialSpecChange={setFormMaterialSpec}
+            onStockSizeChange={setFormStockSize}
+            onVendorChange={setFormVendor}
+            onAddMaterialSpec={onAddMaterialSpec}
+            onAddVendor={onAddVendor}
+          />
         </section>
 
         {/* ── Section 4: Routing Template (placeholder) ─────────────── */}

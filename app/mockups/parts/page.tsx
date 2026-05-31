@@ -3,8 +3,12 @@
 import { useState, useMemo, useEffect } from "react";
 import {
   MOCK_PARTS,
+  MOCK_MATERIAL_SPECS,
+  MOCK_VENDORS,
   MockPart,
   MockPartAuditEntry,
+  MockMinimalMaterialSpec,
+  MockMinimalVendor,
 } from "./_data";
 import type { ColumnId } from "./_lib/columns";
 import { ALL_COLUMNS } from "./_lib/columns";
@@ -67,6 +71,8 @@ const DEFAULT_VIEW = SEEDED_VIEWS.find((v) => v.isDefault)!;
 
 export default function PartsPage() {
   const [parts, setParts] = useState<MockPart[]>(MOCK_PARTS);
+  const [materialSpecs, setMaterialSpecs] = useState<MockMinimalMaterialSpec[]>(MOCK_MATERIAL_SPECS);
+  const [vendors, setVendors] = useState<MockMinimalVendor[]>(MOCK_VENDORS);
 
   // ── Views state ──────────────────────────────────────────────────────────────
 
@@ -526,8 +532,12 @@ export default function PartsPage() {
               part={selectedPart}
               actorName={actorName}
               scrollToSectionId={panelSection}
+              materialSpecs={materialSpecs}
+              vendors={vendors}
               onClose={() => setSelectedPart(null)}
               onUpdate={handleUpdate}
+              onAddMaterialSpec={(spec) => setMaterialSpecs((prev) => [...prev, spec])}
+              onAddVendor={(vendor) => setVendors((prev) => [...prev, vendor])}
             />
           </div>
         )}
