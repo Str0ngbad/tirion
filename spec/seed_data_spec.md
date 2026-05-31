@@ -155,7 +155,26 @@ No seed sub-statuses for these processes.
 
 ---
 
-## Section 3: AuditAction Lookup
+## Section 3: ProcurementCategory
+
+Per `configuration_management_spec.md`, ProcurementCategory is an
+admin-configurable lookup that replaces the former `ProcurementType` enum.
+Five starting categories from the predecessor system are seeded at
+initialization. Admins can edit, deactivate, or add categories post-install.
+
+| categoryCode | categoryName | description | displayOrder |
+|--------------|--------------|-------------|--------------|
+| CTL | Cut to Length | Material cut to length by a vendor specifically for this Part | 1 |
+| PO | Part Off | Material cut in-house from stocked material | 2 |
+| P | Purchased | Finished purchased component | 3 |
+| SM | Sheet Metal | Sheet metal stock | 4 |
+| HW | Hardware | Fasteners, fittings, off-the-shelf components | 5 |
+
+All seeded with `isActive = true`. Upsert key: `categoryCode`.
+
+---
+
+## Section 4: AuditAction Lookup
 
 Per `schema.md`, AuditAction is a lookup table; new action types are added
 via row inserts, not schema migrations. The full Rev 1 seed list:
@@ -262,15 +281,19 @@ via row inserts, not schema migrations. The full Rev 1 seed list:
 | VendorUpdated | Configuration | Vendor attribute fields edited |
 | VendorDeactivated | Configuration | Vendor isActive set to false |
 | VendorReactivated | Configuration | Vendor isActive restored to true |
+| ProcurementCategoryCreated | Configuration | New ProcurementCategory record created |
+| ProcurementCategoryUpdated | Configuration | ProcurementCategory attribute fields edited |
+| ProcurementCategoryDeactivated | Configuration | ProcurementCategory isActive set to false |
+| ProcurementCategoryReactivated | Configuration | ProcurementCategory isActive restored to true |
 
-**Total AuditAction seed entries:** 63
+**Total AuditAction seed entries:** 67
 
 All seeded with `isActive = true`. New action types added during Rev 1
 build (or Rev 2+) are inserted via additional seed runs or admin tooling.
 
 ---
 
-## Section 4: Initial Admin User
+## Section 5: Initial Admin User
 
 A fresh install needs at least one user with Admin role so someone can log
 in and configure the system. Without this, the manual user selection
@@ -303,7 +326,7 @@ preserves any post-install changes.
 
 ---
 
-## Section 5: What Is NOT Seeded
+## Section 6: What Is NOT Seeded
 
 The seed is intentionally minimal. The following are NOT seeded — they
 require deliberate user input:
@@ -374,7 +397,8 @@ After seeding, verify:
 - All 9 ProcessTypes exist
 - 16 ProcessTypeSubStatus entries exist (4 + 3 + 5 + 4 across the four
   process types with seed entries)
-- All 63 AuditAction entries exist
+- All 67 AuditAction entries exist (63 original + 4 ProcurementCategory)
+- All 5 ProcurementCategory entries exist
 - One admin user with userName = "admin" exists
 
 A simple verification script in `prisma/verify-seed.ts` can sanity-check

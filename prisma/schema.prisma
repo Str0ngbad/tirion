@@ -27,7 +27,7 @@ model Part {
   blankLength                 Decimal?  // length of raw material consumed per piece; nullable
   machineCycleTime            Int?
   numberOfSetups              Int?
-  procurementType             ProcurementType  // 'Make' | 'Buy' | 'MakeBuy'
+  procurementCategoryId       Int?
   inventoryLocation           String?   @unique  // enforced unique; default sort field for Parts Master
   stockCount                  Decimal?  @default(0)  // current on-hand count; core for distribution and stock fulfillment
   binMin                      Int?
@@ -38,9 +38,10 @@ model Part {
   partCostUpdatedAt           DateTime?
 
   // Relations
-  defaultVendor     Vendor?           @relation(fields: [defaultVendorId], references: [vendorId])
-  materialSpec      MaterialSpec?     @relation(fields: [materialSpecId], references: [materialSpecId])
-  routingTemplate   RoutingTemplateDefinition? @relation(fields: [routingTemplateDefinitionId], references: [routingTemplateDefinitionId])
+  defaultVendor        Vendor?              @relation(fields: [defaultVendorId], references: [vendorId])
+  materialSpec         MaterialSpec?        @relation(fields: [materialSpecId], references: [materialSpecId])
+  procurementCategory  ProcurementCategory? @relation(fields: [procurementCategoryId], references: [procurementCategoryId])
+  routingTemplate      RoutingTemplateDefinition? @relation(fields: [routingTemplateDefinitionId], references: [routingTemplateDefinitionId])
   bomParent         BOM[]             @relation("ParentPart")
   bomChild          BOM[]             @relation("ChildPart")
   workOrders        WorkOrder[]
@@ -53,10 +54,15 @@ enum PartType {
   Assembly
 }
 
-enum ProcurementType {
-  Make
-  Buy
-  MakeBuy
+model ProcurementCategory {
+  procurementCategoryId  Int     @id @default(autoincrement())
+  categoryCode           String  @unique
+  categoryName           String  @unique
+  description            String?
+  isActive               Boolean @default(true)
+  displayOrder           Int     @default(0)
+
+  parts  Part[]
 }
 
 model BOM {

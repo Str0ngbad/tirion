@@ -122,7 +122,6 @@ async function main() {
         partNumber: "VERIFY-ACTION-PART-001",
         partName: "Verification Test Part (vendor actions)",
         partType: "Part",
-        procurementType: "Buy",
         defaultVendorId: vendorId,
         isActive: true,
       },

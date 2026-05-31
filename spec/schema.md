@@ -96,7 +96,7 @@ model Part {
   blankLength                 Decimal?  // length of raw material consumed per piece; nullable
   machineCycleTime            Int?      // minutes per part for dominant machining operation; nullable
   numberOfSetups              Int?      // count of separate setups required to make the part; nullable
-  procurementType             ProcurementType  // 'Make' | 'Buy' | 'MakeBuy'
+  procurementCategoryId       Int?
   inventoryLocation           String?   @unique  // enforced unique; default sort field for Parts Master
   stockCount                  Decimal?  @default(0)  // current on-hand count; core for distribution and stock fulfillment
   binMin                      Int?      // minimum inventory threshold; informational, no auto-replenishment in Rev 1
@@ -107,8 +107,9 @@ model Part {
   partCostUpdatedAt           DateTime? // auto-set by service layer whenever partCost changes; not directly editable
 
   // Relations
-  defaultVendor     Vendor?           @relation(fields: [defaultVendorId], references: [vendorId])
-  materialSpec      MaterialSpec?     @relation(fields: [materialSpecId], references: [materialSpecId])
+  defaultVendor        Vendor?              @relation(fields: [defaultVendorId], references: [vendorId])
+  materialSpec         MaterialSpec?        @relation(fields: [materialSpecId], references: [materialSpecId])
+  procurementCategory  ProcurementCategory? @relation(fields: [procurementCategoryId], references: [procurementCategoryId])
   routingTemplate   RoutingTemplateDefinition? @relation(fields: [routingTemplateDefinitionId], references: [routingTemplateDefinitionId])
   bomParent         BOM[]             @relation("ParentPart")
   bomChild          BOM[]             @relation("ChildPart")
@@ -122,11 +123,6 @@ enum PartType {
   Assembly
 }
 
-enum ProcurementType {
-  Make
-  Buy
-  MakeBuy
-}
 ```
 
 **Rules:**
@@ -366,6 +362,38 @@ The canonical seed list lives in `seed_data_spec.md`. Summary:
 - **Distribution:** No seed sub-statuses
 
 Total: 16 ProcessTypeSubStatus seed entries.
+
+---
+
+### ProcurementCategory
+
+Admin-configurable lookup table for procurement categorization. Replaces the
+former `ProcurementType` enum (`Make` | `Buy` | `MakeBuy`) with a relational
+model that admins can manage without schema migrations.
+
+```prisma
+model ProcurementCategory {
+  procurementCategoryId  Int      @id @default(autoincrement())
+  categoryCode           String   @unique   // "CTL", "PO", etc.
+  categoryName           String   @unique   // "Cut to Length", etc.
+  description            String?
+  isActive               Boolean  @default(true)
+  displayOrder           Int      @default(0)
+
+  // Relations
+  parts  Part[]
+}
+```
+
+**Seed data (Rev 1 — 5 ProcurementCategories; see `seed_data_spec.md`):**
+
+| categoryCode | categoryName | description |
+|--------------|--------------|-------------|
+| CTL | Cut to Length | Material cut to length by a vendor specifically for this Part |
+| PO | Part Off | Material cut in-house from stocked material |
+| P | Purchased | Finished purchased component |
+| SM | Sheet Metal | Sheet metal stock |
+| HW | Hardware | Fasteners, fittings, off-the-shelf components |
 
 ---
 
@@ -1292,7 +1320,8 @@ Changes surfaced during mockup development work.
 |---|--------|--------|
 | RD19 | `Vendor.location` and `Vendor.website` added — surfaced during mockup work as fields with proven operational value from the predecessor system | Vendor field additions |
 | RD20 | `Part` gains nine fields: `vendorPartNumber`, `binMin`, `binMax`, `modelLink`, `drawingLink`, `partCost`, `partCostUpdatedAt`, `machineCycleTime`, `numberOfSetups`. All nullable. Surfaced during Part Form mockup work with proven operational value from predecessor system. | Part field additions |
+| RD21 | `ProcurementType` enum replaced by `ProcurementCategory` model (admin-configurable lookup table with `categoryCode`, `categoryName`, `description`, `isActive`, `displayOrder`). Initial seed: 5 categories (CTL, PO, P, SM, HW). `Part.procurementType` removed; `Part.procurementCategoryId` added (nullable). | Procurement categorization moved from fixed enum to configurable lookup |
 
-Total Mockup Work: 2 changes applied.
+Total Mockup Work: 3 changes applied.
 
 The schema is build-ready.

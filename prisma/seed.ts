@@ -1,5 +1,27 @@
 import { prisma } from "../lib/db/client";
 
+// ─── ProcurementCategories ───────────────────────────────────────────────────
+
+async function seedProcurementCategories() {
+  const procurementCategories = [
+    { categoryCode: "CTL", categoryName: "Cut to Length", description: "Material cut to length by a vendor specifically for this Part", displayOrder: 1, isActive: true },
+    { categoryCode: "PO",  categoryName: "Part Off",      description: "Material cut in-house from stocked material", displayOrder: 2, isActive: true },
+    { categoryCode: "P",   categoryName: "Purchased",     description: "Finished purchased component", displayOrder: 3, isActive: true },
+    { categoryCode: "SM",  categoryName: "Sheet Metal",   description: "Sheet metal stock", displayOrder: 4, isActive: true },
+    { categoryCode: "HW",  categoryName: "Hardware",      description: "Fasteners, fittings, off-the-shelf components", displayOrder: 5, isActive: true },
+  ];
+
+  for (const cat of procurementCategories) {
+    await prisma.procurementCategory.upsert({
+      where: { categoryCode: cat.categoryCode },
+      update: {},
+      create: cat,
+    });
+  }
+
+  console.log(`  ProcurementCategories: ${procurementCategories.length} records`);
+}
+
 // ─── ProcessTypes ────────────────────────────────────────────────────────────
 
 async function seedProcessTypes() {
@@ -154,6 +176,10 @@ async function seedAuditActions() {
     { actionName: "VendorUpdated", category: "Configuration", description: "Vendor attribute fields edited" },
     { actionName: "VendorDeactivated", category: "Configuration", description: "Vendor isActive set to false" },
     { actionName: "VendorReactivated", category: "Configuration", description: "Vendor isActive restored to true" },
+    { actionName: "ProcurementCategoryCreated", category: "Configuration", description: "New ProcurementCategory record created" },
+    { actionName: "ProcurementCategoryUpdated", category: "Configuration", description: "ProcurementCategory attribute fields edited" },
+    { actionName: "ProcurementCategoryDeactivated", category: "Configuration", description: "ProcurementCategory isActive set to false" },
+    { actionName: "ProcurementCategoryReactivated", category: "Configuration", description: "ProcurementCategory isActive restored to true" },
   ];
 
   for (const aa of auditActions) {
@@ -188,17 +214,19 @@ async function seedAdminUser() {
 // ─── Verification ─────────────────────────────────────────────────────────────
 
 async function verify() {
-  const [processTypeCount, subStatusCount, auditActionCount, userCount] = await Promise.all([
+  const [processTypeCount, subStatusCount, auditActionCount, procurementCategoryCount, userCount] = await Promise.all([
     prisma.processType.count(),
     prisma.processTypeSubStatus.count(),
     prisma.auditAction.count(),
+    prisma.procurementCategory.count(),
     prisma.user.count({ where: { userName: "admin" } }),
   ]);
 
   console.log("\nVerification:");
   console.log(`  ProcessTypes:           ${processTypeCount} (expected = 9)`);
   console.log(`  ProcessTypeSubStatuses: ${subStatusCount} (expected = 16)`);
-  console.log(`  AuditActions:           ${auditActionCount} (expected = 63)`);
+  console.log(`  AuditActions:           ${auditActionCount} (expected = 67)`);
+  console.log(`  ProcurementCategories:  ${procurementCategoryCount} (expected = 5)`);
   console.log(`  Admin user present:     ${userCount === 1 ? "yes" : "NO — check seed"}`);
 }
 
@@ -207,6 +235,7 @@ async function verify() {
 async function main() {
   console.log("Seeding Tirion database…\n");
 
+  await seedProcurementCategories();
   await seedProcessTypes();
   await seedSubStatuses();
   await seedAuditActions();

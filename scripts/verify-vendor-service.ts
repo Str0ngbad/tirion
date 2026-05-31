@@ -133,7 +133,6 @@ async function main() {
         partNumber: "VERIFY-VENDOR-PART-001",
         partName: "Verification Test Part (vendor service)",
         partType: "Part",
-        procurementType: "Buy",
         defaultVendorId: vendorAId,
         isActive: true,
       },

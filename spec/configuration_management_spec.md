@@ -24,13 +24,14 @@ references, no surprise behaviors.
 
 ## Scope
 
-Five configuration surfaces:
+Six configuration surfaces:
 
 1. **Vendors** — companies and suppliers we order from
 2. **MaterialSpecs** — material specifications referenced by Parts and Supply Order Lines
 3. **Users** — system users with role assignments
 4. **ProcessTypes** — the catalog of process steps available for routing templates
 5. **ProcessTypeSubStatus** — per-process sub-status options
+6. **ProcurementCategory** — how a Part is procured (admin-configurable lookup)
 
 Each surface is described in its own section below. Common patterns shared
 across all five are documented first.
@@ -89,6 +90,7 @@ correctly because the Vendor record still exists in the database.
 | Users | — | All |
 | ProcessTypes | — | View only (locked in Rev 1) |
 | ProcessTypeSubStatus | — | All |
+| ProcurementCategory | — | All |
 
 Operators and Leads have no access to configuration surfaces. Manager/Admin
 distinction matters primarily for User management and ProcessType management
@@ -788,6 +790,90 @@ When a sub-status is deactivated:
 
 Display order can be changed via inline edit on the displayOrder field.
 Operator dropdowns will update on next page load.
+
+---
+
+## ProcurementCategory Management
+
+### Purpose
+
+ProcurementCategory values categorize how a Part is procured —
+whether it's cut to length by an outside vendor, parted off from
+in-house stock, purchased as a finished component, sheet metal
+stock, or hardware (fasteners, fittings, off-the-shelf components).
+
+Categories are admin-configurable. The Rev 1 seed includes five
+starting categories from the predecessor system; admins can add,
+edit, deactivate, or reactivate categories as the shop's procurement
+patterns evolve.
+
+### Schema
+
+Reference: schema.md ProcurementCategory model.
+
+Each category has:
+- `categoryCode`: short identifier (e.g., "CTL"), unique, used in
+  compact UI contexts like grid columns and chips
+- `categoryName`: full label (e.g., "Cut to Length"), unique, used in
+  forms, modals, and management surface
+- `description`: optional free text
+- `isActive`: soft-delete flag
+- `displayOrder`: integer for sort order in dropdowns and management
+  grid
+
+### Grid Columns
+
+| Column | Notes |
+|--------|-------|
+| Code | categoryCode (e.g., "CTL"); compact identifier |
+| Name | categoryName; readable label |
+| Description | Free text |
+| Used By | Count of active Parts assigned to this category |
+| Order | displayOrder; inline-editable |
+| Active | Soft-delete indicator |
+
+### Detail Modal Fields
+
+All grid columns plus:
+- Audit log (collapsible)
+- Reference list: which Parts use this category (clickable links to those Parts)
+
+### Creation
+
+Admin only. "Add New Category" button in the management surface
+header opens a create modal with:
+- Code (required, unique, short — typically 2-4 characters)
+- Name (required, unique)
+- Description (optional)
+- Display Order (optional, defaults to next available position)
+
+### Editing
+
+Admin only. All fields editable. Changes to `categoryCode` or
+`categoryName` propagate to all Parts referencing this category via
+the relation — no migration of Part records needed.
+
+### Deactivation Rules
+
+Categories can be deactivated. Deactivation does not block when
+active Parts reference the category — historical Parts keep their
+reference, and the deactivated category just can't be assigned to
+new Parts going forward.
+
+### Initial Seed (Rev 1)
+
+Five starting categories:
+
+| Code | Name | Description |
+|------|------|-------------|
+| CTL | Cut to Length | Material cut to length by a vendor specifically for this Part |
+| PO | Part Off | Material cut in-house from stocked material |
+| P | Purchased | Finished purchased component |
+| SM | Sheet Metal | Sheet metal stock |
+| HW | Hardware | Fasteners, fittings, off-the-shelf components |
+
+Admins can edit any of these starting values, deactivate them, or
+add new categories.
 
 ---
 
