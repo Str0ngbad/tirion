@@ -639,3 +639,154 @@ additive changes rather than folded into a contactInfo restructuring.
 - scripts/verify-vendor-service.ts
 
 ---
+
+## 2026-05-28 — edit-distance autocomplete in cascade modal anticipates Rev 1.5+
+
+**Phase:** _To be filled in._
+**Spec section:** spec/configuration_management_spec.md
+**Discovered by:** _To be filled in._
+**Status:** Captured (rationale TBD)
+**Commit:** 0cc28d3fb7fc0fa87cea66b0b925e4037815d034
+
+### What was discovered
+
+_To be filled in._
+
+### Resolution
+
+_To be filled in._
+
+### Files affected
+
+_To be filled in._
+
+---
+
+## 2026-05-28 — modal edit path replaces inline field editing implied by spec
+
+**Phase:** _To be filled in._
+**Spec section:** spec/configuration_management_spec.md
+**Discovered by:** _To be filled in._
+**Status:** Captured (rationale TBD)
+**Commit:** 0dc56e640db251df69ad65662b5958ccb658ec15
+
+### What was discovered
+
+_To be filled in._
+
+### Resolution
+
+_To be filled in._
+
+### Files affected
+
+_To be filled in._
+
+---
+
+## 2026-05-29 — dialog redesigned as count cards with 3 expandable panels; not spec sections
+
+**Phase:** _To be filled in._
+**Spec section:** spec/routing_template_editor_spec.md
+**Discovered by:** _To be filled in._
+**Status:** Captured (rationale TBD)
+**Commit:** 0784aca85333dcd9dbfbd8665b1ae658528f1d5e
+
+### What was discovered
+
+_To be filled in._
+
+### Resolution
+
+_To be filled in._
+
+### Files affected
+
+_To be filled in._
+
+---
+
+## 2026-05-31 — Nine additive Part fields and DCF trigger clarification surfaced during mockup work
+
+**Phase:** 1A
+**Spec section:** schema.md (Part model) and parts_master_spec.md (Part Form, Definition Change Flag triggers, Grid Columns sections)
+**Discovered by:** User, during Part Form mockup work
+**Status:** Resolved-Spec-Updated
+**Commit:** fc67c29
+
+### What the spec said
+
+The Part model in schema.md defined the core operational fields
+required for Phase 1A's Parts Master: identifiers, type, procurement,
+material/vendor relations, routing, BOM linkage, inventory location,
+stock count, and lifecycle. Neither schema.md nor parts_master_spec
+included vendor part numbers, inventory thresholds, CAD documentation
+links, pricing data, or manufacturing metrics — fields the user's
+predecessor spreadsheet system had accumulated as operationally
+meaningful over years of real use.
+
+### What was discovered
+
+During Part Form mockup work, the user referenced the predecessor
+system and identified nine fields with proven operational value that
+were missing from the Rev 1 spec:
+
+- vendorPartNumber: required for buyer workflow (the SKU to identify
+  when ordering from a vendor)
+- binMin and binMax: inventory threshold data that allows users to
+  begin populating the values now in preparation for the Stock
+  Fulfillment lens (Phase 4) consumption
+- modelLink and drawingLink: light CAD integration enabling a Part
+  to reference its model file and engineering drawing directly
+- partCost and partCostUpdatedAt: pricing data with a service-managed
+  timestamp that records when the cost was last recorded
+- machineCycleTime and numberOfSetups: manufacturing metrics that
+  inform routing decisions and capacity planning
+
+The fields are reference, inventory threshold, pricing, and operational
+metric data — not Part identity. As such, they do not trigger the
+Definition Change Flag system; this clarification was added to the
+spec to prevent future confusion about flag scope.
+
+The discovery also surfaced that several additional fields explored in
+the mockup (vendor part number, model link, drawing link, part cost,
+cost last updated, machine cycle time, number of setups) had originally
+been considered Rev 2 work. The user's evaluation was that the
+operational cost of populating these fields was minimal and the value
+of having the data structure in place justified adding them as
+additive Rev 1 fields rather than deferring.
+
+### Resolution
+
+- schema.md Part model: added nine nullable fields in logical groupings
+  (identification, vendor, manufacturing, inventory, cost).
+- parts_master_spec.md updated:
+  - Material & Vendor section: vendorPartNumber documented with
+    conditional display rule
+  - New Documentation subsection: modelLink and drawingLink with URL
+    validation and clickable-link display rules
+  - New Manufacturing subsection: machineCycleTime and numberOfSetups
+  - Inventory section: binMin and binMax with warn-not-block rule for
+    binMax < binMin
+  - New Cost subsection: partCost with Decimal precision rationale,
+    partCostUpdatedAt as read-only auto-managed field
+  - Definition Change Flag triggers section: explicit clarification
+    that the nine new fields do not trigger flags
+  - Grid Columns section: new fields documented as available columns
+- prisma/schema.prisma synced; partCost uses @db.Decimal(10, 2)
+- Migration 20260531125555_part_field_additions applied to dev branch
+  (nine ALTER TABLE ADD COLUMN statements; all columns nullable, no
+  risk to existing data)
+- Seed re-ran cleanly with the updated schema
+- Vendor service verification re-ran cleanly (no regressions)
+- /lib/parts/ does not yet exist; Phase 1B Part service will be built
+  against the updated schema from the start
+
+### Files affected
+
+- spec/schema.md (Part model, Mockup Work Change Summary)
+- spec/parts_master_spec.md (multiple sections)
+- prisma/schema.prisma (Part model)
+- prisma/migrations/20260531125555_part_field_additions/migration.sql
+
+---
