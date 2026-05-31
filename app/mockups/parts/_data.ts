@@ -45,6 +45,17 @@ export type MockPart = {
   isActive: boolean;
   createdAt: string;
   auditLog: MockPartAuditEntry[];
+  // Extended fields
+  vendorPartNumber: string | null;
+  modelLink: string | null;
+  drawingLink: string | null;
+  binMin: number | null;
+  binMax: number | null;
+  cost: number | null;
+  costLastUpdated: string | null;
+  machineCycleTime: number | null;
+  numberOfSetups: number | null;
+  assembliesUsedInCount: number;
 };
 
 // ─── Reference data (for filter bar population) ─────────────────────────────
@@ -101,6 +112,16 @@ export const MOCK_PARTS: MockPart[] = [
     inventoryLocation: "A-01",
     isActive: true,
     createdAt: "2026-01-20T10:00:00.000Z",
+    vendorPartNumber: null,
+    modelLink: "https://example.com/models/BRK-101.step",
+    drawingLink: "https://example.com/drawings/BRK-101.pdf",
+    binMin: 5,
+    binMax: 20,
+    cost: 28.50,
+    costLastUpdated: "2025-11-15",
+    machineCycleTime: 18.5,
+    numberOfSetups: 2,
+    assembliesUsedInCount: 2,
     auditLog: [
       {
         timestamp: "2026-03-15T14:30:00.000Z",
@@ -135,6 +156,16 @@ export const MOCK_PARTS: MockPart[] = [
     inventoryLocation: "A-02",
     isActive: true,
     createdAt: "2026-01-20T10:05:00.000Z",
+    vendorPartNumber: null,
+    modelLink: "https://example.com/models/PLT-330.step",
+    drawingLink: "https://example.com/drawings/PLT-330.pdf",
+    binMin: 3,
+    binMax: 15,
+    cost: 42.00,
+    costLastUpdated: "2025-10-20",
+    machineCycleTime: 24.0,
+    numberOfSetups: 2,
+    assembliesUsedInCount: 1,
     auditLog: [
       {
         timestamp: "2026-01-20T10:05:00.000Z",
@@ -160,6 +191,16 @@ export const MOCK_PARTS: MockPart[] = [
     inventoryLocation: "B-01",
     isActive: true,
     createdAt: "2026-01-21T09:00:00.000Z",
+    vendorPartNumber: null,
+    modelLink: "https://example.com/models/SHF-701.step",
+    drawingLink: "https://example.com/drawings/SHF-701.pdf",
+    binMin: 2,
+    binMax: 10,
+    cost: 65.00,
+    costLastUpdated: "2026-01-08",
+    machineCycleTime: 32.5,
+    numberOfSetups: 3,
+    assembliesUsedInCount: 1,
     auditLog: [
       {
         timestamp: "2026-04-02T11:00:00.000Z",
@@ -193,6 +234,16 @@ export const MOCK_PARTS: MockPart[] = [
     inventoryLocation: "B-02",
     isActive: true,
     createdAt: "2026-01-22T09:30:00.000Z",
+    vendorPartNumber: null,
+    modelLink: "https://example.com/models/HSG-401.step",
+    drawingLink: "https://example.com/drawings/HSG-401.pdf",
+    binMin: 2,
+    binMax: 8,
+    cost: 85.00,
+    costLastUpdated: "2025-09-05",
+    machineCycleTime: 45.0,
+    numberOfSetups: 3,
+    assembliesUsedInCount: 1,
     auditLog: [
       {
         timestamp: "2026-01-22T09:30:00.000Z",
@@ -218,6 +269,16 @@ export const MOCK_PARTS: MockPart[] = [
     inventoryLocation: "C-01",
     isActive: true,
     createdAt: "2026-01-22T10:00:00.000Z",
+    vendorPartNumber: "ACM-90145A155",
+    modelLink: null,
+    drawingLink: null,
+    binMin: 10,
+    binMax: 50,
+    cost: 1.25,
+    costLastUpdated: "2026-03-01",
+    machineCycleTime: null,
+    numberOfSetups: null,
+    assembliesUsedInCount: 3,
     auditLog: [
       {
         timestamp: "2026-01-22T10:00:00.000Z",
@@ -243,6 +304,16 @@ export const MOCK_PARTS: MockPart[] = [
     inventoryLocation: "B-03",
     isActive: true,
     createdAt: "2026-02-03T13:00:00.000Z",
+    vendorPartNumber: "PRM-C2245-AL",
+    modelLink: "https://example.com/models/BLK-001.step",
+    drawingLink: "https://example.com/drawings/BLK-001.pdf",
+    binMin: 2,
+    binMax: 6,
+    cost: 48.00,
+    costLastUpdated: "2025-12-10",
+    machineCycleTime: 22.0,
+    numberOfSetups: 2,
+    assembliesUsedInCount: 1,
     auditLog: [
       {
         timestamp: "2026-02-03T13:00:00.000Z",
@@ -268,6 +339,16 @@ export const MOCK_PARTS: MockPart[] = [
     inventoryLocation: "A-03",
     isActive: true,
     createdAt: "2026-02-10T09:00:00.000Z",
+    vendorPartNumber: null,
+    modelLink: "https://example.com/models/FLG-201.step",
+    drawingLink: "https://example.com/drawings/FLG-201.pdf",
+    binMin: 2,
+    binMax: 10,
+    cost: 55.00,
+    costLastUpdated: "2025-11-30",
+    machineCycleTime: 28.0,
+    numberOfSetups: 2,
+    assembliesUsedInCount: 1,
     auditLog: [
       {
         timestamp: "2026-02-10T09:00:00.000Z",
@@ -293,6 +374,16 @@ export const MOCK_PARTS: MockPart[] = [
     inventoryLocation: "C-02",
     isActive: true,
     createdAt: "2026-02-15T11:00:00.000Z",
+    vendorPartNumber: "FTS-NZ1000SS",
+    modelLink: null,
+    drawingLink: "https://example.com/drawings/NZL-101.pdf",
+    binMin: 4,
+    binMax: 20,
+    cost: 12.50,
+    costLastUpdated: "2026-02-15",
+    machineCycleTime: null,
+    numberOfSetups: null,
+    assembliesUsedInCount: 1,
     auditLog: [
       {
         timestamp: "2026-02-15T11:00:00.000Z",
@@ -318,6 +409,16 @@ export const MOCK_PARTS: MockPart[] = [
     inventoryLocation: "C-03",
     isActive: true,
     createdAt: "2026-02-15T11:15:00.000Z",
+    vendorPartNumber: "FTS-GK3000RB",
+    modelLink: null,
+    drawingLink: null,
+    binMin: 5,
+    binMax: 30,
+    cost: 3.75,
+    costLastUpdated: "2026-01-22",
+    machineCycleTime: null,
+    numberOfSetups: null,
+    assembliesUsedInCount: 1,
     auditLog: [
       {
         timestamp: "2026-02-15T11:15:00.000Z",
@@ -343,6 +444,16 @@ export const MOCK_PARTS: MockPart[] = [
     inventoryLocation: "C-04",
     isActive: true,
     createdAt: "2026-03-01T08:00:00.000Z",
+    vendorPartNumber: "ACM-SPG-07500",
+    modelLink: null,
+    drawingLink: null,
+    binMin: 10,
+    binMax: 50,
+    cost: 2.20,
+    costLastUpdated: "2026-03-01",
+    machineCycleTime: null,
+    numberOfSetups: null,
+    assembliesUsedInCount: 1,
     auditLog: [
       {
         timestamp: "2026-03-01T08:00:00.000Z",
@@ -368,6 +479,16 @@ export const MOCK_PARTS: MockPart[] = [
     inventoryLocation: "B-04",
     isActive: false,
     createdAt: "2026-01-20T10:30:00.000Z",
+    vendorPartNumber: null,
+    modelLink: "https://example.com/models/CAP-801.step",
+    drawingLink: "https://example.com/drawings/CAP-801.pdf",
+    binMin: null,
+    binMax: null,
+    cost: 38.00,
+    costLastUpdated: "2025-08-10",
+    machineCycleTime: 15.0,
+    numberOfSetups: 1,
+    assembliesUsedInCount: 0,
     auditLog: [
       {
         timestamp: "2026-04-20T15:00:00.000Z",
@@ -398,6 +519,16 @@ export const MOCK_PARTS: MockPart[] = [
     inventoryLocation: "ASSY-01",
     isActive: true,
     createdAt: "2026-01-25T14:00:00.000Z",
+    vendorPartNumber: null,
+    modelLink: null,
+    drawingLink: null,
+    binMin: null,
+    binMax: null,
+    cost: null,
+    costLastUpdated: null,
+    machineCycleTime: null,
+    numberOfSetups: null,
+    assembliesUsedInCount: 0,
     auditLog: [
       {
         timestamp: "2026-01-25T14:00:00.000Z",
@@ -423,6 +554,16 @@ export const MOCK_PARTS: MockPart[] = [
     inventoryLocation: "ASSY-02",
     isActive: true,
     createdAt: "2026-01-25T14:10:00.000Z",
+    vendorPartNumber: null,
+    modelLink: null,
+    drawingLink: null,
+    binMin: null,
+    binMax: null,
+    cost: null,
+    costLastUpdated: null,
+    machineCycleTime: null,
+    numberOfSetups: null,
+    assembliesUsedInCount: 0,
     auditLog: [
       {
         timestamp: "2026-03-10T10:00:00.000Z",
@@ -456,6 +597,16 @@ export const MOCK_PARTS: MockPart[] = [
     inventoryLocation: "ASSY-01",
     isActive: true,
     createdAt: "2026-02-01T09:00:00.000Z",
+    vendorPartNumber: null,
+    modelLink: null,
+    drawingLink: null,
+    binMin: null,
+    binMax: null,
+    cost: null,
+    costLastUpdated: null,
+    machineCycleTime: null,
+    numberOfSetups: null,
+    assembliesUsedInCount: 1,
     auditLog: [
       {
         timestamp: "2026-02-01T09:00:00.000Z",
@@ -481,6 +632,16 @@ export const MOCK_PARTS: MockPart[] = [
     inventoryLocation: "ASSY-03",
     isActive: false,
     createdAt: "2026-01-25T14:30:00.000Z",
+    vendorPartNumber: null,
+    modelLink: null,
+    drawingLink: null,
+    binMin: null,
+    binMax: null,
+    cost: null,
+    costLastUpdated: null,
+    machineCycleTime: null,
+    numberOfSetups: null,
+    assembliesUsedInCount: 0,
     auditLog: [
       {
         timestamp: "2026-05-05T09:00:00.000Z",

@@ -8,7 +8,10 @@ import {
   MockPart,
   MockPartAuditEntry,
 } from "./_data";
-import PartsGrid, { PartSortKey } from "./_components/parts-grid";
+import type { ColumnId } from "./_lib/columns";
+import { SEEDED_VIEWS, type View } from "./_lib/views";
+import PartsGrid from "./_components/parts-grid";
+import ViewSwitcher from "./_components/view-switcher";
 import PartFormSheet from "./_components/part-form-sheet";
 import ProcessTypeLegend from "@/app/mockups/routing-templates/_components/process-type-legend";
 import { Button } from "@/components/ui/button";
@@ -140,23 +143,24 @@ function ComboFilter({
 type PartTypeFilter = "all" | "parts" | "assemblies";
 type ActiveFilter = "active" | "inactive" | "both";
 
+const DEFAULT_VIEW = SEEDED_VIEWS.find((v) => v.isDefault)!;
+
 export default function PartsPage() {
   const [parts, setParts] = useState<MockPart[]>(MOCK_PARTS);
+  const [activeView, setActiveView] = useState<View>(DEFAULT_VIEW);
   const [partTypeFilter, setPartTypeFilter] = useState<PartTypeFilter>("all");
   const [activeFilter, setActiveFilter] = useState<ActiveFilter>("active");
   const [vendorFilter, setVendorFilter] = useState<number | null>(null);
   const [materialFilter, setMaterialFilter] = useState<number | null>(null);
   const [stockSizeFilter, setStockSizeFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
-  const [sortKey, setSortKey] = useState<PartSortKey>("partNumber");
-  const [sortAsc, setSortAsc] = useState(true);
+  const [sortCol, setSortCol] = useState<ColumnId>(DEFAULT_VIEW.defaultSort.columnId);
+  const [sortAsc, setSortAsc] = useState(DEFAULT_VIEW.defaultSort.direction === "asc");
   const [selectedPart, setSelectedPart] = useState<MockPart | null>(null);
   const [condensed, setCondensed] = useState(true);
 
-  // Mockup-only: active user for audit entries
   const actorName = "Jane Chen";
 
-  // Derive distinct stock sizes present in the dataset
   const distinctStockSizes = useMemo(() => {
     const sizes = new Set<string>();
     parts.forEach((p) => { if (p.stockSize) sizes.add(p.stockSize); });
@@ -188,40 +192,55 @@ export default function PartsPage() {
       })
       .sort((a, b) => {
         const dir = sortAsc ? 1 : -1;
-        switch (sortKey) {
+        switch (sortCol) {
           case "partNumber":
             return dir * a.partNumber.localeCompare(b.partNumber);
           case "partName":
             return dir * a.partName.localeCompare(b.partName);
-          case "materialName": {
+          case "material": {
             const ma = a.materialSpec?.materialName ?? "";
             const mb = b.materialSpec?.materialName ?? "";
             return dir * ma.localeCompare(mb);
           }
-          case "vendorName": {
+          case "vendor": {
             const va = a.defaultVendor?.vendorName ?? "";
             const vb = b.defaultVendor?.vendorName ?? "";
             return dir * va.localeCompare(vb);
           }
           case "stockCount":
             return dir * (a.stockCount - b.stockCount);
-          case "inventoryLocation": {
+          case "location": {
             const la = a.inventoryLocation ?? "";
             const lb = b.inventoryLocation ?? "";
             return dir * la.localeCompare(lb);
           }
-          default: {
-            const _never: never = sortKey;
-            void _never;
-            return 0;
+          case "cost": {
+            const ca = a.cost ?? -Infinity;
+            const cb = b.cost ?? -Infinity;
+            return dir * (ca - cb);
           }
+          case "costLastUpdated": {
+            const da = a.costLastUpdated ?? "";
+            const db = b.costLastUpdated ?? "";
+            return dir * da.localeCompare(db);
+          }
+          case "assembliesUsedInCount":
+            return dir * (a.assembliesUsedInCount - b.assembliesUsedInCount);
+          default:
+            return 0;
         }
       });
-  }, [parts, activeFilter, partTypeFilter, vendorFilter, materialFilter, stockSizeFilter, search, sortKey, sortAsc]);
+  }, [parts, activeFilter, partTypeFilter, vendorFilter, materialFilter, stockSizeFilter, search, sortCol, sortAsc]);
 
-  function handleSort(key: PartSortKey) {
-    if (sortKey === key) setSortAsc((p) => !p);
-    else { setSortKey(key); setSortAsc(true); }
+  function handleSort(col: ColumnId) {
+    if (sortCol === col) setSortAsc((p) => !p);
+    else { setSortCol(col); setSortAsc(true); }
+  }
+
+  function handleViewChange(v: View) {
+    setActiveView(v);
+    setSortCol(v.defaultSort.columnId);
+    setSortAsc(v.defaultSort.direction === "asc");
   }
 
   function handleUpdateStock(partId: number, stockCount: number) {
@@ -239,7 +258,6 @@ export default function PartsPage() {
         return { ...p, stockCount, auditLog: [entry, ...p.auditLog] };
       })
     );
-    // Keep selected part in sync
     if (selectedPart?.partId === partId) {
       setSelectedPart((prev) => prev ? { ...prev, stockCount } : null);
     }
@@ -332,6 +350,20 @@ export default function PartsPage() {
             <span className="text-base leading-none">+</span>
             Add Part
           </Button>
+        </div>
+      </div>
+
+      {/* View switcher row */}
+      <div className="border-b border-border bg-muted/20 px-8 py-2.5">
+        <div className="mx-auto flex max-w-screen-2xl items-center gap-3">
+          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            View
+          </span>
+          <ViewSwitcher
+            views={SEEDED_VIEWS}
+            activeView={activeView}
+            onViewChange={handleViewChange}
+          />
         </div>
       </div>
 
@@ -464,7 +496,8 @@ export default function PartsPage() {
         ) : (
           <PartsGrid
             parts={displayed}
-            sortKey={sortKey}
+            activeView={activeView}
+            sortCol={sortCol}
             sortAsc={sortAsc}
             onSort={handleSort}
             onRowClick={setSelectedPart}

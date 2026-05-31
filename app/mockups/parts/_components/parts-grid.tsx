@@ -1,7 +1,15 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { MockPart } from "../_data";
+import type { MockPart } from "../_data";
+import type { View } from "../_lib/views";
+import {
+  type ColumnId,
+  COLUMN_BY_ID,
+  SORTABLE_COLUMNS,
+  RIGHT_ALIGNED_COLUMNS,
+  CENTER_COLUMNS,
+} from "../_lib/columns";
 import ProcessTypeChip from "@/app/mockups/users/_components/process-type-chip";
 import { useTruncatedTitle } from "@/app/_lib/use-truncated-title";
 import {
@@ -15,59 +23,15 @@ import {
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 
-export type PartSortKey =
-  | "partNumber"
-  | "partName"
-  | "materialName"
-  | "vendorName"
-  | "stockCount"
-  | "inventoryLocation";
-
-type Props = {
-  parts: MockPart[];
-  sortKey: PartSortKey;
-  sortAsc: boolean;
-  onSort: (key: PartSortKey) => void;
-  onRowClick: (part: MockPart) => void;
-  onUpdateStock: (partId: number, stockCount: number) => void;
-  onUpdateLocation: (partId: number, inventoryLocation: string) => void;
-  condensed: boolean;
-};
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function SortIcon({ active, asc }: { active: boolean; asc: boolean }) {
   if (!active) return <span className="ml-1 text-muted-foreground/30">↕</span>;
   return <span className="ml-1 text-muted-foreground">{asc ? "↑" : "↓"}</span>;
 }
 
-function Th({
-  label,
-  sortCol,
-  activeSortKey,
-  sortAsc,
-  onSort,
-  className,
-}: {
-  label: string;
-  sortCol?: PartSortKey;
-  activeSortKey: PartSortKey;
-  sortAsc: boolean;
-  onSort: (key: PartSortKey) => void;
-  className?: string;
-}) {
-  const base =
-    "px-3 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground select-none text-left";
-  if (sortCol) {
-    return (
-      <TableHead
-        className={`${base} cursor-pointer hover:text-foreground transition-colors ${className ?? ""}`}
-        onClick={() => onSort(sortCol)}
-      >
-        {label}
-        <SortIcon active={activeSortKey === sortCol} asc={sortAsc} />
-      </TableHead>
-    );
-  }
-  return <TableHead className={`${base} ${className ?? ""}`}>{label}</TableHead>;
+function Dash() {
+  return <span className="text-xs text-muted-foreground/40">—</span>;
 }
 
 function TruncatedCell({ text, className }: { text: string; className?: string }) {
@@ -78,6 +42,59 @@ function TruncatedCell({ text, className }: { text: string; className?: string }
     </span>
   );
 }
+
+function formatDate(iso: string): string {
+  try {
+    return new Date(iso).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "2-digit",
+    });
+  } catch {
+    return iso;
+  }
+}
+
+// ─── Column header ────────────────────────────────────────────────────────────
+
+function ColHeader({
+  col,
+  activeSortCol,
+  sortAsc,
+  onSort,
+}: {
+  col: ColumnId;
+  activeSortCol: ColumnId;
+  sortAsc: boolean;
+  onSort: (col: ColumnId) => void;
+}) {
+  const meta = COLUMN_BY_ID.get(col)!;
+  const sortable = SORTABLE_COLUMNS.has(col);
+  const isRight = RIGHT_ALIGNED_COLUMNS.has(col);
+  const isCenter = CENTER_COLUMNS.has(col);
+
+  const base = [
+    "px-3 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground select-none",
+    isRight ? "text-right" : isCenter ? "text-center" : "text-left",
+    meta.defaultWidth,
+  ].join(" ");
+
+  if (sortable) {
+    return (
+      <TableHead
+        className={`${base} cursor-pointer hover:text-foreground transition-colors`}
+        onClick={() => onSort(col)}
+      >
+        {meta.label}
+        <SortIcon active={activeSortCol === col} asc={sortAsc} />
+      </TableHead>
+    );
+  }
+
+  return <TableHead className={base}>{meta.label}</TableHead>;
+}
+
+// ─── Inline edit cell ─────────────────────────────────────────────────────────
 
 type InlineEditCellProps = {
   value: string;
@@ -96,7 +113,6 @@ function InlineEditCell({ value, inputType = "text", align = "left", onCommit, o
     if (editing) inputRef.current?.select();
   }, [editing]);
 
-  // Reset draft when value changes from outside (e.g. after save)
   useEffect(() => {
     if (!editing) setDraft(value);
   }, [value, editing]);
@@ -144,9 +160,206 @@ function InlineEditCell({ value, inputType = "text", align = "left", onCommit, o
   );
 }
 
+// ─── Cell renderer ────────────────────────────────────────────────────────────
+
+type CellProps = {
+  condensed: boolean;
+  onUpdateStock: (partId: number, stockCount: number) => void;
+  onUpdateLocation: (partId: number, inventoryLocation: string) => void;
+};
+
+function renderCell(col: ColumnId, part: MockPart, cp: CellProps): React.ReactNode {
+  switch (col) {
+    case "partNumber":
+      return (
+        <TruncatedCell
+          text={part.partNumber}
+          className="max-w-[160px] font-mono text-sm font-medium text-foreground"
+        />
+      );
+    case "partName":
+      return (
+        <TruncatedCell
+          text={part.partName}
+          className="max-w-[280px] font-medium text-foreground"
+        />
+      );
+    case "partType":
+      return (
+        <Badge variant={part.partType === "Assembly" ? "secondary" : "outline"} className="text-xs">
+          {part.partType}
+        </Badge>
+      );
+    case "procurement":
+      return <span className="text-sm text-muted-foreground">{part.procurementType}</span>;
+    case "material":
+      return part.materialSpec ? (
+        <TruncatedCell text={part.materialSpec.materialName} className="max-w-[180px] text-sm text-foreground" />
+      ) : (
+        <Dash />
+      );
+    case "materialForm":
+      return part.materialSpec?.form ? (
+        <span className="text-sm text-foreground">{part.materialSpec.form}</span>
+      ) : (
+        <Dash />
+      );
+    case "vendor":
+      return part.defaultVendor ? (
+        <TruncatedCell text={part.defaultVendor.vendorName} className="max-w-[180px] text-sm text-foreground" />
+      ) : (
+        <Dash />
+      );
+    case "vendorPartNumber":
+      return part.vendorPartNumber ? (
+        <TruncatedCell text={part.vendorPartNumber} className="max-w-[180px] font-mono text-sm text-foreground" />
+      ) : (
+        <Dash />
+      );
+    case "routing":
+      return part.routingTemplate && part.routingTemplate.steps.length > 0 ? (
+        <div className="flex items-center gap-1.5">
+          {part.routingTemplate.steps.map((step, i) => (
+            <ProcessTypeChip key={i} processType={step} compact={cp.condensed} />
+          ))}
+        </div>
+      ) : (
+        <Dash />
+      );
+    case "stockCount":
+      return (
+        <InlineEditCell
+          value={part.stockCount.toString()}
+          inputType="number"
+          align="right"
+          onCommit={(v) => {
+            const n = parseInt(v, 10);
+            if (!isNaN(n) && n >= 0) cp.onUpdateStock(part.partId, n);
+          }}
+          onClick={(e) => e.stopPropagation()}
+        />
+      );
+    case "location":
+      return (
+        <InlineEditCell
+          value={part.inventoryLocation ?? ""}
+          onCommit={(v) => cp.onUpdateLocation(part.partId, v)}
+          onClick={(e) => e.stopPropagation()}
+        />
+      );
+    case "stockSize":
+      return part.stockSize ? (
+        <span className="text-sm text-foreground">{part.stockSize}″</span>
+      ) : (
+        <Dash />
+      );
+    case "blankLength":
+      return part.blankLength !== null ? (
+        <span className="text-sm text-foreground">{part.blankLength}″</span>
+      ) : (
+        <Dash />
+      );
+    case "modelLink":
+      return part.modelLink ? (
+        <a
+          href={part.modelLink}
+          target="_blank"
+          rel="noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="text-xs text-blue-500 hover:text-blue-400 hover:underline"
+        >
+          ↗ 3D
+        </a>
+      ) : (
+        <Dash />
+      );
+    case "drawingLink":
+      return part.drawingLink ? (
+        <a
+          href={part.drawingLink}
+          target="_blank"
+          rel="noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="text-xs text-blue-500 hover:text-blue-400 hover:underline"
+        >
+          ↗ DWG
+        </a>
+      ) : (
+        <Dash />
+      );
+    case "binMin":
+      return part.binMin !== null ? (
+        <span className="text-sm text-foreground">{part.binMin}</span>
+      ) : (
+        <Dash />
+      );
+    case "binMax":
+      return part.binMax !== null ? (
+        <span className="text-sm text-foreground">{part.binMax}</span>
+      ) : (
+        <Dash />
+      );
+    case "cost":
+      return part.cost !== null ? (
+        <span className="text-sm text-foreground">${part.cost.toFixed(2)}</span>
+      ) : (
+        <Dash />
+      );
+    case "costLastUpdated":
+      return part.costLastUpdated ? (
+        <span className="text-sm text-foreground">{formatDate(part.costLastUpdated)}</span>
+      ) : (
+        <Dash />
+      );
+    case "assembliesUsedInCount":
+      return <span className="text-sm text-foreground">{part.assembliesUsedInCount}</span>;
+    case "machineCycleTime":
+      return part.machineCycleTime !== null ? (
+        <span className="text-sm text-foreground">{part.machineCycleTime} min</span>
+      ) : (
+        <Dash />
+      );
+    case "numberOfSetups":
+      return part.numberOfSetups !== null ? (
+        <span className="text-sm text-foreground">{part.numberOfSetups}</span>
+      ) : (
+        <Dash />
+      );
+    case "active":
+      return part.isActive ? (
+        <span className="inline-block h-2 w-2 rounded-full bg-green-500" title="Active" />
+      ) : (
+        <span className="inline-block h-2 w-2 rounded-full bg-muted-foreground/40" title="Inactive" />
+      );
+    default: {
+      const _never: never = col;
+      void _never;
+      return null;
+    }
+  }
+}
+
+// ─── Grid ─────────────────────────────────────────────────────────────────────
+
+type Props = {
+  parts: MockPart[];
+  activeView: View;
+  sortCol: ColumnId;
+  sortAsc: boolean;
+  onSort: (col: ColumnId) => void;
+  onRowClick: (part: MockPart) => void;
+  onUpdateStock: (partId: number, stockCount: number) => void;
+  onUpdateLocation: (partId: number, inventoryLocation: string) => void;
+  condensed: boolean;
+};
+
+// Cells for these columns stop row-level click propagation
+const STOP_PROP_COLS = new Set<ColumnId>(["stockCount", "location"]);
+
 export default function PartsGrid({
   parts,
-  sortKey,
+  activeView,
+  sortCol,
   sortAsc,
   onSort,
   onRowClick,
@@ -154,89 +367,30 @@ export default function PartsGrid({
   onUpdateLocation,
   condensed,
 }: Props) {
+  const { visibleColumns } = activeView;
+  const cellProps: CellProps = { condensed, onUpdateStock, onUpdateLocation };
+
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
       <Table>
         <TableHeader>
           <TableRow className="bg-card hover:bg-card">
-            <Th
-              label="Part Number"
-              sortCol="partNumber"
-              activeSortKey={sortKey}
-              sortAsc={sortAsc}
-              onSort={onSort}
-              className="min-w-[120px] max-w-[160px]"
-            />
-            <Th
-              label="Part Name"
-              sortCol="partName"
-              activeSortKey={sortKey}
-              sortAsc={sortAsc}
-              onSort={onSort}
-              className="min-w-[200px] max-w-[280px]"
-            />
-            <Th
-              label="Type"
-              activeSortKey={sortKey}
-              sortAsc={sortAsc}
-              onSort={onSort}
-              className="w-24"
-            />
-            <Th
-              label="Procurement"
-              activeSortKey={sortKey}
-              sortAsc={sortAsc}
-              onSort={onSort}
-              className="w-28"
-            />
-            <Th
-              label="Material"
-              sortCol="materialName"
-              activeSortKey={sortKey}
-              sortAsc={sortAsc}
-              onSort={onSort}
-              className="min-w-[140px]"
-            />
-            <Th
-              label="Vendor"
-              sortCol="vendorName"
-              activeSortKey={sortKey}
-              sortAsc={sortAsc}
-              onSort={onSort}
-              className="min-w-[140px]"
-            />
-            <Th
-              label="Routing"
-              activeSortKey={sortKey}
-              sortAsc={sortAsc}
-              onSort={onSort}
-              className="flex-1 min-w-[160px]"
-            />
-            <TableHead
-              className="w-20 px-3 py-2.5 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground select-none cursor-pointer hover:text-foreground transition-colors"
-              onClick={() => onSort("stockCount")}
-            >
-              Stock
-              <SortIcon active={sortKey === "stockCount"} asc={sortAsc} />
-            </TableHead>
-            <Th
-              label="Location"
-              sortCol="inventoryLocation"
-              activeSortKey={sortKey}
-              sortAsc={sortAsc}
-              onSort={onSort}
-              className="min-w-[120px] max-w-[180px]"
-            />
-            <TableHead className="w-16 px-3 py-2.5 text-center text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Active
-            </TableHead>
+            {visibleColumns.map((col) => (
+              <ColHeader
+                key={col}
+                col={col}
+                activeSortCol={sortCol}
+                sortAsc={sortAsc}
+                onSort={onSort}
+              />
+            ))}
           </TableRow>
         </TableHeader>
         <TableBody className="bg-card/30">
           {parts.length === 0 && (
             <TableRow>
               <TableCell
-                colSpan={10}
+                colSpan={visibleColumns.length}
                 className="px-4 py-10 text-center text-xs text-muted-foreground"
               >
                 No parts match the current filters.
@@ -247,109 +401,30 @@ export default function PartsGrid({
             <TableRow
               key={p.partId}
               onClick={() => onRowClick(p)}
-              className={`cursor-pointer ${
-                p.isActive ? "" : "opacity-40 hover:opacity-60"
-              } ${p.partType === "Assembly" ? "bg-muted/30" : ""}`}
+              className={[
+                "cursor-pointer",
+                p.isActive ? "" : "opacity-40 hover:opacity-60",
+                p.partType === "Assembly" ? "bg-muted/30" : "",
+              ].join(" ")}
             >
-              {/* Part Number */}
-              <TableCell className="min-w-[120px] max-w-[160px] px-3 py-2">
-                <TruncatedCell
-                  text={p.partNumber}
-                  className="max-w-[160px] font-mono text-sm font-medium text-foreground"
-                />
-              </TableCell>
-
-              {/* Part Name */}
-              <TableCell className="min-w-[200px] max-w-[280px] px-3 py-2">
-                <TruncatedCell
-                  text={p.partName}
-                  className="max-w-[280px] font-medium text-foreground"
-                />
-              </TableCell>
-
-              {/* Type */}
-              <TableCell className="w-24 px-3 py-2">
-                <Badge
-                  variant={p.partType === "Assembly" ? "secondary" : "outline"}
-                  className="text-xs"
-                >
-                  {p.partType}
-                </Badge>
-              </TableCell>
-
-              {/* Procurement */}
-              <TableCell className="w-28 px-3 py-2 text-sm text-muted-foreground">
-                {p.procurementType}
-              </TableCell>
-
-              {/* Material */}
-              <TableCell className="min-w-[140px] px-3 py-2">
-                {p.materialSpec ? (
-                  <TruncatedCell
-                    text={p.materialSpec.materialName}
-                    className="max-w-[180px] text-sm text-foreground"
-                  />
-                ) : (
-                  <span className="text-xs text-muted-foreground/40">—</span>
-                )}
-              </TableCell>
-
-              {/* Vendor */}
-              <TableCell className="min-w-[140px] px-3 py-2">
-                {p.defaultVendor ? (
-                  <TruncatedCell
-                    text={p.defaultVendor.vendorName}
-                    className="max-w-[180px] text-sm text-foreground"
-                  />
-                ) : (
-                  <span className="text-xs text-muted-foreground/40">—</span>
-                )}
-              </TableCell>
-
-              {/* Routing */}
-              <TableCell className="flex-1 min-w-[160px] px-3 py-2">
-                {p.routingTemplate && p.routingTemplate.steps.length > 0 ? (
-                  <div className="flex items-center gap-0.5">
-                    {p.routingTemplate.steps.map((step, i) => (
-                      <ProcessTypeChip key={i} processType={step} compact={condensed} />
-                    ))}
-                  </div>
-                ) : (
-                  <span className="text-xs text-muted-foreground/40">—</span>
-                )}
-              </TableCell>
-
-              {/* Stock Count — inline edit */}
-              <TableCell className="w-20 px-3 py-2" onClick={(e) => e.stopPropagation()}>
-                <InlineEditCell
-                  value={p.stockCount.toString()}
-                  inputType="number"
-                  align="right"
-                  onCommit={(v) => {
-                    const n = parseInt(v, 10);
-                    if (!isNaN(n) && n >= 0) onUpdateStock(p.partId, n);
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                />
-              </TableCell>
-
-              {/* Inventory Location — inline edit */}
-              <TableCell className="min-w-[120px] max-w-[180px] px-3 py-2" onClick={(e) => e.stopPropagation()}>
-                <InlineEditCell
-                  value={p.inventoryLocation ?? ""}
-                  onCommit={(v) => onUpdateLocation(p.partId, v)}
-                  onClick={(e) => e.stopPropagation()}
-                />
-              </TableCell>
-
-              {/* Active */}
-              <TableCell className="w-16 px-3 py-2 text-center">
-                {p.isActive ? (
-                  <span className="inline-block h-2 w-2 rounded-full bg-green-500" title="Active" />
-                ) : (
-                  <span className="inline-block h-2 w-2 rounded-full bg-muted-foreground/40" title="Inactive" />
-                )}
-              </TableCell>
+              {visibleColumns.map((col) => {
+                const meta = COLUMN_BY_ID.get(col)!;
+                const isRight = RIGHT_ALIGNED_COLUMNS.has(col);
+                const isCenter = CENTER_COLUMNS.has(col);
+                return (
+                  <TableCell
+                    key={col}
+                    className={[
+                      meta.defaultWidth,
+                      "px-3 py-2",
+                      isRight ? "text-right" : isCenter ? "text-center" : "",
+                    ].join(" ")}
+                    onClick={STOP_PROP_COLS.has(col) ? (e) => e.stopPropagation() : undefined}
+                  >
+                    {renderCell(col, p, cellProps)}
+                  </TableCell>
+                );
+              })}
             </TableRow>
           ))}
         </TableBody>
