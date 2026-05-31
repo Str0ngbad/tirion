@@ -790,3 +790,92 @@ additive Rev 1 fields rather than deferring.
 - prisma/migrations/20260531125555_part_field_additions/migration.sql
 
 ---
+
+## 2026-05-31 — Part Form design decisions from mockup track operationalized in spec
+
+**Phase:** 1A
+**Spec section:** parts_master_spec.md (Part Form section and subsections)
+**Discovered by:** User, during Part Form mockup work
+**Status:** Resolved-Spec-Updated
+**Commit:** 12c1179
+
+### What the spec said
+
+The parts_master_spec described the Part Form at a higher level of
+abstraction: it noted the form's existence, its sections, the fields
+within them, the Definition Change Flag system as a concept, and the
+in-context creation pattern for MaterialSpec and Vendor. But it did
+not specify the form's surface pattern (modal vs side panel),
+click-to-section navigation behavior, bidirectional BOM traversal
+mechanics, in-context creation modal field boundaries, the specific
+gating logic for the Definition Change Flag dialog, or the inline
+sync between grid edits and form panel edits.
+
+### What was discovered
+
+During Part Form mockup work, six concrete design decisions emerged
+that the spec had not pinned down. Each was a clarification or
+operationalization of patterns the spec implied but did not specify:
+
+1. The Part Form uses a side panel pattern at ~33% width with grid
+   push, distinct from the modal-overlay pattern used by configuration
+   surfaces. The side panel is a long-lived navigation surface
+   supporting cross-Part navigation, scroll-to-section workflows,
+   and cross-surface modal navigation per ADR-013.
+
+2. Clicking a specific column in the grid scrolls the open panel to
+   the form section corresponding to that column. The column-to-
+   section mapping enables "I want to look at this specific aspect of
+   this Part" workflows without manual scrolling.
+
+3. The Part Form supports bidirectional BOM traversal: Parent
+   Assemblies on all Parts (Parts and Assemblies alike), Child Parts
+   on Assemblies only. Both sections render clickable rows that
+   navigate the panel.
+
+4. The in-context creation modals in the Part Form have specific
+   boundaries: the MaterialSpec cascade modal is create-only (edit
+   happens in MaterialSpec Management); the Vendor create modal is
+   minimal (name, contact, lead time, notes — website and location
+   deferred to Vendors surface). Both paths create real database
+   records via standard API endpoints.
+
+5. The Definition Change Flag dialog fires when BOTH conditions are
+   true at Save time: a definition field changed (materialSpecId,
+   defaultVendorId, routingTemplateDefinitionId, stockSize,
+   blankLength) AND the Part has downstream impact (BOM child
+   references, open WOs, or stock > 0). Otherwise Save commits
+   silently. The dialog parallels the Routing Template Editor's
+   Edit-Time Dialog; implementation is encouraged to share a
+   component.
+
+6. Inventory fields (stockCount, inventoryLocation, binMin, binMax)
+   sync bidirectionally between the grid's inline editing and the
+   form panel's Inventory section. Both surfaces operate on the same
+   record in memory.
+
+### Resolution
+
+- parts_master_spec.md updated with six new or expanded subsections:
+  - Surface Pattern (side panel + grid push, with rationale and
+    contrast against configuration surfaces' modal pattern)
+  - Click-to-Section Navigation (column-to-section mapping table)
+  - Bidirectional BOM Traversal (Parents on all, Children on
+    Assemblies, both clickable)
+  - In-Context Creation (Material & Vendor) (modal boundaries and
+    field subsets per workflow)
+  - Definition Change Flag Dialog (firing conditions, count cards,
+    cancel/acknowledge flow, shared-component recommendation)
+  - Inventory inline sync (bidirectional sync between grid and panel)
+
+- No schema changes, no migrations, no code changes required.
+
+- The spec changes reference ADR-013 for the cross-surface navigation
+  pattern that the in-context creation flows depend on.
+
+### Files affected
+
+- spec/parts_master_spec.md (multiple subsections added or expanded
+  in the Part Form section)
+
+---
