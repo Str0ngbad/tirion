@@ -13,7 +13,9 @@ import PartAuditLogSection from "./part-audit-log-section";
 import PartFormMaterialVendorSection from "./part-form-material-vendor-section";
 import PartFormRoutingSection from "./part-form-routing-section";
 import PartFormParentAssembliesSection from "./part-form-parent-assemblies-section";
+import PartFormChildPartsSection from "./part-form-child-parts-section";
 import PartFormInventorySection from "./part-form-inventory-section";
+import DefinitionChangeFlagDialog from "./definition-change-flag-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,6 +40,7 @@ export const SECTION_IDS = {
   materialVendor: "part-form-material-vendor",
   routing: "part-form-routing",
   parents: "part-form-parents",
+  children: "part-form-children",
   inventory: "part-form-inventory",
 } as const;
 
@@ -134,6 +137,9 @@ export default function PartFormSheet({
     part.routingTemplate
   );
 
+  // Definition Change Flag dialog
+  const [definitionDialogOpen, setDefinitionDialogOpen] = useState(false);
+
   // Editable inventory fields
   const [formStockCount, setFormStockCount] = useState(part.stockCount);
   const [formInventoryLocation, setFormInventoryLocation] = useState(part.inventoryLocation ?? "");
@@ -177,7 +183,34 @@ export default function PartFormSheet({
     return () => clearTimeout(timeout);
   }, [scrollToSectionId, part.partId]);
 
+  function definitionFieldChanged(): boolean {
+    const parsedLen = blankLength !== "" ? parseFloat(blankLength) : null;
+    return (
+      formMaterialSpec?.materialSpecId !== part.materialSpec?.materialSpecId ||
+      formStockSize !== (part.stockSize ?? "") ||
+      formVendor?.vendorId !== part.defaultVendor?.vendorId ||
+      formRoutingTemplate?.templateId !== part.routingTemplate?.templateId ||
+      parsedLen !== part.blankLength
+    );
+  }
+
+  function hasDownstreamImpact(): boolean {
+    return (
+      part.parentAssemblies.length > 0 ||
+      part.openWos.length > 0 ||
+      part.stockCount > 0
+    );
+  }
+
   function handleSave() {
+    if (definitionFieldChanged() && hasDownstreamImpact()) {
+      setDefinitionDialogOpen(true);
+      return;
+    }
+    commitSave();
+  }
+
+  function commitSave() {
     const changedFields: MockPartAuditEntry["changedFields"] = [];
 
     if (partName !== part.partName) {
@@ -491,6 +524,17 @@ export default function PartFormSheet({
           />
         </section>
 
+        {/* ── Section 5b: Child Parts (Assemblies only) ─────────────── */}
+        {part.partType === "Assembly" && (
+          <section id={SECTION_IDS.children}>
+            <SectionHeader title="Child Parts" />
+            <PartFormChildPartsSection
+              childParts={part.childParts}
+              onNavigate={onNavigateToPart}
+            />
+          </section>
+        )}
+
         {/* ── Section 6: Inventory ──────────────────────────────────── */}
         <section id={SECTION_IDS.inventory}>
           <SectionHeader title="Inventory" />
@@ -525,6 +569,16 @@ export default function PartFormSheet({
           </span>
         )}
       </div>
+
+      <DefinitionChangeFlagDialog
+        part={part}
+        open={definitionDialogOpen}
+        onOpenChange={setDefinitionDialogOpen}
+        onConfirm={() => {
+          setDefinitionDialogOpen(false);
+          commitSave();
+        }}
+      />
     </div>
   );
 }

@@ -34,6 +34,25 @@ export type MockParentAssemblyRef = {
   quantityInParent: number;
 };
 
+export type MockChildPartRef = {
+  childPartId: number;
+  childPartNumber: string;
+  childPartName: string;
+  quantity: number;
+};
+
+export type MockOpenWo = {
+  woId: number;
+  woNumber: string;
+  projectReference: string;
+  projectColor: string;
+  topLevelReference: string;
+  partNumber: string;
+  currentStep: string;
+  status: string;
+  batchContext: string | null;
+};
+
 export type MockPart = {
   partId: number;
   partNumber: string;
@@ -64,6 +83,8 @@ export type MockPart = {
   numberOfSetups: number | null;
   assembliesUsedInCount: number;
   parentAssemblies: MockParentAssemblyRef[];
+  childParts: MockChildPartRef[];
+  openWos: MockOpenWo[];
 };
 
 // ─── Reference data (for filter bar population) ─────────────────────────────
@@ -100,6 +121,14 @@ const V = (id: number) => MOCK_VENDORS.find((v) => v.vendorId === id)!;
 const M = (id: number) => MOCK_MATERIAL_SPECS.find((m) => m.materialSpecId === id)!;
 const T = (id: number) => MOCK_ROUTING_TEMPLATES.find((t) => t.templateId === id)!;
 
+const PC: Record<string, string> = {
+  "PROJ-A": "#3b82f6",
+  "PROJ-B": "#10b981",
+  "PROJ-C": "#f59e0b",
+  "PROJ-D": "#8b5cf6",
+  "PROJ-E": "#ef4444",
+};
+
 // ─── Mock parts ──────────────────────────────────────────────────────────────
 
 export const MOCK_PARTS: MockPart[] = [
@@ -133,6 +162,14 @@ export const MOCK_PARTS: MockPart[] = [
     parentAssemblies: [
       { assemblyPartId: 12, partNumber: "ASSY-100", partName: "Assembly, Main Drive", quantityInParent: 2 },
       { assemblyPartId: 14, partNumber: "ASSY-300", partName: "Assembly, Bracket Sub", quantityInParent: 4 },
+    ],
+    childParts: [],
+    openWos: [
+      { woId: 101, woNumber: "WO-20260001", projectReference: "PROJ-A", projectColor: PC["PROJ-A"]!, topLevelReference: "ASSY-100", partNumber: "BRK-101", currentStep: "Machine", status: "In Progress", batchContext: null },
+      { woId: 102, woNumber: "WO-20260015", projectReference: "PROJ-A", projectColor: PC["PROJ-A"]!, topLevelReference: "ASSY-300", partNumber: "BRK-101", currentStep: "Receive", status: "Awaiting Material", batchContext: "BATCH-002" },
+      { woId: 103, woNumber: "WO-20260031", projectReference: "PROJ-B", projectColor: PC["PROJ-B"]!, topLevelReference: "ASSY-100", partNumber: "BRK-101", currentStep: "Blacken", status: "In Progress", batchContext: "BATCH-002" },
+      { woId: 104, woNumber: "WO-20260047", projectReference: "PROJ-C", projectColor: PC["PROJ-C"]!, topLevelReference: "ASSY-300", partNumber: "BRK-101", currentStep: "Machine", status: "Open", batchContext: null },
+      { woId: 105, woNumber: "WO-20260062", projectReference: "PROJ-D", projectColor: PC["PROJ-D"]!, topLevelReference: "ASSY-100", partNumber: "BRK-101", currentStep: "Receive", status: "Open", batchContext: null },
     ],
     auditLog: [
       {
@@ -181,6 +218,11 @@ export const MOCK_PARTS: MockPart[] = [
     parentAssemblies: [
       { assemblyPartId: 12, partNumber: "ASSY-100", partName: "Assembly, Main Drive", quantityInParent: 1 },
     ],
+    childParts: [],
+    openWos: [
+      { woId: 201, woNumber: "WO-20260020", projectReference: "PROJ-A", projectColor: PC["PROJ-A"]!, topLevelReference: "ASSY-100", partNumber: "PLT-330", currentStep: "Weld", status: "In Progress", batchContext: null },
+      { woId: 202, woNumber: "WO-20260055", projectReference: "PROJ-C", projectColor: PC["PROJ-C"]!, topLevelReference: "ASSY-100", partNumber: "PLT-330", currentStep: "Machine", status: "Open", batchContext: null },
+    ],
     auditLog: [
       {
         timestamp: "2026-01-20T10:05:00.000Z",
@@ -218,6 +260,12 @@ export const MOCK_PARTS: MockPart[] = [
     assembliesUsedInCount: 1,
     parentAssemblies: [
       { assemblyPartId: 12, partNumber: "ASSY-100", partName: "Assembly, Main Drive", quantityInParent: 1 },
+    ],
+    childParts: [],
+    openWos: [
+      { woId: 301, woNumber: "WO-20260025", projectReference: "PROJ-A", projectColor: PC["PROJ-A"]!, topLevelReference: "ASSY-100", partNumber: "SHF-701", currentStep: "Weld", status: "In Progress", batchContext: null },
+      { woId: 302, woNumber: "WO-20260048", projectReference: "PROJ-B", projectColor: PC["PROJ-B"]!, topLevelReference: "ASSY-100", partNumber: "SHF-701", currentStep: "Machine", status: "Open", batchContext: null },
+      { woId: 303, woNumber: "WO-20260071", projectReference: "PROJ-D", projectColor: PC["PROJ-D"]!, topLevelReference: "ASSY-100", partNumber: "SHF-701", currentStep: "Receive", status: "Awaiting Material", batchContext: null },
     ],
     auditLog: [
       {
@@ -265,6 +313,12 @@ export const MOCK_PARTS: MockPart[] = [
     parentAssemblies: [
       { assemblyPartId: 13, partNumber: "ASSY-200", partName: "Assembly, Pump Unit", quantityInParent: 1 },
     ],
+    childParts: [],
+    openWos: [
+      { woId: 401, woNumber: "WO-20260033", projectReference: "PROJ-B", projectColor: PC["PROJ-B"]!, topLevelReference: "ASSY-200", partNumber: "HSG-401", currentStep: "Machine", status: "In Progress", batchContext: null },
+      { woId: 402, woNumber: "WO-20260066", projectReference: "PROJ-C", projectColor: PC["PROJ-C"]!, topLevelReference: "ASSY-200", partNumber: "HSG-401", currentStep: "Receive", status: "Awaiting Material", batchContext: "BATCH-007" },
+      { woId: 403, woNumber: "WO-20260089", projectReference: "PROJ-E", projectColor: PC["PROJ-E"]!, topLevelReference: "ASSY-200", partNumber: "HSG-401", currentStep: "Machine", status: "Open", batchContext: "BATCH-007" },
+    ],
     auditLog: [
       {
         timestamp: "2026-01-22T09:30:00.000Z",
@@ -305,6 +359,13 @@ export const MOCK_PARTS: MockPart[] = [
       { assemblyPartId: 13, partNumber: "ASSY-200", partName: "Assembly, Pump Unit", quantityInParent: 2 },
       { assemblyPartId: 14, partNumber: "ASSY-300", partName: "Assembly, Bracket Sub", quantityInParent: 6 },
     ],
+    childParts: [],
+    openWos: [
+      { woId: 501, woNumber: "WO-20260009", projectReference: "PROJ-A", projectColor: PC["PROJ-A"]!, topLevelReference: "ASSY-100", partNumber: "PIN-602", currentStep: "Purchase", status: "Awaiting Purchase", batchContext: "BATCH-003" },
+      { woId: 502, woNumber: "WO-20260022", projectReference: "PROJ-A", projectColor: PC["PROJ-A"]!, topLevelReference: "ASSY-300", partNumber: "PIN-602", currentStep: "Receive", status: "Open", batchContext: "BATCH-003" },
+      { woId: 503, woNumber: "WO-20260040", projectReference: "PROJ-B", projectColor: PC["PROJ-B"]!, topLevelReference: "ASSY-200", partNumber: "PIN-602", currentStep: "Purchase", status: "Awaiting Purchase", batchContext: null },
+      { woId: 504, woNumber: "WO-20260058", projectReference: "PROJ-C", projectColor: PC["PROJ-C"]!, topLevelReference: "ASSY-100", partNumber: "PIN-602", currentStep: "Receive", status: "Open", batchContext: null },
+    ],
     auditLog: [
       {
         timestamp: "2026-01-22T10:00:00.000Z",
@@ -342,6 +403,11 @@ export const MOCK_PARTS: MockPart[] = [
     assembliesUsedInCount: 1,
     parentAssemblies: [
       { assemblyPartId: 13, partNumber: "ASSY-200", partName: "Assembly, Pump Unit", quantityInParent: 1 },
+    ],
+    childParts: [],
+    openWos: [
+      { woId: 601, woNumber: "WO-20260044", projectReference: "PROJ-B", projectColor: PC["PROJ-B"]!, topLevelReference: "ASSY-200", partNumber: "BLK-001", currentStep: "Machine", status: "In Progress", batchContext: null },
+      { woId: 602, woNumber: "WO-20260079", projectReference: "PROJ-E", projectColor: PC["PROJ-E"]!, topLevelReference: "ASSY-200", partNumber: "BLK-001", currentStep: "Receive", status: "Awaiting Material", batchContext: null },
     ],
     auditLog: [
       {
@@ -381,6 +447,11 @@ export const MOCK_PARTS: MockPart[] = [
     parentAssemblies: [
       { assemblyPartId: 12, partNumber: "ASSY-100", partName: "Assembly, Main Drive", quantityInParent: 2 },
     ],
+    childParts: [],
+    openWos: [
+      { woId: 701, woNumber: "WO-20260018", projectReference: "PROJ-A", projectColor: PC["PROJ-A"]!, topLevelReference: "ASSY-100", partNumber: "FLG-201", currentStep: "Paint", status: "In Progress", batchContext: null },
+      { woId: 702, woNumber: "WO-20260053", projectReference: "PROJ-C", projectColor: PC["PROJ-C"]!, topLevelReference: "ASSY-100", partNumber: "FLG-201", currentStep: "Machine", status: "Open", batchContext: null },
+    ],
     auditLog: [
       {
         timestamp: "2026-02-10T09:00:00.000Z",
@@ -418,6 +489,10 @@ export const MOCK_PARTS: MockPart[] = [
     assembliesUsedInCount: 1,
     parentAssemblies: [
       { assemblyPartId: 13, partNumber: "ASSY-200", partName: "Assembly, Pump Unit", quantityInParent: 3 },
+    ],
+    childParts: [],
+    openWos: [
+      { woId: 801, woNumber: "WO-20260036", projectReference: "PROJ-B", projectColor: PC["PROJ-B"]!, topLevelReference: "ASSY-200", partNumber: "NZL-101", currentStep: "Purchase", status: "Awaiting Purchase", batchContext: null },
     ],
     auditLog: [
       {
@@ -457,6 +532,10 @@ export const MOCK_PARTS: MockPart[] = [
     parentAssemblies: [
       { assemblyPartId: 13, partNumber: "ASSY-200", partName: "Assembly, Pump Unit", quantityInParent: 3 },
     ],
+    childParts: [],
+    openWos: [
+      { woId: 901, woNumber: "WO-20260037", projectReference: "PROJ-B", projectColor: PC["PROJ-B"]!, topLevelReference: "ASSY-200", partNumber: "GRD-501", currentStep: "Purchase", status: "Awaiting Purchase", batchContext: null },
+    ],
     auditLog: [
       {
         timestamp: "2026-02-15T11:15:00.000Z",
@@ -495,6 +574,11 @@ export const MOCK_PARTS: MockPart[] = [
     parentAssemblies: [
       { assemblyPartId: 13, partNumber: "ASSY-200", partName: "Assembly, Pump Unit", quantityInParent: 3 },
     ],
+    childParts: [],
+    openWos: [
+      { woId: 1001, woNumber: "WO-20260038", projectReference: "PROJ-B", projectColor: PC["PROJ-B"]!, topLevelReference: "ASSY-200", partNumber: "SPR-301", currentStep: "Purchase", status: "Awaiting Purchase", batchContext: "BATCH-004" },
+      { woId: 1002, woNumber: "WO-20260072", projectReference: "PROJ-D", projectColor: PC["PROJ-D"]!, topLevelReference: "ASSY-200", partNumber: "SPR-301", currentStep: "Receive", status: "Open", batchContext: "BATCH-004" },
+    ],
     auditLog: [
       {
         timestamp: "2026-03-01T08:00:00.000Z",
@@ -531,6 +615,8 @@ export const MOCK_PARTS: MockPart[] = [
     numberOfSetups: 1,
     assembliesUsedInCount: 0,
     parentAssemblies: [],
+    childParts: [],
+    openWos: [],
     auditLog: [
       {
         timestamp: "2026-04-20T15:00:00.000Z",
@@ -572,6 +658,17 @@ export const MOCK_PARTS: MockPart[] = [
     numberOfSetups: null,
     assembliesUsedInCount: 0,
     parentAssemblies: [],
+    childParts: [
+      { childPartId: 1,  childPartNumber: "BRK-101",  childPartName: "Bracket, Main",           quantity: 2 },
+      { childPartId: 2,  childPartNumber: "PLT-330",  childPartName: "Plate, Base",             quantity: 1 },
+      { childPartId: 3,  childPartNumber: "SHF-701",  childPartName: "Shaft, Drive",            quantity: 1 },
+      { childPartId: 5,  childPartNumber: "PIN-602",  childPartName: "Pin, Alignment",          quantity: 4 },
+      { childPartId: 7,  childPartNumber: "FLG-201",  childPartName: "Flange, Mounting",        quantity: 2 },
+      { childPartId: 14, childPartNumber: "ASSY-300", childPartName: "Assembly, Bracket Sub",   quantity: 1 },
+    ],
+    openWos: [
+      { woId: 1201, woNumber: "WO-20260005", projectReference: "PROJ-A", projectColor: PC["PROJ-A"]!, topLevelReference: "ASSY-100", partNumber: "ASSY-100", currentStep: "Assemble", status: "In Progress", batchContext: null },
+    ],
     auditLog: [
       {
         timestamp: "2026-01-25T14:00:00.000Z",
@@ -608,6 +705,18 @@ export const MOCK_PARTS: MockPart[] = [
     numberOfSetups: null,
     assembliesUsedInCount: 0,
     parentAssemblies: [],
+    childParts: [
+      { childPartId: 4,  childPartNumber: "HSG-401",  childPartName: "Housing, Pump",    quantity: 1 },
+      { childPartId: 5,  childPartNumber: "PIN-602",  childPartName: "Pin, Alignment",   quantity: 2 },
+      { childPartId: 6,  childPartNumber: "BLK-001",  childPartName: "Block, Adapter",   quantity: 1 },
+      { childPartId: 8,  childPartNumber: "NZL-101",  childPartName: "Nozzle, Spray",    quantity: 3 },
+      { childPartId: 9,  childPartNumber: "GRD-501",  childPartName: "Gasket, Ring",     quantity: 3 },
+      { childPartId: 10, childPartNumber: "SPR-301",  childPartName: "Spring, Return",   quantity: 3 },
+    ],
+    openWos: [
+      { woId: 1301, woNumber: "WO-20260030", projectReference: "PROJ-B", projectColor: PC["PROJ-B"]!, topLevelReference: "ASSY-200", partNumber: "ASSY-200", currentStep: "Assemble", status: "In Progress", batchContext: null },
+      { woId: 1302, woNumber: "WO-20260065", projectReference: "PROJ-C", projectColor: PC["PROJ-C"]!, topLevelReference: "ASSY-200", partNumber: "ASSY-200", currentStep: "Distribution", status: "Open", batchContext: null },
+    ],
     auditLog: [
       {
         timestamp: "2026-03-10T10:00:00.000Z",
@@ -654,6 +763,13 @@ export const MOCK_PARTS: MockPart[] = [
     parentAssemblies: [
       { assemblyPartId: 12, partNumber: "ASSY-100", partName: "Assembly, Main Drive", quantityInParent: 1 },
     ],
+    childParts: [
+      { childPartId: 1, childPartNumber: "BRK-101", childPartName: "Bracket, Main",   quantity: 4 },
+      { childPartId: 5, childPartNumber: "PIN-602", childPartName: "Pin, Alignment",  quantity: 6 },
+    ],
+    openWos: [
+      { woId: 1401, woNumber: "WO-20260016", projectReference: "PROJ-A", projectColor: PC["PROJ-A"]!, topLevelReference: "ASSY-100", partNumber: "ASSY-300", currentStep: "Assemble", status: "In Progress", batchContext: null },
+    ],
     auditLog: [
       {
         timestamp: "2026-02-01T09:00:00.000Z",
@@ -690,6 +806,8 @@ export const MOCK_PARTS: MockPart[] = [
     numberOfSetups: null,
     assembliesUsedInCount: 0,
     parentAssemblies: [],
+    childParts: [],
+    openWos: [],
     auditLog: [
       {
         timestamp: "2026-05-05T09:00:00.000Z",
