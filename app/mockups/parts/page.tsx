@@ -370,7 +370,7 @@ export default function PartsPage() {
   const panelOpen = selectedPart !== null;
 
   return (
-    <div className="flex min-h-screen flex-col bg-background font-sans text-foreground">
+    <div className="flex h-screen flex-col bg-background font-sans text-foreground">
       {/* Mockup banner */}
       <div className="border-b border-amber-900/30 bg-amber-500/10 px-6 py-1.5 text-center shrink-0">
         <span className="text-xs text-amber-700 dark:text-amber-400">
@@ -474,7 +474,7 @@ export default function PartsPage() {
       {/* Grid + Panel — push-grid layout */}
       <div className="flex flex-1 min-h-0">
         {/* Grid area */}
-        <div className="flex-1 min-w-0 overflow-x-auto px-8 py-6">
+        <div className="flex-1 min-w-0 min-h-0 overflow-x-auto overflow-y-auto px-8 py-6">
           {displayed.length === 0 && !hasActiveFilters ? (
             <div className="py-20 text-center">
               <p className="text-sm text-muted-foreground">
@@ -520,7 +520,7 @@ export default function PartsPage() {
 
         {/* Side panel */}
         {panelOpen && (
-          <div className="w-1/3 shrink-0 border-l border-border overflow-hidden">
+          <div className="w-1/3 shrink-0 min-h-0 border-l border-border overflow-hidden">
             <PartFormSheet
               part={selectedPart}
               actorName={actorName}
