@@ -18,6 +18,310 @@ Entries are ordered most recent first.
 
 ---
 
+## 2026-05-31 — Part Form side panel and Definition Change Flag
+
+**Surfaces touched:** /app/mockups/parts/ (Part Form side panel,
+Material & Vendor / Routing / Parent Assemblies / Inventory /
+Child Parts sections, Definition Change Flag dialog)
+
+**Mockup commits:** approximately 6 commits in sequence:
+- "part form as push-grid side panel" (1.6a)
+- "independent scroll for parts grid and side panel" (scroll fix)
+- "selected-row indicator on parts grid"
+- "part form material and vendor section"
+- "part form routing, parents, inventory sections"
+- "part form definition change flag and child parts"
+
+### Scope of exploration
+
+This session built out the Part Form — the side panel that opens
+when a user clicks a row in the Parts grid. Part Form is the hub
+where most other configuration surfaces are referenced (Materials,
+Vendors, Routing Templates, BOM relationships) and where the
+Definition Change Flag system operates on the Parts side (parallel
+to the Routing Template Editor's edit-time dialog on the
+Templates side).
+
+The session started with a layout overhaul (replacing the wide
+overlay Sheet from prior work with a narrower push-grid side panel)
+to establish the side-panel pattern that execution lenses will
+inherit. From there, the form's six sections were built out
+incrementally: Header and Core Details (already done), Material &
+Vendor with in-context creation (cascade modal + Vendor create
+modal both local to the Parts mockup), Routing Template with
+Change Template dropdown, Parent Assemblies and (for Assemblies)
+Child Parts with click-to-navigate behavior, Inventory with bin
+thresholds, and finally the Definition Change Flag dialog that
+gates Save when definition fields change with downstream impact.
+
+By session end, the Part Form is functionally complete. Every
+field the spec describes is present and interactive. BOM tree
+traversal works in both directions. In-context creation works for
+both Materials and Vendors. The Definition Change Flag dialog
+fires correctly based on field-change-plus-impact gating logic.
+
+### Design decisions made
+
+#### 1. Side panel pattern (not modal overlay) for Part Form
+
+**Question:** Should the Part Form open as a wide overlay (the earlier
+implementation) or a narrower side panel that pushes the grid?
+
+**Options considered:**
+- Keep the wide overlay (current)
+- Narrow side panel that overlays grid
+- Narrow side panel that pushes grid to ~67% width
+
+**Decision:** Push-grid side panel at ~33% width.
+
+Reasons: (a) consistency with execution lenses that will use the same
+pattern, (b) the grid stays interactive while the panel is open (user
+can click another row to navigate to a different Part), (c) the user's
+"click data column to scroll panel to relevant section" workflow requires
+the panel to be a long-lived navigation surface, not a one-shot modal.
+
+The standalone-best design would have been a centered sub-window with
+tiled sections, but consistency across surfaces wins for Rev 1. If the
+panel pattern proves too constraining at 33%, the user can adjust width.
+
+**Implication:** all form sections use single-column layout (no
+side-by-side fields). The grid scrolls horizontally for wide Views
+even with the panel open — accepted trade-off.
+
+#### 2. Click-data-column scrolls panel to corresponding section
+
+**Question:** When a user clicks a specific column in a grid row,
+should the panel just open at the top, or scroll to a section relevant
+to that column?
+
+**Options considered:**
+- Open at top always
+- Scroll to relevant section based on which column was clicked
+
+**Decision:** Scroll to the relevant section. The mapping (Material
+column → Material & Vendor section; Routing column → Routing Template
+section; etc.) reduces friction for "I want to look at this specific
+aspect of this part" workflows. Without it, the user opens the panel
+and scrolls manually every time.
+
+**Implication:** each section has a stable HTML id; column-to-section
+map drives the scroll behavior; clicking a row's data cell passes the
+column ID up to the panel. This pattern is specced for execution lenses
+too; establishing it here as the canonical implementation.
+
+#### 3. Bidirectional BOM traversal — Parents on all, Children on Assemblies
+
+**Question:** Should Assemblies show their parent assemblies (where
+they're used) or their child parts (what they're made of)?
+
+**Options considered:**
+- Parents only for both (simpler)
+- Children only for Assemblies (replaces Parents semantics)
+- Both Parents AND Children where applicable (most thorough)
+
+**Decision:** Both. Parts show only Parents (Parts are leaves; they have
+no children). Assemblies show both Parents (most assemblies are
+sub-assemblies in something larger) and Children (what they're made of).
+All rows in both sections are clickable, enabling full BOM tree traversal
+via the panel.
+
+**Implication:** operationally significant — a user looking at a
+sub-assembly can navigate up to the parent or down to a component without
+leaving the panel. The BOM is the relational backbone of the system; the
+panel respects that.
+
+#### 4. In-context creation: local cascade modal and Vendor create modal
+
+**Question:** When the user is creating or editing a Part and needs a new
+MaterialSpec or Vendor that doesn't exist yet, how do they create one
+without leaving the form?
+
+**Options considered:**
+- Navigate to the Material Specs or Vendors mockup (high friction)
+- Modal that imports from those mockups (cross-mockup coupling)
+- Local modals within the Parts mockup (decoupled)
+
+**Decision:** Local modals. The MaterialSpec cascade modal in Parts is
+create-only (the full edit functionality lives in the MaterialSpec
+Management surface). The Vendor create modal in Parts is minimal (name +
+contact + lead time + notes, skipping website and location that belong in
+full Vendor Management). Both modals add to Parts' local MOCK_* arrays;
+no propagation to other mockup surfaces.
+
+**Implication:** spec language for in-context creation needs to specify
+what subset of the full fields are exposed and what the data persistence
+semantics are (presumably real Vendor and MaterialSpec records, available
+everywhere). Mockup track preserves decoupling; implementation track
+resolves to single shared records.
+
+#### 5. Definition Change Flag — Parallel dialog, not shared
+
+**Question:** The Routing Template Editor has an edit-time dialog with
+count cards (Parts/WOs/Stock); should the Parts side use the same
+component or a parallel one?
+
+**Options considered:**
+- Lift the EditTimeDialog to a shared location and parameterize the data source
+- Build a parallel DefinitionChangeFlagDialog inside the Parts mockup
+
+**Decision:** Parallel. The two dialogs share ~80% design language but
+operate on different data (Routing Template's dialog shows Parts using the
+template + WOs running templates; Parts' dialog shows BOM references +
+WOs producing this Part + this Part's stock). Parameterizing for shared
+use would add complexity to both consumers. Parallel-similar is the cost
+of mockup decoupling we chose to accept.
+
+**Implication:** implementation may choose to share these via a generic
+ImpactDialog component that takes data sources as props. That's an
+implementation-track decision; both mockup implementations exist as
+reference.
+
+#### 6. Save gates through dialog only when definition fields AND impact
+
+**Question:** When does the Definition Change Flag dialog fire?
+
+**Options considered:**
+- Fire whenever any field changes
+- Fire only when definition fields change
+- Fire only when definition fields change AND the Part has downstream impact
+
+**Decision:** When BOTH conditions are true at Save time: (a) a
+definition field changed (Material Spec, Default Vendor, Routing Template,
+Stock Size, Blank Length), and (b) the Part has any downstream impact
+(parents > 0 OR open WOs > 0 OR stock > 0).
+
+Otherwise Save commits silently. Non-definition field changes (Name,
+Description, Notes, etc.) never trigger the dialog regardless of impact.
+Definition-field changes on Parts with zero impact (draft Parts, freshly
+created Parts) also commit silently.
+
+**Implication:** matches the Routing Template Editor's gating logic and
+keeps the dialog meaningful — it only appears when there's something real
+to confirm.
+
+#### 7. Stock Size as free text deferred to Rev 2
+
+**Question:** Should Stock Size be a structured field (combobox of known
+sizes per MaterialSpec) or free text?
+
+**Options considered:**
+- Structured combobox (sizes defined per MaterialSpec)
+- Free text
+
+**Decision:** Free text for Rev 1. Material handling is undergoing broader
+rework in Rev 2; Stock Size structure belongs in that work. Mockup uses a
+simple text input.
+
+#### 8. Bin Min/Max validation as warning, not block
+
+**Question:** When Bin Max < Bin Min (an unusual configuration), should
+the form prevent Save or just warn?
+
+**Options considered:**
+- Block Save with a validation error
+- Show a warning but allow Save
+
+**Decision:** Warn but allow. Trust the user with tools — they may
+legitimately set values that look unusual. The warning surfaces the
+concern; the user decides.
+
+#### 9. Inline edit on grid + form edits stay in sync
+
+**Question:** Stock Count and Inventory Location are inline-editable in
+the grid AND editable in the form's Inventory section. Should edits in
+one surface reflect in the other?
+
+**Options considered:**
+- Independent state (grid and form diverge until a Save/Reload)
+- Bidirectional sync (both surfaces share the same record in memory)
+
+**Decision:** Bidirectional sync. Both surfaces operate on the same
+MockPart record in memory; changes in either reflect immediately in the
+other. The grid is the fast path for single-field edits; the form is the
+comprehensive edit context.
+
+#### 10. Routing Template editor navigation as link, not overlay
+
+**Question:** How does the user access the Routing Template Editor from
+the Part Form's Routing Template section?
+
+**Options considered:**
+- Navigation link to /mockups/routing-templates/[id]
+- Overlay that opens the editor over the Part Form
+
+**Decision:** Navigation link for the mockup. Long-term, the user prefers
+this to open as an overlay over the Part Form (avoiding context loss). For
+the mockup, link navigation is acceptable; the overlay redesign is flagged
+for implementation-track consideration.
+
+### Recommendations for implementation
+
+- **Side panel pattern** (push-grid at ~33%) for Part Form and execution
+  lenses. The grid remains interactive; the panel updates on row clicks.
+- **Click-to-section navigation** from grid columns to form sections
+  (column-to-section mapping declared per surface).
+- **Bidirectional BOM traversal** — both Parents and Children shown where
+  applicable, both clickable, both navigate the panel.
+- **In-context creation** for MaterialSpec and Vendor from the Part Form.
+  Real implementation should create records in the shared database; the
+  cascade modal and Vendor create modal can be reused across surfaces (BOM
+  Editor, etc.) that need similar in-context creation.
+- **Definition Change Flag dialog** with the trigger logic (definition
+  fields AND impact). Three count cards parallel to the Routing Template
+  Editor's dialog. Implementation may share a generic ImpactDialog
+  component between the two.
+- **Selected-row indicator** on the grid when the panel is open (left-edge
+  accent + subtle background tint).
+- **Stock Count and Location bidirectional sync** between grid inline-edit
+  and form field edits.
+- **All section ID anchors** stable across surface versions (the
+  click-to-scroll behavior depends on these).
+
+### Open questions for implementation track
+
+- **In-context creation persistence:** the mockup's local modals add to
+  local data; production should create real records via the same Vendor /
+  MaterialSpec API endpoints. Permissions and validation rules need to
+  match the full-surface CRUD.
+- **Cascade modal vs full MaterialSpec management:** the Parts cascade
+  modal is create-only. Should the same component support edit mode in
+  this context, or is editing always done via the MaterialSpec Management
+  surface? (Mockup decoupling meant we sidestepped this; implementation
+  has to choose.)
+- **Routing Template Editor as overlay vs page:** flagged as a user
+  preference; defer to implementation track's UX evaluation. Pattern would
+  affect multiple surfaces.
+- **Definition Change Flag dialog generalization:** Parts and Routing
+  Templates have parallel dialogs. Worth a shared ImpactDialog component?
+  If so, what's the API?
+- **BOM data model in the database:** Parts have `parentAssemblies` and
+  `childParts` as denormalized arrays in the mockup. The actual schema uses
+  BOM records; the form needs to read both directions efficiently (parent
+  assemblies via BOM table joined where childPartId = this part; child
+  parts via BOM table where parentPartId = this part).
+- **Open WOs query:** the dialog shows open WOs targeting this Part.
+  Production query joins WorkOrder → Part with status filtering.
+  Performance implications at scale.
+- **Stock Size structure (Rev 2):** flagged for the material handling
+  rework. Until then, free text.
+
+### Mockup-only refinements
+
+- **33% panel width as starting value** — visually tuned; not a spec
+  requirement.
+- **Bin Min/Max as Rev 2 fields** — defined in mockup, deferred in
+  implementation schema until Rev 2 lands.
+- **Cascade modal create-only** — full edit mode lives in MaterialSpec
+  Management; deliberately not replicated.
+- **Vendor create modal minimal fields** — full Vendor Management surface
+  owns the comprehensive Vendor record.
+- **Parallel implementation of Definition Change Flag dialog and Routing
+  Template Editor edit-time dialog** — not a shared component;
+  implementation may choose to share.
+- **Stock Size free-text** — Rev 2 work.
+
+---
+
 ## 2026-05-30 — Parts Master Pattern E exploration
 
 **Surfaces touched:** Parts Master grid (`/app/mockups/parts/`); Routing Templates grid (`/app/mockups/routing-templates/`) — incidentally affected by ProcessTypeChip width change
