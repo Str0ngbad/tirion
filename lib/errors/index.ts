@@ -7,3 +7,10 @@ export {
   VendorDeactivationBlockedError,
 } from "@/lib/errors/vendor";
 export { UserRequiredError, UserNotFoundError } from "@/lib/errors/auth";
+export {
+  ProcurementCategoryNotFoundError,
+  ProcurementCategoryAlreadyActiveError,
+  ProcurementCategoryAlreadyInactiveError,
+  ProcurementCategoryCodeCollisionError,
+  ProcurementCategoryNameCollisionError,
+} from "@/lib/errors/procurement-category";
