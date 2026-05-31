@@ -6,10 +6,14 @@ import {
   MockPartAuditEntry,
   MockMinimalMaterialSpec,
   MockMinimalVendor,
+  MockMinimalRoutingTemplate,
   ProcurementType,
 } from "../_data";
 import PartAuditLogSection from "./part-audit-log-section";
 import PartFormMaterialVendorSection from "./part-form-material-vendor-section";
+import PartFormRoutingSection from "./part-form-routing-section";
+import PartFormParentAssembliesSection from "./part-form-parent-assemblies-section";
+import PartFormInventorySection from "./part-form-inventory-section";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -51,6 +55,7 @@ type Props = {
   onUpdate: (updated: MockPart) => void;
   onAddMaterialSpec: (spec: MockMinimalMaterialSpec) => void;
   onAddVendor: (vendor: MockMinimalVendor) => void;
+  onNavigateToPart: (partId: number) => void;
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -103,6 +108,7 @@ export default function PartFormSheet({
   onUpdate,
   onAddMaterialSpec,
   onAddVendor,
+  onNavigateToPart,
 }: Props) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
@@ -123,7 +129,18 @@ export default function PartFormSheet({
   const [formStockSize, setFormStockSize] = useState(part.stockSize ?? "");
   const [formVendor, setFormVendor] = useState<MockMinimalVendor | null>(part.defaultVendor);
 
-  // When part changes, reset editable fields
+  // Editable routing template
+  const [formRoutingTemplate, setFormRoutingTemplate] = useState<MockMinimalRoutingTemplate | null>(
+    part.routingTemplate
+  );
+
+  // Editable inventory fields
+  const [formStockCount, setFormStockCount] = useState(part.stockCount);
+  const [formInventoryLocation, setFormInventoryLocation] = useState(part.inventoryLocation ?? "");
+  const [formBinMin, setFormBinMin] = useState(part.binMin !== null ? part.binMin.toString() : "");
+  const [formBinMax, setFormBinMax] = useState(part.binMax !== null ? part.binMax.toString() : "");
+
+  // Reset all state when switching to a different part
   useEffect(() => {
     setPartName(part.partName);
     setIsActive(part.isActive);
@@ -134,7 +151,21 @@ export default function PartFormSheet({
     setFormMaterialSpec(part.materialSpec);
     setFormStockSize(part.stockSize ?? "");
     setFormVendor(part.defaultVendor);
+    setFormRoutingTemplate(part.routingTemplate);
+    setFormStockCount(part.stockCount);
+    setFormInventoryLocation(part.inventoryLocation ?? "");
+    setFormBinMin(part.binMin !== null ? part.binMin.toString() : "");
+    setFormBinMax(part.binMax !== null ? part.binMax.toString() : "");
   }, [part.partId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sync inventory fields when grid inline-edit updates the part prop
+  useEffect(() => {
+    setFormStockCount(part.stockCount);
+  }, [part.stockCount]);
+
+  useEffect(() => {
+    setFormInventoryLocation(part.inventoryLocation ?? "");
+  }, [part.inventoryLocation]);
 
   // Scroll to section when scrollToSectionId changes
   useEffect(() => {
@@ -195,6 +226,50 @@ export default function PartFormSheet({
       changedFields.push({ field: "defaultVendor", before: prevVendorName, after: nextVendorName });
     }
 
+    if (formRoutingTemplate?.templateId !== part.routingTemplate?.templateId) {
+      changedFields.push({
+        field: "routingTemplate",
+        before: part.routingTemplate?.templateName ?? "none",
+        after: formRoutingTemplate?.templateName ?? "none",
+      });
+    }
+
+    if (formStockCount !== part.stockCount) {
+      changedFields.push({
+        field: "stockCount",
+        before: part.stockCount.toString(),
+        after: formStockCount.toString(),
+      });
+    }
+
+    const prevLocation = part.inventoryLocation ?? "";
+    const nextLocation = formInventoryLocation.trim();
+    if (nextLocation !== prevLocation) {
+      changedFields.push({
+        field: "inventoryLocation",
+        before: part.inventoryLocation,
+        after: nextLocation || null,
+      });
+    }
+
+    const parsedBinMin = formBinMin !== "" ? parseFloat(formBinMin) : null;
+    if (parsedBinMin !== part.binMin) {
+      changedFields.push({
+        field: "binMin",
+        before: part.binMin !== null ? part.binMin.toString() : null,
+        after: parsedBinMin !== null ? parsedBinMin.toString() : null,
+      });
+    }
+
+    const parsedBinMax = formBinMax !== "" ? parseFloat(formBinMax) : null;
+    if (parsedBinMax !== part.binMax) {
+      changedFields.push({
+        field: "binMax",
+        before: part.binMax !== null ? part.binMax.toString() : null,
+        after: parsedBinMax !== null ? parsedBinMax.toString() : null,
+      });
+    }
+
     const activeChanged = isActive !== part.isActive;
     const definitionChanged = changedFields.length > 0;
 
@@ -228,6 +303,11 @@ export default function PartFormSheet({
       materialSpec: formMaterialSpec,
       stockSize: formStockSize || null,
       defaultVendor: formVendor,
+      routingTemplate: formRoutingTemplate,
+      stockCount: formStockCount,
+      inventoryLocation: formInventoryLocation.trim() || null,
+      binMin: parsedBinMin,
+      binMax: parsedBinMax,
       auditLog: [...newLog, ...part.auditLog],
     };
 
@@ -243,7 +323,12 @@ export default function PartFormSheet({
     notes !== (part.notes ?? "") ||
     formMaterialSpec?.materialSpecId !== part.materialSpec?.materialSpecId ||
     formStockSize !== (part.stockSize ?? "") ||
-    formVendor?.vendorId !== part.defaultVendor?.vendorId;
+    formVendor?.vendorId !== part.defaultVendor?.vendorId ||
+    formRoutingTemplate?.templateId !== part.routingTemplate?.templateId ||
+    formStockCount !== part.stockCount ||
+    formInventoryLocation.trim() !== (part.inventoryLocation ?? "") ||
+    formBinMin !== (part.binMin !== null ? part.binMin.toString() : "") ||
+    formBinMax !== (part.binMax !== null ? part.binMax.toString() : "");
 
   return (
     <div className="flex h-full flex-col bg-background">
@@ -387,52 +472,39 @@ export default function PartFormSheet({
           />
         </section>
 
-        {/* ── Section 4: Routing Template (placeholder) ─────────────── */}
+        {/* ── Section 4: Routing Template ───────────────────────────── */}
         <section id={SECTION_IDS.routing}>
           <SectionHeader title="Routing Template" />
-          <div className="rounded-md border border-dashed border-border bg-muted/20 px-4 py-4">
-            <p className="text-xs text-muted-foreground">Coming in a later commit.</p>
-            {part.routingTemplate && (
-              <div className="mt-3 border-t border-border pt-3">
-                <div className="flex gap-2 text-xs">
-                  <span className="font-medium text-muted-foreground w-20">Template:</span>
-                  <span className="text-foreground">{part.routingTemplate.templateName}</span>
-                </div>
-              </div>
-            )}
-          </div>
+          <PartFormRoutingSection
+            partType={part.partType}
+            routingTemplate={formRoutingTemplate}
+            onChange={setFormRoutingTemplate}
+          />
         </section>
 
-        {/* ── Section 5: Parent Assemblies (placeholder) ────────────── */}
+        {/* ── Section 5: Parent Assemblies ──────────────────────────── */}
         <section id={SECTION_IDS.parents}>
           <SectionHeader title="Parent Assemblies" />
-          <div className="rounded-md border border-dashed border-border bg-muted/20 px-4 py-4">
-            <p className="text-xs text-muted-foreground">Coming in a later commit.</p>
-          </div>
+          <PartFormParentAssembliesSection
+            parentAssemblies={part.parentAssemblies}
+            onNavigate={onNavigateToPart}
+          />
         </section>
 
-        {/* ── Section 6: Inventory (placeholder) ───────────────────── */}
+        {/* ── Section 6: Inventory ──────────────────────────────────── */}
         <section id={SECTION_IDS.inventory}>
           <SectionHeader title="Inventory" />
-          <div className="rounded-md border border-dashed border-border bg-muted/20 px-4 py-4">
-            <p className="text-xs text-muted-foreground">Coming in a later commit.</p>
-            <div className="mt-3 space-y-1.5 border-t border-border pt-3">
-              <div className="flex gap-2 text-xs">
-                <span className="font-medium text-muted-foreground w-20">Location:</span>
-                <span className="text-foreground">{part.inventoryLocation ?? "—"}</span>
-              </div>
-              <div className="flex gap-2 text-xs">
-                <span className="font-medium text-muted-foreground w-20">Stock:</span>
-                <span className="text-foreground">{part.stockCount}</span>
-              </div>
-              {part.binMin !== null && (
-                <div className="flex gap-2 text-xs">
-                  <span className="font-medium text-muted-foreground w-20">Bin Min/Max:</span>
-                  <span className="text-foreground">{part.binMin} / {part.binMax ?? "—"}</span>
-                </div>
-              )}
-            </div>
-          </div>
+          <PartFormInventorySection
+            partType={part.partType}
+            stockCount={formStockCount}
+            inventoryLocation={formInventoryLocation}
+            binMin={formBinMin}
+            binMax={formBinMax}
+            onStockCountChange={setFormStockCount}
+            onInventoryLocationChange={setFormInventoryLocation}
+            onBinMinChange={setFormBinMin}
+            onBinMaxChange={setFormBinMax}
+          />
         </section>
 
         {/* Audit log */}

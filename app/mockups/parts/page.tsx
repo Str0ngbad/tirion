@@ -297,6 +297,15 @@ export default function PartsPage() {
     setSelectedPart(updated);
   }
 
+  // ── Navigate-to-part handler (from Parent Assemblies panel click) ────────────
+
+  function handleNavigateToPart(partId: number) {
+    const target = parts.find((p) => p.partId === partId);
+    if (!target) return;
+    setSelectedPart(target);
+    setPanelSection(SECTION_IDS.header);
+  }
+
   // ── Row click handler ────────────────────────────────────────────────────────
 
   function handleRowClick(part: MockPart, col: ColumnId) {
@@ -538,6 +547,7 @@ export default function PartsPage() {
               onUpdate={handleUpdate}
               onAddMaterialSpec={(spec) => setMaterialSpecs((prev) => [...prev, spec])}
               onAddVendor={(vendor) => setVendors((prev) => [...prev, vendor])}
+              onNavigateToPart={handleNavigateToPart}
             />
           </div>
         )}

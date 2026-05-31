@@ -27,6 +27,13 @@ export type MockPartAuditEntry = {
   changedFields?: { field: string; before: string | null; after: string | null }[];
 };
 
+export type MockParentAssemblyRef = {
+  assemblyPartId: number;
+  partNumber: string;
+  partName: string;
+  quantityInParent: number;
+};
+
 export type MockPart = {
   partId: number;
   partNumber: string;
@@ -56,6 +63,7 @@ export type MockPart = {
   machineCycleTime: number | null;
   numberOfSetups: number | null;
   assembliesUsedInCount: number;
+  parentAssemblies: MockParentAssemblyRef[];
 };
 
 // ─── Reference data (for filter bar population) ─────────────────────────────
@@ -122,6 +130,10 @@ export const MOCK_PARTS: MockPart[] = [
     machineCycleTime: 18.5,
     numberOfSetups: 2,
     assembliesUsedInCount: 2,
+    parentAssemblies: [
+      { assemblyPartId: 12, partNumber: "ASSY-100", partName: "Assembly, Main Drive", quantityInParent: 2 },
+      { assemblyPartId: 14, partNumber: "ASSY-300", partName: "Assembly, Bracket Sub", quantityInParent: 4 },
+    ],
     auditLog: [
       {
         timestamp: "2026-03-15T14:30:00.000Z",
@@ -166,6 +178,9 @@ export const MOCK_PARTS: MockPart[] = [
     machineCycleTime: 24.0,
     numberOfSetups: 2,
     assembliesUsedInCount: 1,
+    parentAssemblies: [
+      { assemblyPartId: 12, partNumber: "ASSY-100", partName: "Assembly, Main Drive", quantityInParent: 1 },
+    ],
     auditLog: [
       {
         timestamp: "2026-01-20T10:05:00.000Z",
@@ -201,6 +216,9 @@ export const MOCK_PARTS: MockPart[] = [
     machineCycleTime: 32.5,
     numberOfSetups: 3,
     assembliesUsedInCount: 1,
+    parentAssemblies: [
+      { assemblyPartId: 12, partNumber: "ASSY-100", partName: "Assembly, Main Drive", quantityInParent: 1 },
+    ],
     auditLog: [
       {
         timestamp: "2026-04-02T11:00:00.000Z",
@@ -244,6 +262,9 @@ export const MOCK_PARTS: MockPart[] = [
     machineCycleTime: 45.0,
     numberOfSetups: 3,
     assembliesUsedInCount: 1,
+    parentAssemblies: [
+      { assemblyPartId: 13, partNumber: "ASSY-200", partName: "Assembly, Pump Unit", quantityInParent: 1 },
+    ],
     auditLog: [
       {
         timestamp: "2026-01-22T09:30:00.000Z",
@@ -279,6 +300,11 @@ export const MOCK_PARTS: MockPart[] = [
     machineCycleTime: null,
     numberOfSetups: null,
     assembliesUsedInCount: 3,
+    parentAssemblies: [
+      { assemblyPartId: 12, partNumber: "ASSY-100", partName: "Assembly, Main Drive", quantityInParent: 4 },
+      { assemblyPartId: 13, partNumber: "ASSY-200", partName: "Assembly, Pump Unit", quantityInParent: 2 },
+      { assemblyPartId: 14, partNumber: "ASSY-300", partName: "Assembly, Bracket Sub", quantityInParent: 6 },
+    ],
     auditLog: [
       {
         timestamp: "2026-01-22T10:00:00.000Z",
@@ -314,6 +340,9 @@ export const MOCK_PARTS: MockPart[] = [
     machineCycleTime: 22.0,
     numberOfSetups: 2,
     assembliesUsedInCount: 1,
+    parentAssemblies: [
+      { assemblyPartId: 13, partNumber: "ASSY-200", partName: "Assembly, Pump Unit", quantityInParent: 1 },
+    ],
     auditLog: [
       {
         timestamp: "2026-02-03T13:00:00.000Z",
@@ -349,6 +378,9 @@ export const MOCK_PARTS: MockPart[] = [
     machineCycleTime: 28.0,
     numberOfSetups: 2,
     assembliesUsedInCount: 1,
+    parentAssemblies: [
+      { assemblyPartId: 12, partNumber: "ASSY-100", partName: "Assembly, Main Drive", quantityInParent: 2 },
+    ],
     auditLog: [
       {
         timestamp: "2026-02-10T09:00:00.000Z",
@@ -384,6 +416,9 @@ export const MOCK_PARTS: MockPart[] = [
     machineCycleTime: null,
     numberOfSetups: null,
     assembliesUsedInCount: 1,
+    parentAssemblies: [
+      { assemblyPartId: 13, partNumber: "ASSY-200", partName: "Assembly, Pump Unit", quantityInParent: 3 },
+    ],
     auditLog: [
       {
         timestamp: "2026-02-15T11:00:00.000Z",
@@ -419,6 +454,9 @@ export const MOCK_PARTS: MockPart[] = [
     machineCycleTime: null,
     numberOfSetups: null,
     assembliesUsedInCount: 1,
+    parentAssemblies: [
+      { assemblyPartId: 13, partNumber: "ASSY-200", partName: "Assembly, Pump Unit", quantityInParent: 3 },
+    ],
     auditLog: [
       {
         timestamp: "2026-02-15T11:15:00.000Z",
@@ -454,6 +492,9 @@ export const MOCK_PARTS: MockPart[] = [
     machineCycleTime: null,
     numberOfSetups: null,
     assembliesUsedInCount: 1,
+    parentAssemblies: [
+      { assemblyPartId: 13, partNumber: "ASSY-200", partName: "Assembly, Pump Unit", quantityInParent: 3 },
+    ],
     auditLog: [
       {
         timestamp: "2026-03-01T08:00:00.000Z",
@@ -489,6 +530,7 @@ export const MOCK_PARTS: MockPart[] = [
     machineCycleTime: 15.0,
     numberOfSetups: 1,
     assembliesUsedInCount: 0,
+    parentAssemblies: [],
     auditLog: [
       {
         timestamp: "2026-04-20T15:00:00.000Z",
@@ -529,6 +571,7 @@ export const MOCK_PARTS: MockPart[] = [
     machineCycleTime: null,
     numberOfSetups: null,
     assembliesUsedInCount: 0,
+    parentAssemblies: [],
     auditLog: [
       {
         timestamp: "2026-01-25T14:00:00.000Z",
@@ -564,6 +607,7 @@ export const MOCK_PARTS: MockPart[] = [
     machineCycleTime: null,
     numberOfSetups: null,
     assembliesUsedInCount: 0,
+    parentAssemblies: [],
     auditLog: [
       {
         timestamp: "2026-03-10T10:00:00.000Z",
@@ -607,6 +651,9 @@ export const MOCK_PARTS: MockPart[] = [
     machineCycleTime: null,
     numberOfSetups: null,
     assembliesUsedInCount: 1,
+    parentAssemblies: [
+      { assemblyPartId: 12, partNumber: "ASSY-100", partName: "Assembly, Main Drive", quantityInParent: 1 },
+    ],
     auditLog: [
       {
         timestamp: "2026-02-01T09:00:00.000Z",
@@ -642,6 +689,7 @@ export const MOCK_PARTS: MockPart[] = [
     machineCycleTime: null,
     numberOfSetups: null,
     assembliesUsedInCount: 0,
+    parentAssemblies: [],
     auditLog: [
       {
         timestamp: "2026-05-05T09:00:00.000Z",
