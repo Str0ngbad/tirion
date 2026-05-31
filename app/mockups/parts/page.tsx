@@ -504,6 +504,7 @@ export default function PartsPage() {
               sortCol={sortCol}
               sortAsc={sortAsc}
               activeFilters={activeFilters}
+              selectedPartId={selectedPart?.partId ?? null}
               onSort={handleSort}
               onSortDir={handleSortDir}
               onClearSort={handleClearSort}

@@ -303,6 +303,7 @@ type Props = {
   sortCol: ColumnId;
   sortAsc: boolean;
   activeFilters: Filter[];
+  selectedPartId: number | null;
   onSort: (col: ColumnId) => void;
   onSortDir: (col: ColumnId, asc: boolean) => void;
   onClearSort: () => void;
@@ -324,6 +325,7 @@ export default function PartsGrid({
   sortCol,
   sortAsc,
   activeFilters,
+  selectedPartId,
   onSort,
   onSortDir,
   onClearSort,
@@ -375,12 +377,15 @@ export default function PartsGrid({
               </TableCell>
             </TableRow>
           )}
-          {parts.map((p) => (
+          {parts.map((p) => {
+            const isSelected = p.partId === selectedPartId;
+            return (
             <TableRow
               key={p.partId}
               className={[
                 p.isActive ? "" : "opacity-40 hover:opacity-60",
-                p.partType === "Assembly" ? "bg-muted/30" : "",
+                p.partType === "Assembly" && !isSelected ? "bg-muted/30" : "",
+                isSelected ? "border-l-4 border-l-primary bg-primary/10 hover:bg-primary/10" : "",
               ].join(" ")}
             >
               {visibleColumns.map((col) => {
@@ -404,7 +409,8 @@ export default function PartsGrid({
                 );
               })}
             </TableRow>
-          ))}
+            );
+          })}
         </TableBody>
       </Table>
     </div>
