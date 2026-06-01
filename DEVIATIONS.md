@@ -1155,3 +1155,94 @@ fires ViewCreated, Revert is session-only so does not log.
 - spec/parts_master_grid_spec.md
 
 ---
+
+## 2026-05-31 — Columns Picker section added documenting visibility, reorder, and Master View interaction
+
+**Phase:** 1A
+**Spec section:** parts_master_grid_spec.md (Columns Picker section)
+**Discovered by:** User, during Parts Master Grid spec drafting
+**Status:** Resolved-Spec-Updated
+**Commit:** f2b162b
+
+### What the spec said
+
+The column system foundation (commit 60bf5a8) documented columns
+by ID and type but did not document the user-facing control for
+managing column visibility and ordering. The column-header menu
+(commit 750831b) exposed a "Hide column" option as part of each
+column's per-column menu but did not document where users go to
+restore hidden columns or to reorder columns comprehensively.
+
+### What was discovered
+
+The Columns Picker is the comprehensive control surface for
+column visibility and ordering. Several design decisions needed
+to be confirmed before landing in the spec:
+
+1. Single-list layout (not two-section). Hidden columns remain
+   at their position in the picker's row list rather than moving
+   to a separate section. This produces stable row positions
+   that users learn over time, building muscle memory for where
+   each column lives in the picker. The alternative (two
+   sections, visible and hidden) would have forced columns to
+   relocate every time their visibility changed, breaking that
+   muscle memory and adding cognitive overhead.
+
+2. Drag-to-reorder works on any row regardless of visibility.
+   Reordering a hidden column changes where it would appear if
+   made visible later. The picker is the single source of truth
+   for column order; both visible and hidden columns participate.
+
+3. Visibility toggles take effect immediately. There is no
+   batched "apply" step — clicking a checkbox updates the grid
+   in real time.
+
+4. All picker changes flow through the View Modification Model.
+   Toggling visibility or reordering marks the View as modified;
+   the changes persist into the View definition only when the
+   user explicitly saves via Save or Save as new (or are
+   discarded via Revert or View switch).
+
+5. Master View interaction is consistent with user-created
+   Views. Users can hide columns or reorder them in session on
+   Master, which marks Master as modified. Save remains disabled
+   on Master; Save as new captures the modified column set into
+   a new derived View; Revert restores Master to its baseline
+   (every column visible in inventory order).
+
+6. No "Show all" or "Hide all" bulk actions. Master View serves
+   the "show everything" need (Revert on Master restores all
+   columns); there is no operational need that justifies a
+   "Hide all" action.
+
+7. Dismissal by clicking outside the popover, matching the
+   filter popover convention. No explicit close button.
+
+8. The picker is the required path for restoring a hidden
+   column. The column-header menu has no unhide option because
+   the hidden column's header is not rendered in the grid.
+
+### Resolution
+
+- parts_master_grid_spec.md: new Columns Picker section added
+  after the View Modification Model section. Covers Button and
+  Popover (icon + "Columns" text, popover with ~11 visible rows
+  and scroll for the rest), Row Layout (checkbox, drag handle,
+  display name), List Order (single list reflecting active View's
+  column order with stable row positions regardless of visibility
+  state), Drag-to-Reorder (standard vertical drag-and-drop with
+  the picker and grid order updating simultaneously), Visibility
+  Toggle (immediate effect), Master View Interaction (consistent
+  with user-created Views), Dismissal (click outside), and
+  Restoring Hidden Columns (picker is the required path).
+
+No schema, seed, or AuditAction changes. The picker is a session-
+state surface; the existing ViewUpdated audit action covers any
+ultimate persistence of picker-driven modifications when the user
+saves the modified View.
+
+### Files affected
+
+- spec/parts_master_grid_spec.md
+
+---
