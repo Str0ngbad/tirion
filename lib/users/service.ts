@@ -263,11 +263,15 @@ export async function updateUser(
         if (existing === null) throw new UserNotFoundError(userId);
 
         const effectiveRole = (input.role ?? existing.role) as Role;
+        // Only validate fields that are explicitly in the input.
+        // Implicit clears (defaultStation when role leaves Operator,
+        // assignedProcessTypeIds when role becomes Manager/Admin) are handled
+        // below by the service, not rejected here.
         validateRoleConditionals(effectiveRole, {
           role: effectiveRole,
           defaultStation: input.defaultStation !== undefined
             ? input.defaultStation
-            : existing.defaultStation,
+            : undefined,
           assignedProcessTypeIds: input.assignedProcessTypeIds,
         });
 
@@ -289,8 +293,17 @@ export async function updateUser(
           if (otherAdmins === 0) throw new UserLockoutError(userId, "roleChange");
         }
 
-        // Clear junction rows when role changes to Manager or Admin
         const newRole = input.role ?? existing.role;
+
+        // When role changes away from Operator, implicitly clear defaultStation
+        // unless the caller explicitly provided a new value.
+        const clearDefaultStation =
+          input.role !== undefined &&
+          input.role !== "Operator" &&
+          existing.role === "Operator" &&
+          input.defaultStation === undefined;
+
+        // Clear junction rows when role changes to Manager or Admin
         if (newRole === "Manager" || newRole === "Admin") {
           await tx.userProcessTypeAssignment.deleteMany({ where: { userId } });
         } else if (input.assignedProcessTypeIds !== undefined) {
@@ -311,7 +324,11 @@ export async function updateUser(
             ...(input.userName !== undefined && { userName: input.userName }),
             ...(input.displayName !== undefined && { displayName: input.displayName }),
             ...(input.role !== undefined && { role: input.role }),
-            ...(input.defaultStation !== undefined && { defaultStation: input.defaultStation }),
+            ...(input.defaultStation !== undefined
+              ? { defaultStation: input.defaultStation }
+              : clearDefaultStation
+              ? { defaultStation: null }
+              : {}),
           },
         });
 
