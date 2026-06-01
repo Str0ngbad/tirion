@@ -1322,3 +1322,91 @@ that operates on existing View state.
 - spec/parts_master_grid_spec.md
 
 ---
+
+## 2026-05-31 — View Management Modal documents rename and delete with Master View informational
+
+**Phase:** 1A
+**Spec section:** parts_master_grid_spec.md (View Management Modal section)
+**Discovered by:** User, during Parts Master Grid spec drafting
+**Status:** Resolved-Spec-Updated
+**Commit:** 6646a18e658306ed8c46b6b438bdc92d8329e03b
+
+### What the spec said
+
+The Views System foundation (commit f29b65d) and View Modification
+Model (commit dcb1108) covered the View data model, the switcher,
+and how users create/modify Views during active grid use. Neither
+documented the comprehensive administrative surface for the View
+library — how users see all Views at once, rename them, or remove
+non-Master Views that are no longer needed.
+
+### What was discovered
+
+The View Management Modal is the natural surface for these
+administrative operations. Several design decisions needed
+confirmation:
+
+1. Access via the View switcher dropdown's "Manage Views..."
+   item rather than a separate toolbar button. Discoverable
+   without adding chrome.
+
+2. Modal capabilities for Rev 1 limited to rename and delete.
+   Duplicate is deferred — users can replicate the effect by
+   using an existing View as a starting point for Save as new.
+   Default flag editing is deferred — Master is permanently
+   default in Rev 1, so the Default column is informational
+   only.
+
+3. Inline rename validation matches Save as new (1-30 chars,
+   unique, free text) with consistent error message phrasing
+   across both surfaces. Inconsistent phrasing would create
+   learning burden; consistent phrasing reinforces a single
+   convention.
+
+4. Delete uses a confirmation dialog noting the shared-resource
+   impact, parallel to the Save confirmation dialog. The copy
+   explicitly states that other users on the deleted View are
+   transitioned to Master on refresh — this informs the user
+   that delete is a real consequence on the shared library, not
+   just their local state.
+
+5. Users with a deleted View currently active are silently moved
+   to Master on next refresh. No error or notification —
+   surprising the user with a popup for a routine operation is
+   worse UX than the silent transition. The View switcher will
+   simply show Master selected instead.
+
+6. Master View appears in the modal but as informational only:
+   visible at the top of the table with the Default and Locked
+   indicators, but neither rename nor delete actions are
+   actionable. Documents that Master is special without
+   requiring users to remember the special status.
+
+7. Modal does not live-sync with concurrent changes. If another
+   user modifies the Views library while the modal is open, the
+   modal shows stale data; reopening refreshes. For Rev 1's
+   small-shop context this is acceptable; live sync deferred to
+   Rev 2+ if operational need surfaces.
+
+### Resolution
+
+- parts_master_grid_spec.md: new View Management Modal section
+  added after the Active Filters Chrome section. Covers Access
+  (Manage Views... in the View switcher dropdown), Layout
+  (table with Name, Default, Locked, Delete columns; default
+  View at top, others alphabetical), Inline Rename (validation
+  matching Save as new), Delete (with confirmation dialog and
+  silent move-to-Master for other users), Master View Display
+  (informational only), Dismissal (multiple equivalent paths),
+  and Sync with Concurrent Changes (snapshot from open time;
+  reopen to refresh).
+
+- No schema, seed, or AuditAction changes. The existing
+  ViewUpdated audit action covers rename; ViewDeleted covers
+  delete.
+
+### Files affected
+
+- spec/parts_master_grid_spec.md
+
+---
