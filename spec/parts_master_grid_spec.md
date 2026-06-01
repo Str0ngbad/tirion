@@ -286,3 +286,182 @@ matrix:
 This pattern is specific to the Routing column. Other categorical
 columns (single-value enum or single-value chips) use "is any of"
 only.
+
+---
+
+## Column-Header Menu
+
+Each column header surfaces a small chevron icon adjacent to the
+column name. The chevron is always visible (not hover-conditional)
+so the affordance is discoverable on every header. Right-click on
+the column header opens the same menu as clicking the chevron.
+
+The menu's items vary based on the column's current state and the
+column's sort eligibility. Items are organized into three groups
+separated by dividers:
+
+### Sort Options
+
+Sort options appear for all columns except the Routing column
+(which is not sortable because its underlying data is a list of
+process types with no natural sort key — see "Routing Column
+Non-Sortable" note below).
+
+| Menu Item | When Shown | Behavior |
+|-----------|------------|----------|
+| Sort ascending | Always (except Routing) | Sort by this column ascending, replacing any existing sort |
+| Sort descending | Always (except Routing) | Sort by this column descending, replacing any existing sort |
+| Add to sort | Only when another sort is already active AND this column is not currently in the sort | Adds this column to the existing sort stack as the next-priority sort. Direction defaults to ascending; user can change in the Active Sorts chrome |
+| Clear sort | Only when this column is currently in the sort | Removes this column from the sort stack |
+
+When a column is currently part of the sort, its header shows a
+direction arrow (↑ ascending, ↓ descending) next to the column
+name. The arrow is the column-level indication of sort state.
+Priority (which column is primary, secondary, etc.) is shown in
+the Active Sorts chrome rather than on the headers themselves —
+this keeps headers compact and consolidates sort state in a
+single place that remains visible even when columns scroll
+off-screen or are covered by the Part Form panel.
+
+### Filter
+
+| Menu Item | When Shown | Behavior |
+|-----------|------------|----------|
+| Filter | Always | Opens the type-appropriate filter popover for this column (see Filter Operator Inventory) |
+
+When a filter is active on a column, a funnel icon appears on the
+column header adjacent to the column name. Hovering the funnel
+shows a tooltip describing the active filter in plain language
+(e.g., "Material contains 'Alum'"). The funnel disappears when
+the filter is cleared.
+
+### Visibility
+
+| Menu Item | When Shown | Behavior |
+|-----------|------------|----------|
+| Hide column | Always | Hides this column in the active View. Re-adding the column requires opening the Columns picker (see Columns Picker section) |
+
+### Routing Column Non-Sortable
+
+The Routing column displays an unordered list of process types
+(ProcessTypeChip[]). A list has no natural sort key — sorting by
+"first chip alphabetically" or "number of chips" or "any chip
+matching a given process" would each produce different orderings,
+none of them clearly correct.
+
+Users who want to sort by routing-related criteria sort by the
+Routing Template column (which has a natural string sort on the
+template name) or filter by routing presence/absence and sort by
+a different column.
+
+The Routing column's header menu therefore omits the Sort
+ascending, Sort descending, and Add to sort options. The Filter
+and Hide column options behave normally.
+
+---
+
+## Active Sorts Chrome
+
+When one or more sorts are active, the Active Sorts chrome area
+appears in the grid toolbar. This area is placed adjacent to the
+Columns picker (documented in a subsequent section) since both
+are grid-configuration controls that manipulate the active
+View's state.
+
+The chrome area is labeled "Active Sorts" and displays the
+current sort stack as a horizontal sequence of pills, ordered
+from primary (leftmost) to least-priority (rightmost):
+
+  Active Sorts: [① Material ↑] [② Length ↑] [③ Stock Size ↑]
+
+Each pill displays:
+- A priority number in a small circular badge (① = primary,
+  ② = secondary, etc.)
+- The column display name
+- The current sort direction arrow (↑ ascending, ↓ descending)
+- A close (×) affordance to remove this column from the sort
+
+Pill interactions:
+- Click on a pill's direction arrow toggles ascending/descending
+  for that column
+- Drag a pill horizontally to reorder it within the stack (changes
+  priority; visual feedback during drag shows where the pill will
+  land)
+- Click the × on a pill removes that column from the sort entirely
+
+When no sort is active, the Active Sorts area displays "No sort
+applied" in muted text or collapses entirely (visual treatment is
+an implementation detail that can be tuned based on density
+preferences in practice).
+
+### Priority Convention
+
+Sort priority is 1-based with 1 = primary. The intuitive reading:
+the column with priority 1 is the "first" or "most important"
+sort, and ties within that primary column are broken by priority
+2, then priority 3, and so on.
+
+This is the convention used in the Active Sorts chrome's badge
+numbers. Column headers themselves show only the direction arrow
+(no priority badge) — priority lives exclusively in the chrome
+area so it remains visible regardless of which columns are
+on-screen.
+
+### Visibility Through Layout Changes
+
+The Active Sorts chrome stays in place even when the grid is
+pushed to 67% width by the Part Form panel. This is structurally
+important: as columns scroll off-screen or are covered by the
+panel, the chrome area is the only persistent indicator of which
+sorts are applied. Users can review and adjust their sort stack
+without needing all sorted columns to be visible.
+
+---
+
+## Single-Click vs Menu Sort Interaction
+
+### Single Click on Column Header
+
+Clicking a column header (not the chevron, but the header text or
+any non-chevron area) initiates the primary sort interaction:
+
+- First click: sort by this column ascending, replacing any
+  existing sort
+- Second click on the same header: toggle to descending
+- Third click on the same header: clear the sort entirely
+
+This is the standard spreadsheet behavior for the primary header
+interaction. It is fast and intuitive for single-column sort.
+
+Single-click does not stack — it replaces. To stack sorts, users
+use the chevron menu's "Add to sort" option, or the shift-click
+shortcut.
+
+### Shift-Click Shortcut
+
+Shift-clicking a column header adds that column to the existing
+sort stack. The new column is added as the next-priority sort
+(secondary if the stack had one column, tertiary if two, etc.).
+Direction defaults to ascending; users can toggle direction via
+the Active Sorts chrome or by re-clicking the column header (a
+shift-click on a column already in the sort toggles its
+direction within the stack).
+
+Shift-click is a power-user shortcut for users coming from
+spreadsheet experience. The chevron menu's "Add to sort" option
+is the primary discoverable path. Both produce the same result.
+
+### Chevron Menu Options
+
+The chevron menu options are documented in detail in the
+Column-Header Menu section above. The "Sort ascending" / "Sort
+descending" / "Add to sort" / "Clear sort" options in the menu
+produce the same outcomes as the corresponding click and
+shift-click interactions, but via an explicit, discoverable
+affordance.
+
+### Multi-Column Sort Storage
+
+Multi-column sort is stored as an ordered array on the View. The
+data model is documented in the Views System section (a
+subsequent commit).
