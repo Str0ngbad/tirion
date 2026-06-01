@@ -163,3 +163,165 @@ questions the system must be able to answer include:
 These questions combine multiple attributes (process, material, project, status,
 timing) in ways that cannot be fully anticipated. Filters allow users to ask new
 combinations without requiring new development each time.
+
+---
+
+## Operating Procedures — Hooks and Commit Patterns
+
+This section documents established processes the consultant should follow. New
+windows pick up these patterns from this document rather than rediscovering them
+through trial and error.
+
+### The two-agent framework
+
+Two Claude windows operate during build sessions:
+
+- **The consultant window** (this conversation) drafts prompts, reviews outputs,
+  and provides design guidance. Does not execute commands or commit code directly.
+- **The builder** (Claude Code in the user's terminal) executes the consultant's
+  prompts and reports results. Operates the file system, runs verification scripts,
+  makes commits, and triggers the hooks.
+
+When the consultant drafts a prompt, the builder reads it, executes the work, and
+reports back with commit hashes, test results, and any ambiguity encountered. The
+consultant reviews and either confirms, drafts a follow-up, or addresses the
+ambiguity.
+
+A separate mockup window (the user's own, with Playwright MCP) runs alongside but
+operates independently from the consultant. The consultant does not see mockup work
+directly; the user surfaces mockup discoveries that need spec attention. The
+consultant folds those discoveries into the spec corpus as separate focused commits.
+
+### The hook system
+
+Four Claude Code hooks fire on every git commit, configured in `.claude/settings.json`
+and dispatched via `.claude/hooks/dispatch.sh`:
+
+1. **update_manifest.sh** regenerates `project_manifest.md` (the file/function/API/query
+   map). Lives at the repo root.
+
+2. **update_tracker.sh** regenerates `project_tracker.md` (the phase-by-phase progress
+   document). The tracker uses binary Done/Not Started status; it does not have an
+   "In Progress" state. This is a known limitation tracked in `TESTS_BACKLOG.md` under
+   Hook Issues / Tooling Debt.
+
+3. **update_deviations.sh** auto-appends a stub to `DEVIATIONS.md` when the commit
+   contains both `Deviates-From:` and `Deviation-Summary:` footer lines. Otherwise the
+   hook exits silently. The stub has empty fields that need to be filled in by a
+   follow-up commit.
+
+4. **run_review.sh** spawns a sub-agent that reviews the just-committed changes against
+   `CLAUDE.md` and the spec.
+
+The hooks regenerate `project_manifest.md` and `project_tracker.md` as side effects of
+every commit. These files do not need to be staged manually — the hooks handle them.
+
+### The deviation footer pattern
+
+When a commit changes something that diverges from previously-locked spec, include two
+footer lines in the commit message:
+
+```
+Deviates-From: spec/some-spec.md (specific section)
+Deviation-Summary: One-line summary that becomes the stub header
+```
+
+After the commit, `update_deviations.sh` auto-appends a stub to `DEVIATIONS.md`. The
+next commit fills in the stub with:
+
+- Phase (1A, 1B, etc.)
+- Discovered by (User, Claude Code, Consultant, during what work)
+- What the spec said (the original spec state)
+- What was discovered (the design decisions or operational realities that prompted the
+  change)
+- Resolution (what changed in which files)
+- Files affected (the list)
+
+The stub-fill commit message follows the form:
+`docs(deviations): fill in stub for <topic>`
+
+Not every commit needs deviation footers. They apply when:
+- A previously-locked spec section is being modified
+- A discovery during build necessitates divergence from spec
+- A scope refinement folds back into the spec corpus
+
+They do NOT apply when:
+- Building features per spec without deviation
+- Cleaning up code, fixing typos, or routine refactoring
+- Filling in stubs (the stub-fill commit itself doesn't need new footers)
+
+### Commitlint footer line length
+
+The `Deviation-Summary` footer is parsed by commitlint as a body line. The underlying
+`conventional-commits-parser` only recognizes a fixed list of footer tokens (primarily
+`BREAKING CHANGE`); custom tokens like `Deviates-From` and `Deviation-Summary` parse as
+body content despite their semantic role.
+
+To accommodate full summaries without forced truncation, the `body-max-line-length` limit
+is set to 200 characters in `commitlint.config.js`. Stay under 200; longer summaries need
+manual truncation while preserving the essential meaning.
+
+This was identified and resolved during Phase 1A work. The details and root cause are in
+`DEVIATIONS.md`.
+
+### Backlog hygiene
+
+`TESTS_BACKLOG.md` tracks deferred work in four categories:
+
+- **Hook Issues / Tooling Debt** — operational debt in the build automation
+- **Spec Consistency** — drift between spec files or missing cross-references
+- **Follow-up Implementation** — work explicitly deferred to a later phase
+- **Operational Patterns** — observed patterns about how the build environment behaves
+
+When an entry is resolved, remove it from the backlog as its own focused commit. The
+commit message form:
+
+```
+chore(backlog): remove resolved <entry name> entry
+```
+
+This keeps the backlog focused on actually-outstanding work rather than mixing past and
+present.
+
+### Commit cadence
+
+Small, focused commits are preferred over large bundled ones. Examples of focused commits
+from established patterns:
+
+- Entity backend work follows a three-commit pattern: errors → service+schemas+types+
+  verification → routes. Each runs through type-check and verification before committing.
+- Spec arc work follows a one-section-per-commit pattern. Each section gets its own
+  commit, then a deviation stub fill commit if footers were included.
+- Refactor work that touches multiple files for the same purpose lands as one commit
+  (e.g., applying the same fix across multiple service files).
+- Removal of resolved backlog entries lands as its own commit separate from the work
+  that resolved them.
+
+Commits with deviation footers follow the two-step pattern: the main commit lands, the
+hook generates the stub, the next commit fills the stub.
+
+### Verification scripts
+
+Service-layer verification lives in `/scripts/verify-<entity>-service.ts`. Each script
+tests its entity's full CRUD lifecycle with realistic test data and explicit cleanup in
+a `try/finally`.
+
+These are NOT Vitest tests — they are imperative end-to-end scripts run via `npx tsx`.
+The trade-off: faster to author than full test suites, less ceremony, and they exercise
+the actual service against a real database. The cost is they're not part of an automated
+CI run; they're invoked manually during development and as regression checks before
+commits.
+
+When changing infrastructure that affects multiple services (the P2002 helper, the
+`mutateWithAudit` pattern, etc.), run the verification scripts for all affected services
+as part of the verification step. The pattern from Phase 1A backend work:
+
+```bash
+npx tsx scripts/verify-vendor-service.ts
+npx tsx scripts/verify-procurement-category-service.ts
+npx tsx scripts/verify-material-spec-service.ts
+npx tsx scripts/verify-user-service.ts
+npx tsx scripts/verify-process-type-sub-status-service.ts
+```
+
+Add the script for the entity being built; run the existing scripts as regression checks.
