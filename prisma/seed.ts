@@ -229,7 +229,7 @@ async function verify() {
   console.log("\nVerification:");
   console.log(`  ProcessTypes:           ${processTypeCount} (expected = 9)`);
   console.log(`  ProcessTypeSubStatuses: ${subStatusCount} (expected = 16)`);
-  console.log(`  AuditActions:           ${auditActionCount} (expected = 67)`);
+  console.log(`  AuditActions:           ${auditActionCount} (expected = 71)`);
   console.log(`  ProcurementCategories:  ${procurementCategoryCount} (expected = 5)`);
   console.log(`  Admin user present:     ${userCount === 1 ? "yes" : "NO — check seed"}`);
 }
