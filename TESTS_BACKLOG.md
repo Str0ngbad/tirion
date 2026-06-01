@@ -200,7 +200,38 @@ Action: Normalize parts_master_spec.md column references to match
 parts_master_grid_spec.md's Column Inventory IDs.
 Suggested timing: Phase 10 spec reconciliation pass.
 
-Phase: 1B — observed during Master View seed implementation
+Follow-up observation (Phase 1B Unit 3): the seed Views use the column ID
+"procurementCategory" while the PartRow type uses "procurementCategoryName".
+The sort and filter builders accommodate both aliases. This is the same
+class of drift as the original entry — column IDs are not consistently
+named across the spec corpus, the seed data, and the API response shapes.
+The Phase 10 normalization pass should reconcile all three layers to a
+single canonical ID per column.
+
+Phase: 1B — observed during Master View seed implementation; extended Phase 1B Unit 3
+
+---
+
+### Multi-select inverse operator (is_none_of) missing from filter operator inventory
+
+The Parts Master Grid spec's Filter Operator Inventory documents
+multi-select filtering via "is any of" but does not explicitly document or
+omit an inverse "is none of" operator. The discriminated union in
+lib/views/schemas.ts only includes is_any_of; the filter builder
+constructed in Phase 1B Unit 3 supports only is_any_of accordingly.
+
+The exhaustive switch on the operator discriminator will surface a
+compile error if is_none_of is added to the union later, so this is
+not a runtime risk — it is a spec/scope clarity issue.
+
+Discovered: Phase 1B Unit 3, during filter builder implementation.
+Action: Determine whether is_none_of is intentionally deferred (and the
+spec should state so explicitly) or whether it should be added to Rev 1
+(and the schema, types, builder, and verification script need updates).
+Suggested timing: Phase 10 spec reconciliation pass, or earlier if user
+feedback during Parts Master Grid use surfaces the need.
+
+Phase: 1B — observed during filter builder implementation
 
 ---
 
