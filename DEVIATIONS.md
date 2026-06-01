@@ -980,3 +980,87 @@ work.
 - scripts/verify-vendor-actions.ts
 
 ---
+
+## 2026-05-31 — Views System foundation added to grid spec, with new AuditAction category
+
+**Phase:** 1A
+**Spec section:** parts_master_grid_spec.md (Views System section); seed_data_spec.md (View section, AuditAction Views category)
+**Discovered by:** User, during Parts Master Grid spec drafting
+**Status:** Resolved-Spec-Updated
+**Commit:** f29b65d4ffeba61244e3b568a539aad30da7d316
+
+### What the spec said
+
+The grid spec described the columns, sort behavior, filters, and
+column-header menu but did not yet document the Views system — the
+named saved configurations of column visibility, ordering, sort,
+and filters that compose those primitives into reusable
+operational tools.
+
+MOCKUP_TRACK.md's Pattern E exploration described the Views system
+design with recommendations for the data model, the Views switcher,
+and the bootstrap. Those recommendations needed to be lifted into
+the spec with the design refinements made during this consultation.
+
+### What was discovered
+
+The Views system design as captured during mockup track exploration
+needed three substantive refinements before landing in the spec:
+
+1. The Master View needs to be locked. The original mockup track
+   notes described Views with a default flag but did not separate
+   "default" (loads on first open) from "locked" (cannot be deleted
+   or saved over). A locked Master View with full column visibility
+   provides a reliable starting point for building derived Views,
+   prevents accidental loss of the canonical baseline, and
+   simplifies the Rev 1 invariants.
+
+2. Audit metadata on the View model itself (createdAt, updatedAt,
+   createdByUserId, updatedByUserId) was deferred. The columns are
+   inexpensive but not yet operationally needed. Adding them
+   speculatively conflicts with the "build what's needed when it's
+   needed" principle. They can be added additively if operational
+   need emerges.
+
+3. The audit action set was scoped to three actions (ViewCreated,
+   ViewUpdated, ViewDeleted). The originally-considered
+   ViewDefaultChanged action is deferred because the default View
+   does not change in Rev 1 (Master is permanently default). The
+   ViewModified action was rejected as overlapping with ViewUpdated.
+
+### Resolution
+
+- parts_master_grid_spec.md: new Views System section after the
+  Filter System section. Covers the View data model (viewId, name,
+  isDefault, isLocked, three Json columns), the Filter Object
+  Shape with value-shape variation by operator type, naming
+  constraints (1-30 chars, unique, free text), the Master View
+  concept and its invariants, the View switcher UI (dropdown with
+  default View at top, others alphabetical), the bootstrap with
+  five seeded Views (Master View, Material Audit, Inventory Check,
+  No Routing Flagged, Part Identification), and the audit logging
+  scope.
+
+- seed_data_spec.md: new Section 4: View documenting the five
+  seeded Views with their key fields and the upsert-on-name
+  seeding pattern. New Views AuditAction category with three
+  entries. AuditAction total updated from 67 to 70. Subsequent
+  sections renumbered. Verification log expectations updated.
+  Seeding order updated to include Views.
+
+- The schema migration for the View model is deferred to Phase 1B
+  when the Parts Master backend is built. This follows the
+  established pattern from the nine Part field additions earlier —
+  spec describes the model, migration follows when there's a
+  consumer for the table.
+
+The View Modification Model (Save / Save as new / Revert flows),
+Columns Picker, Active Filters chrome, and View Management Modal
+follow in subsequent commits as separate concerns.
+
+### Files affected
+
+- spec/parts_master_grid_spec.md
+- spec/seed_data_spec.md
+
+---
