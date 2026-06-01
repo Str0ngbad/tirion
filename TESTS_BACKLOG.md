@@ -235,7 +235,75 @@ Phase: 1B — observed during filter builder implementation
 
 ---
 
+### AuditAction naming conventions diverge across entities
+
+Each entity backend has picked its own lifecycle verb convention for
+AuditActions, with no pinned norm in spec:
+
+- Vendor: VendorCreated / VendorUpdated / VendorDeactivated /
+  VendorReactivated
+- Part: PartCreated / PartUpdated / PartDeactivated / PartReactivated
+- RoutingTemplate: RoutingTemplateCreated / RoutingTemplateEdited /
+  RoutingTemplateRetired / RoutingTemplateReactivated
+- View: ViewCreated / ViewUpdated / ViewDeleted
+
+Three distinct conventions across four entities: "Updated" vs "Edited",
+"Deactivated" vs "Retired", "Deleted" (Views, hard delete) vs
+"Deactivated/Retired" (soft delete). The differences are semantic in
+some cases (Views hard-delete; others soft-delete) but inconsistent in
+others (Edited vs Updated is purely a vocabulary choice).
+
+Discovered: Phase 1C, during RoutingTemplate backend implementation when
+the prompt's expected verbs (Updated/Retired) did not match the
+already-seeded values (Edited/Retired).
+
+Action: Decide on canonical lifecycle verbs and normalize. Suggested
+canonical: Created / Updated / Deactivated / Reactivated for soft-delete
+entities; Created / Updated / Deleted for hard-delete entities. Normalize
+both spec/seed_data_spec.md and prisma/seed.ts; backfill any AuditLog
+entries already written under the old action names.
+
+Suggested timing: Phase 10 spec reconciliation pass.
+
+---
+
 ## Follow-up Implementation
+
+### Part service does not validate Assembly + Purchase/Receive rule on routing template assignment
+
+The spec states: "Assembly routing templates may not include Purchase or
+Receive steps." The Phase 1C RoutingTemplate backend did not enforce
+this at template creation because RoutingTemplateDefinition has no
+appliesTo or partType field — the constraint can only be enforced at
+the point where a Part references a template (assignment time).
+
+Phase 1B Unit 2's Part service implements
+PartRoutingTemplateInvalidError for existence/active validation when a
+Part's routingTemplateDefinitionId is set, but does NOT validate the
+Assembly + Purchase/Receive rule. A Part with partType: "Assembly"
+can currently reference a template containing Purchase or Receive
+steps without the API rejecting the request.
+
+Discovered: Phase 1C, during the schema review for the Assembly +
+Purchase/Receive validation placement decision.
+
+Action: Extend the Part service's FK pre-validation for
+routingTemplateDefinitionId. When the Part's partType is "Assembly"
+and the input includes a routingTemplateDefinitionId, fetch the
+template's steps with their ProcessType records. If any step's
+ProcessType is Purchase or Receive (by code or category — confirm
+against the seed's ProcessType definitions), throw a new error class
+(e.g., PartAssemblyRoutingInvalidError) with details listing the
+violating step indices.
+
+This validation belongs in both createPart and updatePart.
+
+Suggested timing: After Phase 1D BOM Editor backend completes, before
+Phase 2 Spreadsheet Import. The import path would let users assign
+invalid template/part combinations en masse if this gap is not closed
+first.
+
+---
 
 ### Vendor Open WOs Summary endpoint not yet implemented
 
