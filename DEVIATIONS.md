@@ -1493,3 +1493,37 @@ schema work referenced in the recommendations lands during Phase
 - spec/parts_master_grid_spec.md
 
 ---
+
+## 2026-06-01 — Routing include/exclude matrix promoted from Rev 2 deferral to Rev 1 per parts_master_grid_spec; parts_master_spec.md updated to align
+
+**Phase:** 1B (kickoff / spec reconciliation, before backend implementation)
+**Spec section:** spec/parts_master_spec.md (Filter Bar — Deferred filter (Rev 2) subsection)
+**Discovered by:** Consultant during Phase 1B kickoff review; user confirmed the grid spec supersedes the older parts_master_spec.md statement.
+**Status:** Resolved-Spec-Updated
+**Commit:** d53f218395c44d1950d0d64c9e9abb8a741616ec
+
+### What the spec says
+
+spec/parts_master_spec.md (Filter Bar section) listed "Includes Process" as a deferred-to-Rev-2 filter, with the note that it would join through the RoutingTemplate to surface parts whose routing contains a specific ProcessType. The bullet stated the filter had "high operational value but deferred."
+
+### What was discovered
+
+spec/parts_master_grid_spec.md, authored later during the mockup-driven scope validation pass, includes the routing include/exclude matrix as a Rev 1 filter operator. The grid spec documents the operator in its Filter Operator Inventory and provides query construction guidance in the Implementation Recommendations section (mapping "include" to a Prisma `some` clause and "exclude" to a `none` clause on routing template steps, with multiple constraints combining via AND).
+
+The contradiction surfaced during Phase 1B kickoff: the consultant flagged the conflict before drafting the filter-builder implementation prompt, since treating the matrix as Rev 2 versus Rev 1 materially affects what gets built. The user confirmed the grid spec supersedes — the mockup work validated that routing-based filtering is necessary for the grid to reach parity with the prior spreadsheet tool.
+
+### Resolution
+
+spec/parts_master_spec.md Filter Bar section updated:
+- Removed the "Deferred filter (Rev 2)" subsection containing the "Includes Process" bullet.
+- Added the routing include/exclude matrix to the Available filters table.
+- Added a paragraph summarizing the matrix semantics with a pointer to spec/parts_master_grid_spec.md for full operator definition.
+
+spec/parts_master_grid_spec.md unchanged — it was already the source of truth for the operator; this reconciliation aligned the older spec to it.
+
+### Files affected
+
+- spec/parts_master_spec.md (Filter Bar section updated)
+- DEVIATIONS.md (this entry)
+
+---
