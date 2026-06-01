@@ -8,7 +8,7 @@ export const SortSpecSchema = z.object({
 // Discriminated union on `operator` — one variant per operator in the
 // Filter Operator Inventory (spec/parts_master_grid_spec.md).
 
-const FilterSchema = z.discriminatedUnion("operator", [
+export const FilterSchema = z.discriminatedUnion("operator", [
   // String / URL
   z.object({ column: z.string(), operator: z.literal("contains"),           value: z.string() }),
   z.object({ column: z.string(), operator: z.literal("not_contains"),       value: z.string() }),

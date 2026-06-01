@@ -2,6 +2,10 @@ import { Prisma, PartType } from "@prisma/client";
 import { prisma } from "@/lib/db/client";
 import { isP2002OnField } from "@/lib/db/p2002";
 import { mutateWithAudit } from "@/lib/audit/mutateWithAudit";
+import { getView } from "@/lib/views/service";
+import { buildPartWhereClause } from "@/lib/grids/filter-builder";
+import { buildPartSortOrder } from "@/lib/grids/sort-builder";
+import type { GridQueryBody } from "@/lib/grids/schemas";
 import {
   PartNotFoundError,
   PartNumberCollisionError,
@@ -451,4 +455,35 @@ export async function reactivatePart(partId: number, userId: number): Promise<Pa
       };
     },
   });
+}
+
+export async function queryPartsGrid(input: GridQueryBody): Promise<PartRow[]> {
+  let filters: import("@/lib/views/types").FilterObject[];
+  let sort: import("@/lib/views/types").SortSpec[];
+
+  if ("viewId" in input) {
+    const view = await getView(input.viewId);
+    filters = view.filters;
+    sort = view.defaultSort;
+  } else {
+    filters = input.filters;
+    sort = input.sort;
+  }
+
+  const baseWhere = buildPartWhereClause(filters);
+  const orderBy = buildPartSortOrder(sort);
+
+  // Overlay the activeFilter on top of the base where clause.
+  // Default is "true" — the grid hides inactive Parts unless explicitly requested.
+  const activeFilterValue = input.activeFilter ?? "true";
+  let where: Prisma.PartWhereInput;
+  if (activeFilterValue === "all") {
+    where = baseWhere;
+  } else {
+    const isActive = activeFilterValue === "true";
+    where = { AND: [{ isActive }, baseWhere] };
+  }
+
+  const rows = await prisma.part.findMany({ where, orderBy, include: PART_INCLUDE });
+  return rows.map((r) => toPartRow(r as PartRaw));
 }
