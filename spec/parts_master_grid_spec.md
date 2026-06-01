@@ -465,3 +465,209 @@ affordance.
 Multi-column sort is stored as an ordered array on the View. The
 data model is documented in the Views System section (a
 subsequent commit).
+
+---
+
+## Filter System
+
+Filters are accessed via the column-header chevron menu's "Filter"
+option, which opens a popover anchored to the column header. The
+popover varies by column data type but follows a consistent
+interaction model: the user picks an operator, enters or selects
+values, clicks Apply to commit, or clicks Clear to remove any
+existing filter on this column.
+
+Filter state lives in the active View. Filters across columns
+combine via AND only — every active filter must be satisfied for
+a row to appear. (AND-only combination rule rationale is in the
+Views System section.)
+
+### Common Interaction Model
+
+Every filter popover, regardless of data type, follows the same
+structure:
+
+- **Header** showing the column name being filtered
+- **Operator selector** (dropdown or radio buttons depending on
+  options count) for choosing the filter operator
+- **Value input area** that adapts to the chosen operator (one
+  field for single-value operators, two fields for range
+  operators, a multi-select list for multi-select operators, etc.)
+- **Apply button** — commits the filter to the View's state,
+  closes the popover, applies the filter to the grid
+- **Clear button** — removes any existing filter on this column,
+  closes the popover, restores unfiltered display for this column
+- **Cancel button or popover close (×)** — closes the popover
+  without applying changes; any pending value edits are discarded
+
+Pressing Enter while focus is in a value input is equivalent to
+clicking Apply. Pressing Escape is equivalent to Cancel.
+
+The Apply-then-commit model means partial edits never affect the
+grid. Users can experiment with operator choices and values
+without seeing the grid filter and re-filter on every keystroke.
+
+### Filter Indicators
+
+When a filter is active on a column, a funnel icon appears on the
+column header adjacent to the column name (also documented in the
+Column-Header Menu section). Hovering the funnel displays a
+tooltip describing the active filter in plain language. Examples:
+
+- Text: "Material contains 'Alum'"
+- Numeric: "Stock Count greater than 50"
+- Range: "Cost between $10 and $100"
+- Date: "Cost Last Updated after 2026-01-01"
+- Multi-select: "Material is any of: 6061 Aluminum, 304 Stainless"
+- Routing: "Routing includes Machine and excludes Distribution"
+
+The funnel icon disappears when the filter is cleared via the
+popover or via the column-header menu's "Clear filter" option
+(which clears without opening the popover).
+
+### Multi-Value Behavior
+
+Multi-select operators (is any of) allow multiple selected values
+natively — the user picks multiple options from the list, all
+selected values are matched via implicit OR within the column.
+
+Single-value operators (contains, equals, greater than, before,
+etc.) accept exactly one value. The popover does not support
+multiple filters of the same operator on the same column (e.g.,
+"contains 'A' OR contains 'B'" is not expressible via the
+standard filter UI). This is a deliberate simplification — users
+who need OR-style behavior across multi-value text matching can
+use a saved View as a pre-filtered subset and narrow from there,
+or use the multi-select operator on a categorical column where
+the OR semantics are native.
+
+### Popover by Data Type
+
+Each data type has a specific popover layout. The structure
+follows the Common Interaction Model above; only the operator
+selector and value input vary.
+
+#### String and URL Columns
+
+**Operator selector:** dropdown listing the eight string
+operators (contains, does not contain, equals, does not equal,
+starts with, ends with, is empty, is not empty).
+
+**Value input:** single text input. Hidden for "is empty" and
+"is not empty" operators (no value needed).
+
+Default operator on first open: "contains".
+
+#### Integer and Decimal Columns
+
+**Operator selector:** dropdown listing the nine numeric
+operators (equals, does not equal, greater than, greater than or
+equal, less than, less than or equal, between, is empty, is not
+empty).
+
+**Value input:**
+- For "equals", "does not equal", "greater than", "greater than
+  or equal", "less than", "less than or equal": single numeric
+  input
+- For "between": two numeric inputs labeled "From" and "To"
+  (inclusive range). Validation: "To" must be >= "From"; if
+  invalid, the Apply button is disabled and an inline error
+  message explains the constraint.
+- For "is empty" and "is not empty": no value input
+
+Default operator on first open: "equals".
+
+#### Boolean Columns
+
+**Operator selector:** two-option radio (is true / is false).
+No separate value input; the operator IS the value.
+
+Default operator on first open: "is true" (most boolean filters
+in this grid are about "show me active records" style queries).
+
+#### Enum and Standard Chips Columns
+
+**Operator selector:** none — only one operator ("is any of") is
+supported, so the operator selector is replaced by an inline
+label "Show rows where {column} is any of:".
+
+**Value input:** multi-select list showing all available values
+for this column as checkboxes. Each list item shows the value's
+display text. For columns using compact-with-tooltip display
+(procurementCategory in particular), the list shows the full
+context (e.g., "CTL — Cut to Length") so users can select by
+meaning rather than abbreviation.
+
+- Selected values are checked; deselected values are unchecked
+- At least one value must be selected for the filter to apply
+  (Apply button disabled when zero are selected)
+- A "Select all" / "Deselect all" toggle in the popover header
+  speeds up bulk operations
+
+Default state on first open: all values deselected. (User must
+pick at least one to apply.)
+
+#### Datetime Columns
+
+**Operator selector:** dropdown listing the six datetime
+operators (equals, before, after, between, is empty, is not
+empty).
+
+**Value input:**
+- For "equals", "before", "after": single date picker
+- For "between": two date pickers labeled "From" and "To"
+  (inclusive range). Validation: "To" must be on or after "From";
+  Apply disabled when invalid.
+- For "is empty" and "is not empty": no value input
+
+Default operator on first open: "after".
+
+Time-of-day is not surfaced in the date pickers for Rev 1 — date
+filters operate at day granularity (a "before 2026-05-31" filter
+matches anything with a timestamp before midnight UTC on that
+date). Time-of-day precision can be added in Rev 2 if
+operationally needed.
+
+#### Routing Column (Special Case)
+
+The Routing column's filter popover differs structurally from
+other categorical filters because its data is a list of process
+types per Part, not a single value.
+
+**Layout:** the popover shows a table with one row per process
+type (9 rows total for the current Rev 1 ProcessType set). Each
+row has:
+
+- The process type's display label (with the ProcessTypeChip
+  color for quick visual identification)
+- A three-option radio: Include / Exclude / Unconstrained
+
+Rows can be set independently. The user can mark Machine as
+Include, Distribution as Exclude, and leave the other seven as
+Unconstrained. The filter applies as follows:
+
+- A row in "Include" state requires the Part's routing to
+  include that process type
+- A row in "Exclude" state requires the Part's routing to NOT
+  include that process type
+- A row in "Unconstrained" state applies no filter for that
+  process type
+
+Multiple non-unconstrained rows combine via AND: a Part must
+satisfy every active include/exclude constraint to appear in the
+results.
+
+**Apply behavior:** the Apply button commits the entire matrix
+state to the View's filters. If all rows are Unconstrained
+(effectively no filter), Apply removes any existing Routing
+filter from the View.
+
+**Clear behavior:** the Clear button resets all rows to
+Unconstrained and removes the Routing filter from the View.
+
+**Default state on first open:** all rows Unconstrained.
+
+The Routing filter popover is wider than other filter popovers
+to accommodate the 9-row matrix. This is an accepted visual
+trade-off — the matrix UI is the right pattern for the data
+shape, and Routing is the only column requiring this width.
