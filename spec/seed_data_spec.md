@@ -174,7 +174,28 @@ All seeded with `isActive = true`. Upsert key: `categoryCode`.
 
 ---
 
-## Section 4: AuditAction Lookup
+## Section 4: View
+
+Per `parts_master_grid_spec.md`, the Views system seeds five Views on
+initialization. The seed uses upsert keyed on `name` (the unique constraint).
+ViewId is auto-generated; the seed does not depend on specific ID values.
+
+| name | isLocked | isDefault | visibleColumns (summary) | defaultSort | filters |
+|------|----------|-----------|--------------------------|-------------|---------|
+| Master View | true | true | All columns in inventory order | partNumber asc | (none) |
+| Material Audit | false | false | partNumber, partName, materialName, materialForm, stockSize, blankLength, defaultVendorName | materialName asc | isActive = true |
+| Inventory Check | false | false | partNumber, partName, stockCount, inventoryLocation, binMin, binMax | stockCount asc | isActive = true |
+| No Routing Flagged | false | false | partNumber, partName, partType, procurementCategory, materialName, defaultVendorName, processTypes | partNumber asc | processTypes is empty |
+| Part Identification | false | false | partNumber, partName, procurementCategory, materialName, materialForm, stockSize, blankLength, defaultVendorName, processTypes, stockCount, inventoryLocation, modelLink, drawingLink, isActive | partNumber asc | (none) |
+
+Upsert key: `name`. The Master View's `isLocked` and `isDefault` fields are
+set only on create — the `update: {}` clause (empty) ensures these cannot
+be inadvertently overwritten if the seed is re-run after a user rename or
+configuration change.
+
+---
+
+## Section 5: AuditAction Lookup
 
 Per `schema.md`, AuditAction is a lookup table; new action types are added
 via row inserts, not schema migrations. The full Rev 1 seed list:
@@ -286,14 +307,21 @@ via row inserts, not schema migrations. The full Rev 1 seed list:
 | ProcurementCategoryDeactivated | Configuration | ProcurementCategory isActive set to false |
 | ProcurementCategoryReactivated | Configuration | ProcurementCategory isActive restored to true |
 
-**Total AuditAction seed entries:** 67
+### Views Actions
+| actionName | category | description |
+|------------|----------|-------------|
+| ViewCreated | Views | New View saved via Save as new |
+| ViewUpdated | Views | Existing View saved via Save |
+| ViewDeleted | Views | View deleted from View Management |
+
+**Total AuditAction seed entries:** 70
 
 All seeded with `isActive = true`. New action types added during Rev 1
 build (or Rev 2+) are inserted via additional seed runs or admin tooling.
 
 ---
 
-## Section 5: Initial Admin User
+## Section 6: Initial Admin User
 
 A fresh install needs at least one user with Admin role so someone can log
 in and configure the system. Without this, the manual user selection
@@ -326,7 +354,7 @@ preserves any post-install changes.
 
 ---
 
-## Section 6: What Is NOT Seeded
+## Section 7: What Is NOT Seeded
 
 The seed is intentionally minimal. The following are NOT seeded — they
 require deliberate user input:
@@ -379,7 +407,8 @@ Order matters because of foreign key dependencies:
 1. ProcessTypes (no FK dependencies)
 2. ProcessTypeSubStatus (depends on ProcessType)
 3. AuditAction (no FK dependencies; can be parallel with above)
-4. User (no FK dependencies)
+4. View (no FK dependencies; can be parallel with above)
+5. User (no FK dependencies)
 
 ### Re-Running the Seed
 
@@ -397,8 +426,9 @@ After seeding, verify:
 - All 9 ProcessTypes exist
 - 16 ProcessTypeSubStatus entries exist (4 + 3 + 5 + 4 across the four
   process types with seed entries)
-- All 67 AuditAction entries exist (63 original + 4 ProcurementCategory)
+- All 70 AuditAction entries exist (67 prior + 3 Views)
 - All 5 ProcurementCategory entries exist
+- All 5 View entries exist (Views: 5 expected = 5)
 - One admin user with userName = "admin" exists
 
 A simple verification script in `prisma/verify-seed.ts` can sanity-check

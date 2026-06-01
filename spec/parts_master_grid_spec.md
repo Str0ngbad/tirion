@@ -675,3 +675,197 @@ The Routing filter popover is wider than other filter popovers
 to accommodate the 9-row matrix. This is an accepted visual
 trade-off — the matrix UI is the right pattern for the data
 shape, and Routing is the only column requiring this width.
+
+---
+
+## Views System
+
+A View is a saved configuration of column visibility, ordering,
+sort, and filters. Views are named and shared across all users.
+Users switch between Views via a dropdown in the toolbar; users
+can create new Views by saving an ad-hoc configuration, and they
+can modify existing Views (with one exception, the Master View,
+documented below).
+
+The Views system enables the spreadsheet-parity interrogation
+pattern: common operational questions get encoded as Views,
+reused by the whole team, and refined over time. A "Material
+Audit" View answers "show me parts grouped by material with
+relevant context"; an "Inventory Check" View answers "show me
+parts ordered by stock level"; the Master View answers "show me
+everything I might need to see."
+
+### View Model
+
+Each View stores the following:
+
+| Field | Type | Notes |
+|-------|------|-------|
+| viewId | Int | Primary key |
+| name | String | 1-30 characters, unique across the system, free text |
+| isDefault | Boolean | Marks the View as the system default (loaded on first grid open) |
+| isLocked | Boolean | Marks the View as locked — cannot be deleted, cannot be saved over |
+| visibleColumns | Json | Ordered array of column IDs (e.g., ["partNumber", "partName", "materialName", ...]) |
+| defaultSort | Json | Ordered array of { column: string, direction: "asc" \| "desc" }. Primary sort first. |
+| filters | Json | Array of filter objects (shape varies by operator type; see Filter Object Shape below) |
+
+The Json columns hold structured data that varies in shape; the
+application layer parses and validates these values. Prisma's
+Json type stores them as JSONB in PostgreSQL.
+
+The schema migration for this model lands when Phase 1B Parts
+Master implementation begins. This spec describes the model;
+implementation builds it.
+
+### Filter Object Shape
+
+Each filter object in the filters array describes a single active
+filter:
+
+    {
+      column: string,         // the column ID being filtered
+      operator: string,       // the operator name
+      value: any              // shape depends on operator type
+    }
+
+Value shape by operator type:
+- String/URL operators (contains, equals, etc.): string
+- "is empty" / "is not empty" / "is true" / "is false": no value
+  field (or null)
+- Numeric single-value operators (greater than, etc.): number
+- Numeric "between": { from: number, to: number }
+- Date single-value: ISO date string (YYYY-MM-DD)
+- Date "between": { from: string, to: string }
+- Multi-select "is any of": array of selected values
+- Routing include/exclude matrix: object mapping process type IDs
+  to "include" | "exclude" | "unconstrained" (or omitted entries
+  treated as unconstrained)
+
+The application layer enforces the value shape per operator at
+the API layer (Zod validation) and the service layer (parsing
+before query construction).
+
+### Naming Constraints
+
+Names must be 1-30 characters and unique across the system. Names
+are free text — whitespace, special characters, and unicode are
+all permitted. Two Views cannot share a name; the View Management
+modal surfaces this constraint with an inline validation message
+when a user attempts to rename to a conflicting value.
+
+The 30-character limit keeps the View switcher dropdown compact;
+names longer than 30 characters would either truncate or wrap the
+dropdown into less-readable territory.
+
+### The Master View
+
+Exactly one View is permanently locked as the Master View. It is
+the system's baseline configuration:
+
+- **Name**: "Master View"
+- **isLocked**: true
+- **isDefault**: true (loaded on first grid open)
+- **visibleColumns**: every column in the inventory, in inventory
+  order
+- **defaultSort**: [{ column: "partNumber", direction: "asc" }]
+- **filters**: []
+
+The Master View is:
+- Always present (seeded; cannot be deleted)
+- Always the default (cannot have its default status removed in
+  Rev 1)
+- Always locked (saves to this View are disabled; users must use
+  Save as new to preserve a modified state)
+
+Users can modify the Master View in their current session
+(applying filters, sorts, hiding columns, etc.). These
+modifications are session-only — they exist in the user's grid
+state but do not write back to the View's stored configuration.
+The Save action is disabled when the active View is Master; Save
+as new is available for capturing the modifications into a new
+derived View.
+
+The Master View serves as the canonical starting point for
+building new Views. A user wanting to create a focused View
+switches to Master, applies the filters/sort/visibility they
+want, then uses Save as new to capture the configuration with a
+fresh name.
+
+Future Rev work may relax the Master View constraints (e.g.,
+allowing admins to modify the locked View). For Rev 1, the
+locked-and-default invariant simplifies the model and provides a
+reliable "show me everything" path that always works.
+
+### View Switcher
+
+The View switcher is a dropdown in the grid toolbar. The trigger
+displays the active View's name; the dropdown opens to show all
+Views.
+
+Ordering in the dropdown:
+1. The default View (Master View in Rev 1) appears at the top
+2. All other Views below, sorted alphabetically by name
+
+Selecting a different View from the dropdown loads that View's
+configuration into the grid. Any ad-hoc modifications to the
+previously-active View are discarded — switching to a new View
+starts from that View's saved state.
+
+Switching back to a previously-modified View loads its saved
+state again; ad-hoc modifications do not persist across View
+switches. (Users who want their modifications preserved should
+use Save or Save as new before switching.)
+
+This reset-on-switch behavior is documented in the View
+Modification Model section (next commit) as a core design
+decision rather than a side effect.
+
+### Bootstrap (Seed Views)
+
+The system seeds five Views on initialization. These provide a
+useful starting set that demonstrates the Views system and
+answers common operational questions out of the box.
+
+| Name | isLocked | isDefault | Description |
+|------|----------|-----------|-------------|
+| Master View | true | true | Every column in inventory order; sort by partNumber asc; no filters |
+| Material Audit | false | false | Columns: Part Number, Part Name, Material, Form, Stock Size, Length, Vendor. Filter: isActive=true. Sort by materialName asc |
+| Inventory Check | false | false | Columns: Part Number, Part Name, Stock, Location, Bin Min, Bin Max. Filter: isActive=true. Sort by stockCount asc |
+| No Routing Flagged | false | false | Columns: Part Number, Part Name, Type, Proc, Material, Vendor, Routing. Filter: processTypes is empty (no routing assigned). Sort by partNumber asc |
+| Part Identification | false | false | Columns: Part Number, Part Name, Proc, Material, Form, Stock Size, Length, Vendor, Routing, Stock, Location, Model, Drawing, Active. No filters. Sort by partNumber asc |
+
+Bootstrap rationale: a fresh system with no Views would require
+the application to handle the empty case specially (no Views to
+switch to, no default to load, no Master to start building
+from). Seeding ensures the Views table is always non-empty after
+initialization. The starter Views also demonstrate the system's
+capability — new users see immediately that the grid supports
+saved configurations for common workflows.
+
+### Audit Logging
+
+Three AuditActions track View lifecycle events:
+
+- ViewCreated: fires when a new View is saved (via Save as new
+  from the View Modification Model)
+- ViewUpdated: fires when an existing non-locked View is saved
+  via the Save action
+- ViewDeleted: fires when a non-locked View is deleted via the
+  View Management Modal
+
+These actions are in a new "Views" AuditAction category, distinct
+from the "Configuration" category that holds entity-management
+audit actions. Views are a layer on top of Parts; the separate
+category keeps the AuditLog filtering cleaner.
+
+Operations that do not generate AuditLog entries in Rev 1:
+- Session-only View modifications (sort, filter, hide column —
+  the dirty state is not persisted, so no audit event)
+- View switching (navigation, not mutation)
+- Default View changes (Master is always default in Rev 1; this
+  only matters when admins can change the default in future revs)
+
+The Rev 1 audit model captures the persistent mutations: a View
+was created, updated, or deleted. This is sufficient
+accountability for a trusted-shop context where permission
+gating is absent.
