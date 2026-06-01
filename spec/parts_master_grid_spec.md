@@ -1053,3 +1053,144 @@ Master View serves as the canonical "show everything" starting
 point. Users discover the system's capabilities by working with
 Master, then capture useful configurations via Save as new for
 reuse.
+
+---
+
+## Columns Picker
+
+The Columns picker is the comprehensive control for managing
+column visibility and ordering. It complements the column-header
+menu's "Hide column" option (which hides a single column from
+the current surface) by providing a single place to see all
+available columns, restore hidden columns, and reorder the
+full column set.
+
+The picker operates on session state — changes made in the
+picker flow through the View Modification Model. Modifying
+visibility or order marks the active View as modified (a small
+dot appears on the View switcher); the changes persist into
+the View definition only when the user explicitly saves via
+Save or Save as new.
+
+### Button and Popover
+
+The picker is accessed via a button in the toolbar labeled with
+a columns icon and the text "Columns". Click opens a popover
+anchored to the button.
+
+The popover displays a vertically-scrolling list of all columns
+in the inventory. Approximately 11 columns fit in the popover's
+viewport at a typical size; the remaining columns are accessed
+by scrolling within the popover. The popover does not expand to
+fit all content — it has a defined viewport height, and
+overflow scrolls.
+
+### Row Layout
+
+Each row in the picker represents one column and has three
+elements:
+
+- **Checkbox** — visible state. Checked means the column is
+  currently visible in the grid; unchecked means hidden.
+- **Drag handle** — small icon (typically a grip pattern) used
+  to drag the row to a new position.
+- **Column display name** — the column's display name from the
+  inventory (e.g., "Part Number", "Stock", "Proc").
+
+The drag handle is positioned to the left of the row content
+(matching common convention); the checkbox is adjacent to the
+column name.
+
+### List Order
+
+The picker shows columns in the active View's current column
+order. This order is the same as the order columns appear in
+the grid (left to right in the grid corresponds to top to
+bottom in the picker).
+
+Hidden columns remain at their position in the order even
+though they are not displayed in the grid. The picker is the
+single source of truth for the View's complete column order;
+hiding a column does not move its row in the picker, only its
+checkbox changes. This produces stable row positions in the
+picker that users learn over time — even after toggling
+visibility, columns remain at their familiar positions.
+
+Reordering via drag changes both the picker row order and the
+grid column order simultaneously. The picker and grid always
+reflect the same underlying order.
+
+### Drag-to-Reorder
+
+Users reorder columns by dragging rows within the picker. The
+interaction follows standard vertical-list drag-and-drop:
+
+- Hover on a row reveals the drag affordance (cursor change
+  when over the drag handle, or row-level cursor change
+  depending on implementation)
+- Click-and-hold on the drag handle (or row, per
+  implementation) picks up the row
+- During drag, visual feedback shows the row's current floating
+  position and indicators for valid drop locations (a line
+  between rows showing where the dragged row will land if
+  dropped)
+- Release commits the new order
+
+Drag-to-reorder works on any row regardless of its current
+visibility state. Reordering a hidden column changes where it
+would appear if made visible later, without changing what the
+grid currently displays.
+
+Reordering marks the View as modified (the View Modification
+Model handles the rest — modified indicator appears on the
+View switcher, Save / Save as new / Revert actions become
+available).
+
+### Visibility Toggle
+
+Clicking a checkbox toggles the column's visibility in the
+grid. Toggling has immediate effect — the grid updates as the
+user clicks. The column appears or disappears at its current
+ordered position.
+
+Toggling visibility marks the View as modified.
+
+### Master View Interaction
+
+When the active View is Master View, the picker behaves
+identically to its behavior with any other View:
+
+- Master View shows all columns visible by default, so all
+  checkboxes start checked
+- Users can uncheck checkboxes to hide columns in session
+- Hiding columns marks Master View as modified
+- Save is disabled on Master View (consistent with the View
+  Modification Model); Save as new captures the modified
+  column visibility into a new derived View
+- Revert restores Master View to its baseline (every column
+  visible in inventory order)
+
+### Dismissal
+
+The popover closes when the user clicks outside it. There is
+no explicit close button; the popover follows the same
+dismissal pattern as the column-header filter popovers.
+
+Closing the popover does not commit or discard changes — all
+changes were already applied to the session state in real time
+as the user toggled or dragged. The popover is a control
+surface, not a transactional one. Reopening the popover shows
+the current session state of the View.
+
+### Restoring Hidden Columns
+
+The picker is the primary mechanism for restoring a hidden
+column to the grid. A user who hid a column via the
+column-header menu's "Hide column" option reopens the picker,
+finds the column's row (at its familiar position), and clicks
+its checkbox to make it visible again.
+
+The column-header menu does not have an "unhide" option for
+hidden columns (because the hidden column's header is not
+visible to display a menu). The picker is therefore the
+required path back from hidden to visible.
