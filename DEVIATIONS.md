@@ -1246,3 +1246,79 @@ saves the modified View.
 - spec/parts_master_grid_spec.md
 
 ---
+
+## 2026-05-31 — Active Filters chrome added; surfaces active filters even when columns are hidden
+
+**Phase:** 1A
+**Spec section:** parts_master_grid_spec.md (Active Filters Chrome section)
+**Discovered by:** User, during Parts Master Grid spec drafting
+**Status:** Resolved-Spec-Updated
+**Commit:** 7e8488a9d0a5f87964b5c41bf5d222c201139bbf
+
+### What the spec said
+
+The filter system (commit 761cf89) documented how filters are
+applied and surfaced via the column-header funnel icon. That
+indicator works when the filtered column is visible: a small
+funnel appears on the header, the column-header menu allows
+modification, and the hover tooltip describes the filter in plain
+language.
+
+What was not documented: what happens to filter visibility when
+the filtered column is hidden. With only the column-header funnel
+icon as the surface, hiding a filtered column removes the only
+visual indicator that the filter is active. The user sees a
+filtered result set without an obvious indication of why certain
+rows are absent.
+
+### What was discovered
+
+The operational problem surfaced during spec design: a user can
+filter a column (e.g., Material contains 'alum'), then hide that
+column via the column-header menu or the Columns picker. The
+filter remains active and continues to constrain the result set,
+but the user has no visual representation that filtering is
+happening. They may think the missing rows do not exist.
+
+This is a real concern in a tool that emphasizes "interrogate
+freely" — users will explore by filtering then changing column
+visibility, and the system needs to keep them oriented to current
+state regardless of which columns are on screen.
+
+The chosen solution: an Active Filters chrome area in the toolbar
+that persists regardless of column visibility, scroll position,
+or Part Form panel state. Each active filter renders as a pill
+showing the plain-language description, with an X to remove the
+filter and click-to-open the filter popover for editing.
+
+The chrome mirrors the existing Active Sorts pattern (also visible
+in the toolbar, also persistent regardless of column visibility),
+extending the same approach to filters where the same operational
+problem applies.
+
+### Resolution
+
+- parts_master_grid_spec.md: new Active Filters Chrome section
+  added after the Columns Picker section. Covers Visibility
+  (appears when at least one filter is active, hidden otherwise),
+  Layout (positioned before Active Sorts in the toolbar), Pill
+  Content (plain-language description matching the column-header
+  funnel tooltip), Pill Affordance (X to remove, click-to-edit
+  on the description), the Routing Filter Pill's threshold-based
+  description (verbose for 2 or fewer rules, compact count for
+  3 or more), and the Interaction with Modified State (all chrome
+  modifications flow through the View Modification Model).
+
+- The chrome's existence is explained with the operational
+  problem it solves rather than as a standalone feature. This
+  framing helps future readers understand why the section exists,
+  not just what it documents.
+
+No schema, seed, or AuditAction changes — this is a UI surface
+that operates on existing View state.
+
+### Files affected
+
+- spec/parts_master_grid_spec.md
+
+---
