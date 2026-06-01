@@ -14,3 +14,9 @@ export {
   ProcurementCategoryCodeCollisionError,
   ProcurementCategoryNameCollisionError,
 } from "@/lib/errors/procurement-category";
+export {
+  MaterialSpecNotFoundError,
+  MaterialSpecAlreadyActiveError,
+  MaterialSpecAlreadyInactiveError,
+  MaterialSpecCollisionError,
+} from "@/lib/errors/material-spec";
