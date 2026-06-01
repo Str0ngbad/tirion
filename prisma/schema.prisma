@@ -462,6 +462,18 @@ model AuditAction {
   auditLogs AuditLog[]
 }
 
+model View {
+  viewId         Int     @id @default(autoincrement())
+  name           String  @unique
+  isDefault      Boolean @default(false)
+  isLocked       Boolean @default(false)
+  visibleColumns Json
+  defaultSort    Json
+  filters        Json
+
+  @@map("view")
+}
+
 model AuditLog {
   auditLogId      Int       @id @default(autoincrement())
   entityType      String    // 'WorkOrder' | 'WorkOrderStep' | 'Batch' | 'Blocker' | etc.

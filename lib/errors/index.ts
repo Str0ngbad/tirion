@@ -34,3 +34,9 @@ export {
   ProcessTypeSubStatusAlreadyInactiveError,
   ProcessTypeSubStatusCollisionError,
 } from "@/lib/errors/process-type-sub-status";
+export {
+  ViewNotFoundError,
+  ViewNameCollisionError,
+  ViewLockedError,
+  ViewMasterImmutableError,
+} from "@/lib/errors/view";

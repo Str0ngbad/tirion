@@ -171,6 +171,11 @@ async function seedAuditActions() {
     { actionName: "DefinitionChangeFlagInheritedViaWOSplit", category: "Flag", description: "Original flag auto-resolved when flagged WO was split; new flags created on resulting WOs" },
     { actionName: "DefinitionChangeFlagAutoResolvedViaBatchDissolution", category: "Flag", description: "Batch flag auto-resolved when batch was dissolved while flag was open" },
 
+    // Views (3)
+    { actionName: "ViewCreated", category: "Views", description: "New View record created" },
+    { actionName: "ViewUpdated", category: "Views", description: "View configuration edited" },
+    { actionName: "ViewDeleted", category: "Views", description: "View hard-deleted" },
+
     // Configuration (4)
     { actionName: "VendorCreated", category: "Configuration", description: "New Vendor record created" },
     { actionName: "VendorUpdated", category: "Configuration", description: "Vendor attribute fields edited" },
@@ -205,6 +210,99 @@ async function seedAuditActions() {
   console.log(`  AuditActions: ${auditActions.length} records`);
 }
 
+// ─── Views ────────────────────────────────────────────────────────────────────
+
+async function seedViews() {
+  // Column IDs match spec/parts_master_grid_spec.md "Column Inventory".
+  // Display names shown in comments for traceability.
+  const masterColumns = [
+    "partNumber",       // Part Number
+    "partName",         // Part Name
+    "partType",         // Type
+    "procurementCategory", // Proc
+    "isActive",         // Active
+    "materialName",     // Material
+    "materialForm",     // Form
+    "stockSize",        // Stock Size
+    "blankLength",      // Length
+    "defaultVendorName", // Vendor
+    "vendorPartNumber", // Vendor Part#
+    "processTypes",     // Routing
+    "machineCycleTime", // Cycle Time
+    "numberOfSetups",   // Setups
+    "stockCount",       // Stock
+    "inventoryLocation", // Location
+    "binMin",           // Bin Min
+    "binMax",           // Bin Max
+    "modelLink",        // Model
+    "drawingLink",      // Drawing
+    "partCost",         // Cost
+    "partCostUpdatedAt", // Cost Updated
+    "usedInCount",      // Used In
+  ];
+
+  const views = [
+    {
+      name: "Master View",
+      isDefault: true,
+      isLocked: true,
+      visibleColumns: masterColumns,
+      defaultSort: [{ column: "partNumber", direction: "asc" }],
+      filters: [],
+    },
+    {
+      name: "Material Audit",
+      isDefault: false,
+      isLocked: false,
+      visibleColumns: ["partNumber", "partName", "materialName", "materialForm", "stockSize", "blankLength", "defaultVendorName"],
+      defaultSort: [{ column: "materialName", direction: "asc" }],
+      filters: [{ column: "isActive", operator: "is_true" }],
+    },
+    {
+      name: "Inventory Check",
+      isDefault: false,
+      isLocked: false,
+      visibleColumns: ["partNumber", "partName", "stockCount", "inventoryLocation", "binMin", "binMax"],
+      defaultSort: [{ column: "stockCount", direction: "asc" }],
+      filters: [{ column: "isActive", operator: "is_true" }],
+    },
+    {
+      name: "No Routing Flagged",
+      isDefault: false,
+      isLocked: false,
+      visibleColumns: ["partNumber", "partName", "partType", "procurementCategory", "materialName", "defaultVendorName", "processTypes"],
+      defaultSort: [{ column: "partNumber", direction: "asc" }],
+      // Note: processTypes is the routing column; is_empty means no routing steps assigned.
+      // The routing filter matrix operator (routing_matrix) handles include/exclude;
+      // is_empty is a simpler existence check used here for seed purposes.
+      filters: [{ column: "processTypes", operator: "is_empty" }],
+    },
+    {
+      name: "Part Identification",
+      isDefault: false,
+      isLocked: false,
+      visibleColumns: [
+        "partNumber", "partName", "procurementCategory", "materialName",
+        "materialForm", "stockSize", "blankLength", "defaultVendorName",
+        "processTypes", "stockCount", "inventoryLocation",
+        "modelLink", "drawingLink", "isActive",
+      ],
+      defaultSort: [{ column: "partNumber", direction: "asc" }],
+      filters: [],
+    },
+  ];
+
+  for (const view of views) {
+    await prisma.view.upsert({
+      where: { name: view.name },
+      update: {},
+      create: view,
+    });
+  }
+
+  console.log(`  Views: ${views.length} records`);
+}
+
 // ─── Admin User ───────────────────────────────────────────────────────────────
 
 async function seedAdminUser() {
@@ -226,19 +324,21 @@ async function seedAdminUser() {
 // ─── Verification ─────────────────────────────────────────────────────────────
 
 async function verify() {
-  const [processTypeCount, subStatusCount, auditActionCount, procurementCategoryCount, userCount] = await Promise.all([
+  const [processTypeCount, subStatusCount, auditActionCount, procurementCategoryCount, userCount, viewCount] = await Promise.all([
     prisma.processType.count(),
     prisma.processTypeSubStatus.count(),
     prisma.auditAction.count(),
     prisma.procurementCategory.count(),
     prisma.user.count({ where: { userName: "admin" } }),
+    prisma.view.count(),
   ]);
 
   console.log("\nVerification:");
   console.log(`  ProcessTypes:           ${processTypeCount} (expected = 9)`);
   console.log(`  ProcessTypeSubStatuses: ${subStatusCount} (expected = 16)`);
-  console.log(`  AuditActions:           ${auditActionCount} (expected = 79)`);
+  console.log(`  AuditActions:           ${auditActionCount} (expected = 82)`);
   console.log(`  ProcurementCategories:  ${procurementCategoryCount} (expected = 5)`);
+  console.log(`  Views:                  ${viewCount} (expected = 5)`);
   console.log(`  Admin user present:     ${userCount === 1 ? "yes" : "NO — check seed"}`);
 }
 
@@ -252,6 +352,7 @@ async function main() {
   await seedSubStatuses();
   await seedAuditActions();
   await seedAdminUser();
+  await seedViews();
 
   await verify();
 
