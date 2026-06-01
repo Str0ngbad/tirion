@@ -1433,4 +1433,303 @@ see the current state. For Rev 1 this is acceptable; concurrent
 rename/delete operations are rare in small-shop environments,
 and the small risk of acting on stale data is bounded.
 
+---
+
+## Implementation Recommendations
+
+These recommendations are starting points for the Phase 1B
+Parts Master implementation track. They are sufficient to begin
+work without re-deriving design decisions from this spec, but
+they leave room for implementation-track judgment on details
+not specified here.
+
+### View Model Schema
+
+The View model (documented in the Views System section) lands
+as part of Phase 1B's Parts Master backend implementation. The
+Prisma model:
+
+  model View {
+    viewId          Int      @id @default(autoincrement())
+    name            String   @unique
+    isDefault       Boolean  @default(false)
+    isLocked        Boolean  @default(false)
+    visibleColumns  Json
+    defaultSort     Json
+    filters         Json
+  }
+
+The three Json columns hold structured data; the application
+layer validates shapes via Zod before persisting and parses
+shapes on read. Prisma's Json type serializes to JSONB in
+PostgreSQL.
+
+Naming uniqueness is enforced by the database unique
+constraint plus application-layer collision detection (the
+P2002 helper pattern from lib/db/p2002.ts, when that helper is
+extracted per the existing backlog entry).
+
+### API Endpoints
+
+The grid's Views system requires CRUD endpoints. The
+recommended REST structure:
+
+- GET /api/v1/views — list all Views (returns ordered array
+  with default View first, others alphabetical)
+- POST /api/v1/views — create a new View (used by Save as new)
+- GET /api/v1/views/[id] — fetch a single View by ID
+- PATCH /api/v1/views/[id] — update an existing View (used by
+  Save and inline rename)
+- DELETE /api/v1/views/[id] — delete a non-Master View
+
+All mutating endpoints require X-User-Id; all use mutateWithAudit
+for ViewCreated, ViewUpdated, or ViewDeleted audit logging as
+appropriate.
+
+Validation:
+- POST and PATCH validate name (1-30 chars, unique check via
+  P2002 detection)
+- DELETE rejects requests targeting Views with isLocked: true
+- Master View's name and isDefault and isLocked fields cannot
+  be modified via PATCH; the service rejects such attempts
+
+### Bootstrap Seed Implementation
+
+The five seed Views (documented in the Views System section)
+are added to prisma/seed.ts during Phase 1B:
+
+- A new seedViews function upserts the five Views keyed on
+  name. The upsert pattern matches seedProcurementCategories
+  and other configuration entity seeding.
+- Three new AuditActions land in the Views category alongside
+  seedAuditActions.
+- Verification log expectations update: Views: 5 (expected = 5)
+  and AuditActions: 70 (was 67, +3 for Views).
+
+### Filter Query Construction
+
+Each filter operator maps to a specific Prisma where clause
+construction. The mapping is mechanical but worth documenting
+for implementation reference:
+
+- **String contains/starts with/ends with**: Prisma string mode
+  contains/startsWith/endsWith filters with mode: 'insensitive'
+- **String equals/does not equal**: Prisma equals filter with
+  mode: 'default' (case-sensitive)
+- **Numeric operators**: Prisma equals, gt, gte, lt, lte
+  filters; "between" uses gte + lte combination
+- **Date operators**: Prisma equals, gt, lt filters on the
+  datetime field; "between" uses gte + lte
+- **Multi-select (is any of)**: Prisma in filter with the
+  selected values array
+- **is empty / is not empty**: Prisma equals null / not null
+- **Routing include/exclude matrix**: per process type with
+  "include" maps to a some clause on routing template steps
+  requiring that process type; "exclude" maps to a none clause
+  on routing template steps not requiring that process type;
+  multiple constraints combine via AND in the where clause
+
+The implementation should encapsulate filter-to-Prisma
+translation in a helper (e.g., lib/grids/filter-builder.ts)
+rather than scattering the logic across route handlers.
+
+### Multi-Column Sort Query Construction
+
+Prisma's orderBy accepts an ordered array of sort specifications.
+Multi-column sort translates directly:
+
+  orderBy: [
+    { partNumber: 'asc' },
+    { materialSpec: { materialName: 'asc' } },
+    { stockSize: 'asc' }
+  ]
+
+Relation-based columns (materialName, defaultVendorName,
+routingTemplate name, etc.) use nested Prisma syntax. The
+column inventory's Source field tracks the join path for each
+column.
+
+Implementation should encapsulate sort-to-Prisma translation
+similarly to filter translation, in a helper that takes the
+ordered sort array and returns the Prisma orderBy clause.
+
+### Chips Condense Toggle
+
+The Parts Master Grid's Routing column displays
+ProcessTypeChip[] in either condensed (color-only chip) or
+expanded (color + process code text) form. The toggle between
+forms is the same pattern documented in execution lens specs
+(see operations_lens_spec.md and project_view_spec.md).
+
+For Rev 1, the grid implements this toggle following the
+established pattern. A toggle control in the toolbar (or via
+the View's column display settings; implementation may choose)
+switches the Routing column between condensed and expanded.
+When chips are condensed, the routing legend (also documented
+in execution specs) provides the color-to-process-type mapping
+in the toolbar.
+
+### Filter Object Validation
+
+The Filter Object Shape (documented in the Views System
+section) varies by operator. Implementation should use a
+discriminated Zod union to validate each filter:
+
+  const FilterSchema = z.discriminatedUnion('operator', [
+    z.object({
+      column: z.string(),
+      operator: z.literal('contains'),
+      value: z.string()
+    }),
+    z.object({
+      column: z.string(),
+      operator: z.literal('between'),
+      value: z.object({ from: z.number(), to: z.number() })
+    }),
+    // ... and so on for each operator
+  ]);
+
+This ensures malformed filter objects cannot be persisted or
+applied to queries.
+
+### Component Reuse Across Surfaces
+
+Several patterns documented in this spec recur across other
+spec surfaces. Where reasonable, implementation should share
+components:
+
+- **ProcessTypeChip**: a single component used by the Routing
+  column and by execution lens displays. Compact-mode dimensions
+  should be standardized across surfaces.
+- **Filter popover**: the per-data-type filter UIs can be
+  reused by execution lens grids if they adopt similar
+  filtering. For Rev 1 the Parts Master Grid is the only
+  surface; future surfaces may share the implementation.
+- **Sort priority chrome**: the Active Sorts pattern may apply
+  to execution lens grids in the future. Shared implementation
+  is preferred over parallel ones.
+
+---
+
+## Open Questions for Implementation Track
+
+These are questions the spec does not resolve. They need
+decisions during Phase 1B implementation or in subsequent Revs,
+documented here so they are not re-derived from scratch when
+they surface.
+
+### Views Permissions Beyond Rev 1
+
+Rev 1 has no permission gating on View operations: any user can
+create, rename, or delete Views. The shop context is trusted,
+and accountability is enforced via the ViewCreated, ViewUpdated,
+and ViewDeleted audit log entries.
+
+Rev 1.5+ may want admin-only delete (and possibly admin-only
+rename) if accidental modifications to shared Views become a
+real problem in practice. The data model already supports this
+— adding a check on the user's role at the service layer is
+additive.
+
+Trigger for adding gating: user feedback during Rev 1 operation
+surfaces specific incidents or near-incidents of accidental
+destruction.
+
+### Schema Evolution and Saved View Compatibility
+
+Saved Views reference column identifiers in their
+visibleColumns array and filter objects. If a future schema
+change removes or renames a column identifier, existing saved
+Views may reference identifiers that no longer exist.
+
+Recommended behavior: a View referencing a column identifier
+not in the current inventory silently omits that column from
+the rendered grid. The View remains valid; the user sees a
+View with fewer columns than expected.
+
+Recommended migration approach: when schema changes rename or
+remove column identifiers, a migration script also updates the
+visibleColumns arrays in stored Views to match. The migration
+pattern uses Prisma's raw SQL or a one-time script reading and
+updating Json columns.
+
+Decision needed: should renames update existing Views
+automatically (silent migration), or surface affected Views to
+admins for manual review? Rev 1 doesn't introduce schema
+changes affecting column identifiers; Rev 2+ will.
+
+### Performance at Scale
+
+Mockup data has ~15 parts. Production datasets may grow to
+thousands or more. Filter and sort performance at scale needs
+validation, particularly for:
+
+- Deep filter operators (text contains, date range) on large
+  datasets — appropriate indexes likely needed
+- Routing include/exclude matrix queries that join through
+  routing template steps — query plan analysis worthwhile
+- Multi-column sort with relation-based columns
+  (materialName joins through MaterialSpec, defaultVendorName
+  joins through Vendor) — query plan and index strategy
+  worth attention
+
+Recommended: when Phase 1B implementation completes the Parts
+Master backend, run performance tests with seeded data at
+realistic scale (5000+ parts, 100+ Views). Add indexes based
+on observed slow paths.
+
+### Live Sync for View Management Modal
+
+The View Management Modal shows a snapshot of the Views library
+from the time the modal was opened. Concurrent modifications by
+other users are not reflected until the modal is closed and
+reopened.
+
+For Rev 1's small-shop context this is acceptable; live sync
+is rarely needed when 3-5 users share a Views library. If
+operational use surfaces concurrent-edit issues (rare in
+practice but possible if multiple users administer Views
+simultaneously), Rev 2+ can add live sync via WebSocket or
+periodic refresh.
+
+### Sticky Columns
+
+Users have expressed interest in pinning Part Number and Part
+Name columns to the left side of the grid during horizontal
+scroll. This is operationally useful for wide Views where
+scrolling to the right loses identification context.
+
+Deferred to Rev 1.5+ as out of Rev 1 scope. Implementation
+involves CSS-based column pinning (position: sticky with
+z-index management) which is established but non-trivial work.
+
+### Bulk Operations on Views
+
+Rev 1 does not include bulk operations such as deleting
+multiple Views at once or applying a column visibility change
+to multiple Views. If shop admins want to maintain large View
+libraries, bulk operations may be useful in Rev 2+.
+
+### Duplicate View Action
+
+Rev 1 does not include a Duplicate action in the View
+Management Modal. Users replicate an existing View by switching
+to it, making any small change to mark it modified, and using
+Save as new. This works but is mildly awkward.
+
+Rev 1.5+ may add an explicit Duplicate action if user feedback
+indicates the current workaround is friction.
+
+### Default View Configurability
+
+Rev 1 hardcodes Master View as the default. Future revs may
+allow admins to change which View is the default (relevant if
+Master is no longer the only locked View, or if shops prefer
+a different starting state).
+
+The data model already supports this — the isDefault field is
+separate from isLocked. The application layer enforces "Master
+is always default" as a Rev 1 invariant; Rev 2 can relax this
+invariant if needed.
+
 Rev 2+ may add live sync if operational use surfaces a need.
