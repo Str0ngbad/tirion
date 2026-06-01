@@ -1527,3 +1527,60 @@ spec/parts_master_grid_spec.md unchanged — it was already the source of truth 
 - DEVIATIONS.md (this entry)
 
 ---
+
+## 2026-06-01 — Five spec resolutions from Phase 1C mockup alignment review: filter shape, reactivation workflow, save response shape, Active column pattern, edit-dialog trigger condition
+
+**Phase:** 1C (mockup-vs-spec alignment review, before backend implementation)
+**Spec section:** spec/routing_template_editor_spec.md (Library filter, Retirement, Save behavior, Active column, Edit-time dialog trigger)
+**Discovered by:** Code (via Playwright mockup interaction) during a read-only alignment review task; consultant and user resolved each finding before the spec edit landed.
+**Status:** Resolved-Spec-Updated
+**Commit:** 5bdbf132d011ab153063c06eb3441245934dd433
+
+### What the spec says
+
+spec/routing_template_editor_spec.md prior to this change had five points where the spec was either silent, misleading, or inconsistent with the Phase 1C mockup:
+
+1. The library filter was described as "Active / Inactive / All (default: Active)", implying a three-state UI. The shape of the API filter parameter was not specified.
+
+2. The retirement section stated templates "can be reactivated" in a single sentence without describing the reactivation workflow, dialog behavior, or audit action.
+
+3. The post-save toast was prescribed ("Template saved. [N] WOs flagged for review.") but the API response shape that carries the count was not.
+
+4. The library row described an "Active toggle" column, implying the indicator was directly clickable to flip state.
+
+5. The edit-time dialog section contained a parenthetical "always the case for active templates" implying the no-dialog path could not occur for active templates.
+
+### What was discovered
+
+A read-only alignment review compared the Phase 1C mockup against the spec. Code interacted with the mockup via Playwright MCP and produced a structured report with three sections (alignment, gaps, inconsistencies). Three backend-relevant findings and two inconsistencies surfaced:
+
+1. The mockup implements a binary "Show Inactive" toggle (two states: active-only or both). The spec's three-state language did not specify whether the API surface should match the UI or stay broader.
+
+2. The mockup answers the unspecified reactivation questions implicitly: reactivation is initiated from the three-dot menu on inactive rows, is immediate (no confirmation), and writes a TemplateReactivated audit entry. The spec was silent on all three points.
+
+3. The mockup's save path does not return a WO-flagged count to the frontend. The spec's prescribed toast requires this number; without an API contract for it, the frontend cannot display the toast. The complication is that Phase 1C has no WorkOrder layer yet, so the actual flag-creation count is structurally zero until Phase 1C+ builds out WorkOrders and the Definition Change Flag system.
+
+4. The mockup's Active column is a static read-only indicator, not a toggle. Retire and Reactivate are accessed via a three-dot (⋯) menu on each row.
+
+5. The mockup's edit-time dialog uses partsCount > 0 || openWoCount > 0 as the gate. A newly created active template with zero parts is a valid state — the spec's parenthetical was wrong on its face.
+
+### Resolution
+
+Five spec sections updated in commit 5bdbf13:
+
+1. **Library filter** documented as three-state at the API (active=true|false|all) consistent with Vendor, MaterialSpec, User, and Part backends; the Rev 1 UI is documented as a two-state Show Inactive toggle. The inactive-only API state is reserved for future UI without backend churn.
+
+2. **Reactivation workflow** prescribed explicitly: initiated from the three-dot menu, immediate (no confirmation), writes TemplateReactivated AuditAction. Matches the Vendor reactivation pattern from Phase 1A. The contrast with retirement (which requires confirmation due to downstream impact) is documented.
+
+3. **Save response shape** prescribed to include a flaggedWoCount number field. In Phase 1C the value is always 0; field is present from 1C so the API contract is stable. Frontend UI behavior on the zero case (suppress toast or generic "Template saved" message) is left as a frontend decision.
+
+4. **Active column** redescribed as a read-only indicator (green/gray dot); Retire and Reactivate actions live in a three-dot (⋯) menu on each row.
+
+5. **Edit-time dialog trigger** rewritten to state the gate as partsReferencingCount > 0 OR openWoCount > 0, with explicit acknowledgment that a newly created template with zero parts is a valid zero-impact state.
+
+### Files affected
+
+- spec/routing_template_editor_spec.md (five sections updated)
+- DEVIATIONS.md (this entry)
+
+---
