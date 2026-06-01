@@ -223,25 +223,43 @@ Phase: 1A — observed during MaterialSpec implementation planning
 
 ## Follow-up Implementation
 
-### Vendor Active Work Summary endpoint not yet implemented
+### Vendor Open WOs Summary endpoint not yet implemented
 
-Spec was updated in commit e2a363d to add an Active Work summary to
+Spec was updated in commit e2a363d to add an Open WOs summary to
 the Vendor Detail Modal Fields (configuration_management_spec.md
 Vendor Management section). The corresponding API endpoint has not
 been built.
 
-Specification: GET /api/v1/vendors/:id/active-work-summary returning
+Specification: GET /api/v1/vendors/:id/open-wos-summary returning
 three counts:
-- total active WOs whose Part has this vendor as defaultVendorId
-- awaiting receipt (active WOs in the ordered-not-yet-received state)
-- awaiting purchase (active WOs in the not-yet-ordered state)
+- total open WOs whose Part has this vendor as defaultVendorId
+- awaiting receipt (open WOs in the ordered-not-yet-received state)
+- awaiting purchase (open WOs in the not-yet-ordered state)
 
 The two breakdown counts are disjoint subsets of total per the state
 model; the remainder (total minus the two breakdowns) is WOs past
 both purchasing and receiving.
 
-Phase: 1A — to implement after MaterialSpec work is complete, before
-closing Phase 1A.
+### Design Decision
+
+The endpoint's query logic should share its construction with
+the Purchasing and Receiving lens services (Phase 6B+). The
+"awaiting purchase" semantics correspond to "WO has Purchase
+step not yet Complete" — the same filter the Purchasing Lens
+uses. The "awaiting receipt" semantics correspond to "WO has
+Purchase step Complete AND Receive step not yet Complete" —
+the same filter the Receiving Lens uses.
+
+Building the summary endpoint before the lens services exist
+would mean writing query logic that should be shared with code
+that doesn't exist yet, then refactoring later. Building the
+lens services first makes the summary endpoint a thin wrapper
+that calls them with count semantics rather than row-returning
+semantics.
+
+Phase: 1A — to implement after WorkOrder and lens services
+land in Phase 1C+ / Phase 6B; the endpoint becomes a thin
+wrapper around the lens query logic.
 
 ---
 

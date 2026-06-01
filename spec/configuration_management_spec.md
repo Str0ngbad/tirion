@@ -196,11 +196,17 @@ All grid columns plus:
 - Audit log (collapsible)
 - Reference list: which Parts use this vendor as Default Vendor (clickable
   links to those Parts)
-- Active Work summary: total count of active WOs depending on Parts where
+- Open WOs summary: total count of open WOs depending on Parts where
   this vendor is the Default Vendor, with breakdown into "awaiting receipt"
   (WOs in the ordered-not-yet-received state) and "awaiting purchase" (WOs
   in the not-yet-ordered state). Includes a link to the Operations Lens
   filtered by this vendor for the full breakdown.
+
+  Note: This summary is referred to as "Open WOs Summary" in
+  the API endpoint and TESTS_BACKLOG.md. The earlier draft
+  spec used "Active Work" which created confusion with
+  Project.status = Active. The endpoint name and backlog entry
+  use "Open WOs" for precision.
 
 ### Contact Info Decomposition Deferred to Rev 1.5+
 
@@ -213,7 +219,7 @@ because they have distinct operational uses (location for shipping/
 regional context, website for direct navigation to vendor catalogs
 and ordering portals).
 
-The Active Work summary is informational, not a blocker. Vendor deactivation
+The Open WOs summary is informational, not a blocker. Vendor deactivation
 rules and reassignment rules are unchanged: WIP impact is awareness, not
 enforcement. Per the state model, "awaiting receipt" and "awaiting purchase"
 are disjoint — every WO is in exactly one purchasing state at a time. The

@@ -211,6 +211,60 @@ and the in-context creation pattern from the Part Form (Pattern B).
 - All configuration changes logged to AuditLog
 - Admin lockout prevention works (cannot demote/deactivate self if only Admin)
 
+### Status as of 2026-05-31
+
+Phase 1A backend implementation is complete:
+
+- Vendor backend (CRUD service, routes, verification)
+- ProcurementCategory backend (entity added during Phase 1A;
+  spec-driven extension to the original Phase 1A scope to
+  replace Part.procurementType enum with a configurable lookup)
+- MaterialSpec backend (composite unique constraint; first use
+  of isP2002OnComposite from the shared P2002 helper)
+- User backend (admin lockout-prevention enforced atomically
+  inside mutateWithAudit transactions; role-conditional field
+  validation at both Zod and service layers)
+- ProcessTypeSubStatus backend (composite unique constraint;
+  ProcessType foreign-key pre-validation via
+  ProcessTypeNotFoundError; processTypeId immutable after
+  creation)
+
+Shared infrastructure landed during Phase 1A:
+
+- /lib/db/p2002.ts — shared P2002 collision detection helper
+  with isP2002OnField and isP2002OnComposite, handling both
+  the native Prisma path and the driver-adapter message-parsing
+  fallback
+- /lib/audit/mutateWithAudit.ts — transactional audit wrapper
+  pattern established and reused across all five configuration
+  entity services
+- /lib/errors/ — DomainError hierarchy with per-entity
+  subclasses and the shared handleApiError formatter
+
+Deferred from Phase 1A:
+
+- Configuration management UI surfaces (the dedicated grids
+  and forms for each configuration entity). UI implementation
+  is deferred until the Parts Master Grid UI work begins in
+  or after Phase 1B; the Parts Master Grid is the more
+  thoroughly specified surface and the natural starting point
+  for UI track work.
+- Vendor Open WOs Summary endpoint (originally tracked as
+  "Active Work Summary" — renamed for precision; see below).
+  Defers until WorkOrder backend exists in Phase 1C+ because
+  the endpoint's "awaiting purchase" / "awaiting receipt"
+  semantics derive from WorkOrderStep state, and the query
+  logic should share its construction with the Purchasing and
+  Receiving lens services rather than be written in parallel.
+
+Phase 1A backend exit criteria (per the original spec) are
+met: all five configuration entity tables seeded, admins can
+CRUD all five entities via API, deactivation rules enforced
+per spec, soft-delete on all five, reference-count display
+available where specified.
+
+---
+
 ### Phase 1B — Parts Master
 
 Build the Parts Master view per `spec/parts_master_spec.md`.
@@ -565,7 +619,7 @@ Update this section as phases complete.
 |-------|--------|-------|
 | Phase 0 | Done | Initial scaffolding complete |
 | Phase 0a | Done | Tooling, hooks, ADRs, Playwright, commitlint |
-| Phase 1A | Not started | |
+| Phase 1A | Backend complete; UI deferred | Five configuration entity backends shipped; configuration UI deferred to Phase 1B+; Open WOs Summary deferred to Phase 1C+ |
 | Phase 1B | Not started | |
 | Phase 1C | Not started | |
 | Phase 1D | Not started | |
