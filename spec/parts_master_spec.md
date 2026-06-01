@@ -79,11 +79,9 @@ Filters appear above the grid. All filters are additive (AND logic).
 | Vendor | Dropdown | `defaultVendorId` |
 | Material | Dropdown | `materialSpecId` |
 | Stock Size | Dropdown | `stockSize` |
+| Routing Includes / Excludes Process | Matrix (per-process include/exclude) | routing template steps |
 
-**Deferred filter (Rev 2):**
-- **Includes Process** — filter to parts whose assigned routing template contains
-  a specific ProcessType. Example: "show all parts that include Blacken." Requires
-  a join through RoutingTemplate. High operational value but deferred.
+**Routing include/exclude matrix:** Each ProcessType can independently be set to include, exclude, or leave unconstrained. "Include" filters to parts whose routing template contains at least one step of that ProcessType. "Exclude" filters to parts whose routing template contains no steps of that ProcessType. Multiple ProcessType constraints combine via AND. See spec/parts_master_grid_spec.md for the full operator definition and query construction details.
 
 **Sort:**
 - Default sort: Part Number ascending (configuration and general use)
