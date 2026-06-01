@@ -73,9 +73,9 @@ async function main() {
     templateAId = saveA.template.routingTemplateDefinitionId;
     assert(saveA.template.templateName === "__verify_template_A__", "1: templateName");
     assert(saveA.template.steps.length === 3, "1: stepCount");
-    assert(saveA.template.steps[0].stepIndex === 1, "1: step 1 index");
-    assert(saveA.template.steps[1].stepIndex === 2, "1: step 2 index");
-    assert(saveA.template.steps[2].stepIndex === 3, "1: step 3 index");
+    assert(saveA.template.steps[0]!.stepIndex === 1, "1: step 1 index");
+    assert(saveA.template.steps[1]!.stepIndex === 2, "1: step 2 index");
+    assert(saveA.template.steps[2]!.stepIndex === 3, "1: step 3 index");
     assert(saveA.flaggedWoCount === 0, "1: flaggedWoCount");
     console.log("1) Create 3-step template: PASS");
 
@@ -233,7 +233,7 @@ async function main() {
       USER_ID
     );
     assert(saveA3.template.steps.length === 2, "13: new step count");
-    assert(saveA3.template.steps[1].processTypeId === paintType.processTypeId, "13: new step 2");
+    assert(saveA3.template.steps[1]!.processTypeId === paintType.processTypeId, "13: new step 2");
     // Verify old step count in DB (old 3 rows deleted)
     const dbSteps = await prisma.routingTemplateStep.findMany({
       where: { routingTemplateDefinitionId: templateAId! },
