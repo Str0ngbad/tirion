@@ -181,48 +181,48 @@ export async function updateMaterialSpec(
   input: UpdateMaterialSpecInput,
   userId: number
 ): Promise<MaterialSpecWithCounts> {
-  try {
-    return await mutateWithAudit<MaterialSpecWithCounts>({
-      userId,
-      entityType: "MaterialSpec",
-      action: "MaterialSpecUpdated",
-      work: async (tx) => {
-        const spec = await tx.materialSpec.findUnique({ where: { materialSpecId } });
-        if (spec === null) throw new MaterialSpecNotFoundError(materialSpecId);
+  return mutateWithAudit<MaterialSpecWithCounts>({
+    userId,
+    entityType: "MaterialSpec",
+    action: "MaterialSpecUpdated",
+    work: async (tx) => {
+      const spec = await tx.materialSpec.findUnique({ where: { materialSpecId } });
+      if (spec === null) throw new MaterialSpecNotFoundError(materialSpecId);
 
-        const previousValue = {
-          materialName: spec.materialName,
-          form: spec.form,
-        };
+      const previousValue = {
+        materialName: spec.materialName,
+        form: spec.form,
+      };
 
+      try {
         await tx.materialSpec.update({
           where: { materialSpecId },
           data: input,
         });
+      } catch (err) {
+        if (isCollision(err)) {
+          throw new MaterialSpecCollisionError(
+            input.materialName ?? spec.materialName,
+            input.form ?? spec.form
+          );
+        }
+        throw err;
+      }
 
-        const refreshed = await fetchWithCounts(tx, materialSpecId);
-        const result = toMaterialSpecWithCounts(refreshed);
+      const refreshed = await fetchWithCounts(tx, materialSpecId);
+      const result = toMaterialSpecWithCounts(refreshed);
 
-        return {
-          entityId: materialSpecId,
-          previousValue,
-          newValue: {
-            materialName: refreshed.materialName,
-            form: refreshed.form,
-          },
-          result,
-        };
-      },
-    });
-  } catch (err) {
-    if (isCollision(err)) {
-      throw new MaterialSpecCollisionError(
-        input.materialName ?? "",
-        input.form ?? ""
-      );
-    }
-    throw err;
-  }
+      return {
+        entityId: materialSpecId,
+        previousValue,
+        newValue: {
+          materialName: refreshed.materialName,
+          form: refreshed.form,
+        },
+        result,
+      };
+    },
+  });
 }
 
 export async function deactivateMaterialSpec(

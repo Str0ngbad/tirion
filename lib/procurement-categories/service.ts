@@ -176,52 +176,52 @@ export async function updateProcurementCategory(
   input: UpdateProcurementCategoryInput,
   userId: number
 ): Promise<ProcurementCategoryWithCounts> {
-  try {
-    return await mutateWithAudit<ProcurementCategoryWithCounts>({
-      userId,
-      entityType: "ProcurementCategory",
-      action: "ProcurementCategoryUpdated",
-      work: async (tx) => {
-        const category = await tx.procurementCategory.findUnique({
-          where: { procurementCategoryId },
-        });
-        if (category === null) throw new ProcurementCategoryNotFoundError(procurementCategoryId);
+  return mutateWithAudit<ProcurementCategoryWithCounts>({
+    userId,
+    entityType: "ProcurementCategory",
+    action: "ProcurementCategoryUpdated",
+    work: async (tx) => {
+      const category = await tx.procurementCategory.findUnique({
+        where: { procurementCategoryId },
+      });
+      if (category === null) throw new ProcurementCategoryNotFoundError(procurementCategoryId);
 
-        const previousValue = {
-          categoryCode: category.categoryCode,
-          categoryName: category.categoryName,
-          description: category.description,
-          displayOrder: category.displayOrder,
-        };
+      const previousValue = {
+        categoryCode: category.categoryCode,
+        categoryName: category.categoryName,
+        description: category.description,
+        displayOrder: category.displayOrder,
+      };
 
+      try {
         await tx.procurementCategory.update({
           where: { procurementCategoryId },
           data: input,
         });
+      } catch (err) {
+        if (isCodeCollision(err))
+          throw new ProcurementCategoryCodeCollisionError(input.categoryCode ?? category.categoryCode);
+        if (isNameCollision(err))
+          throw new ProcurementCategoryNameCollisionError(input.categoryName ?? category.categoryName);
+        throw err;
+      }
 
-        const refreshed = await fetchWithCounts(tx, procurementCategoryId);
-        const result = toProcurementCategoryWithCounts(refreshed);
+      const refreshed = await fetchWithCounts(tx, procurementCategoryId);
+      const result = toProcurementCategoryWithCounts(refreshed);
 
-        return {
-          entityId: procurementCategoryId,
-          previousValue,
-          newValue: {
-            categoryCode: refreshed.categoryCode,
-            categoryName: refreshed.categoryName,
-            description: refreshed.description,
-            displayOrder: refreshed.displayOrder,
-          },
-          result,
-        };
-      },
-    });
-  } catch (err) {
-    if (isCodeCollision(err))
-      throw new ProcurementCategoryCodeCollisionError(input.categoryCode ?? "");
-    if (isNameCollision(err))
-      throw new ProcurementCategoryNameCollisionError(input.categoryName ?? "");
-    throw err;
-  }
+      return {
+        entityId: procurementCategoryId,
+        previousValue,
+        newValue: {
+          categoryCode: refreshed.categoryCode,
+          categoryName: refreshed.categoryName,
+          description: refreshed.description,
+          displayOrder: refreshed.displayOrder,
+        },
+        result,
+      };
+    },
+  });
 }
 
 export async function deactivateProcurementCategory(
