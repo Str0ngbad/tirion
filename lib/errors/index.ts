@@ -27,3 +27,10 @@ export {
   UserNameCollisionError,
   UserLockoutError,
 } from "@/lib/errors/user";
+export { ProcessTypeNotFoundError } from "@/lib/errors/process-type";
+export {
+  ProcessTypeSubStatusNotFoundError,
+  ProcessTypeSubStatusAlreadyActiveError,
+  ProcessTypeSubStatusAlreadyInactiveError,
+  ProcessTypeSubStatusCollisionError,
+} from "@/lib/errors/process-type-sub-status";
