@@ -188,6 +188,10 @@ async function seedAuditActions() {
     { actionName: "UserUpdated", category: "Configuration", description: "User attribute fields or role edited" },
     { actionName: "UserDeactivated", category: "Configuration", description: "User isActive set to false" },
     { actionName: "UserReactivated", category: "Configuration", description: "User isActive restored to true" },
+    { actionName: "ProcessTypeSubStatusCreated", category: "Configuration", description: "New ProcessTypeSubStatus record created" },
+    { actionName: "ProcessTypeSubStatusUpdated", category: "Configuration", description: "ProcessTypeSubStatus attribute fields edited" },
+    { actionName: "ProcessTypeSubStatusDeactivated", category: "Configuration", description: "ProcessTypeSubStatus isActive set to false" },
+    { actionName: "ProcessTypeSubStatusReactivated", category: "Configuration", description: "ProcessTypeSubStatus isActive restored to true" },
   ];
 
   for (const aa of auditActions) {
@@ -233,7 +237,7 @@ async function verify() {
   console.log("\nVerification:");
   console.log(`  ProcessTypes:           ${processTypeCount} (expected = 9)`);
   console.log(`  ProcessTypeSubStatuses: ${subStatusCount} (expected = 16)`);
-  console.log(`  AuditActions:           ${auditActionCount} (expected = 75)`);
+  console.log(`  AuditActions:           ${auditActionCount} (expected = 79)`);
   console.log(`  ProcurementCategories:  ${procurementCategoryCount} (expected = 5)`);
   console.log(`  Admin user present:     ${userCount === 1 ? "yes" : "NO — check seed"}`);
 }
