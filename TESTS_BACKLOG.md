@@ -186,6 +186,24 @@ Phase: 1A — observed during MaterialSpec implementation planning
 
 ---
 
+### Column ID conventions diverge between parts_master_spec and parts_master_grid_spec
+
+The Parts Master Spec's Grid Columns table uses display-friendly labels in
+its Source column (e.g., "materialSpec.materialName", "defaultVendor.vendorName")
+while the Parts Master Grid Spec's Column Inventory uses normalized column IDs
+(e.g., "materialName", "defaultVendorName"). The seed Views in Phase 1B Unit 1
+used the grid spec's IDs as canonical, which is correct, but the older spec
+should be normalized to match to prevent future confusion.
+
+Discovered: Phase 1B Unit 1, during Master View seed implementation.
+Action: Normalize parts_master_spec.md column references to match
+parts_master_grid_spec.md's Column Inventory IDs.
+Suggested timing: Phase 10 spec reconciliation pass.
+
+Phase: 1B — observed during Master View seed implementation
+
+---
+
 ## Follow-up Implementation
 
 ### Vendor Open WOs Summary endpoint not yet implemented

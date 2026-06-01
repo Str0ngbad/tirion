@@ -154,10 +154,13 @@ async function seedAuditActions() {
     { actionName: "SupplyOrderLineExceptionCleared", category: "SupplyOrder", description: "Exception cleared on a Supply Order Line (typically by Purchasing after vendor resolution)" },
     { actionName: "SupplyOrderLineETAUpdated", category: "SupplyOrder", description: "Supply Order Line ETA edited — propagates to all member WO ETAs in same transaction" },
 
-    // Definition (9)
+    // Definition (12)
     { actionName: "PartCreated", category: "Definition", description: "New Part record created" },
     { actionName: "PartUpdated", category: "Definition", description: "Part definition field edited" },
     { actionName: "PartDeactivated", category: "Definition", description: "Part isActive set to false" },
+    { actionName: "PartReactivated", category: "Definition", description: "Part isActive restored to true" },
+    { actionName: "StockCountUpdated", category: "Definition", description: "Part stockCount updated via dedicated inline-edit endpoint" },
+    { actionName: "InventoryLocationUpdated", category: "Definition", description: "Part inventoryLocation updated via dedicated inline-edit endpoint" },
     { actionName: "BOMRowAdded", category: "Definition", description: "Component added to an assembly's BOM" },
     { actionName: "BOMRowRemoved", category: "Definition", description: "Component removed from an assembly's BOM" },
     { actionName: "BOMRowEdited", category: "Definition", description: "BOM quantity or displayOrder edited" },
@@ -336,7 +339,7 @@ async function verify() {
   console.log("\nVerification:");
   console.log(`  ProcessTypes:           ${processTypeCount} (expected = 9)`);
   console.log(`  ProcessTypeSubStatuses: ${subStatusCount} (expected = 16)`);
-  console.log(`  AuditActions:           ${auditActionCount} (expected = 82)`);
+  console.log(`  AuditActions:           ${auditActionCount} (expected = 85)`);
   console.log(`  ProcurementCategories:  ${procurementCategoryCount} (expected = 5)`);
   console.log(`  Views:                  ${viewCount} (expected = 5)`);
   console.log(`  Admin user present:     ${userCount === 1 ? "yes" : "NO — check seed"}`);
