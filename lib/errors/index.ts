@@ -20,3 +20,10 @@ export {
   MaterialSpecAlreadyInactiveError,
   MaterialSpecCollisionError,
 } from "@/lib/errors/material-spec";
+export {
+  UserNotFoundError,
+  UserAlreadyActiveError,
+  UserAlreadyInactiveError,
+  UserNameCollisionError,
+  UserLockoutError,
+} from "@/lib/errors/user";
