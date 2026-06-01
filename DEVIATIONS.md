@@ -1410,3 +1410,86 @@ confirmation:
 - spec/parts_master_grid_spec.md
 
 ---
+
+## 2026-05-31 — Grid spec arc closed with implementation recommendations and open questions
+
+**Phase:** 1A
+**Spec section:** parts_master_grid_spec.md (Implementation Recommendations
+  and Open Questions sections)
+**Discovered by:** User, during Parts Master Grid spec drafting
+**Status:** Resolved-Spec-Updated
+**Commit:** 949ad957e8eedccacc5d454cc6618146bd31a9e2
+
+### What the spec said
+
+The grid spec documented the user-facing surfaces and behaviors —
+column system, column-header menu, Active Sorts and Active Filters
+chrome, filter system, Views system, View Modification Model,
+Columns Picker, and View Management Modal. What it lacked was the
+bridge between specification and Phase 1B implementation: concrete
+guidance on schema, API endpoints, seed bootstrap, query
+construction, validation, and component reuse. It also did not
+formalize the unresolved questions that need decisions during or
+after implementation.
+
+### What was discovered
+
+The closing sections of the grid spec serve two distinct purposes
+that both warrant explicit treatment:
+
+1. Implementation Recommendations provide Phase 1B with actionable
+   starting points: the View model schema, the API endpoint
+   structure (CRUD on /api/v1/views), bootstrap seeding patterns
+   matching established conventions, filter and sort query
+   construction with Prisma syntax examples, the chips condense
+   toggle's cross-reference to execution lens specs where the
+   pattern is already documented, filter object validation via
+   discriminated Zod union, and component reuse opportunities.
+
+2. Open Questions for Implementation Track explicitly name the
+   unresolved questions and their resolution triggers. Each
+   question has a "when to revisit" criterion rather than being
+   left as ambient ambiguity. Questions captured: Views
+   permissions (any-user in Rev 1; admin-only triggered by
+   accidental modification incidents), schema evolution (column
+   identifier renames in Rev 2+ schema changes), performance at
+   scale (validation needed at 5000+ parts), live sync for the
+   View Management Modal (snapshot-only acceptable in small-shop
+   Rev 1), sticky columns (Rev 1.5+ deferred), bulk operations
+   (Rev 2+), Duplicate View action (Rev 1.5+ if Save as new
+   workaround proves frictional), and Default View
+   configurability (Master locked as default in Rev 1).
+
+The structure of these two sections balances two concerns: give
+Phase 1B implementation a concrete starting point without
+re-deriving design, and acknowledge unresolved questions for
+deliberate decision rather than implicit assumption.
+
+### Resolution
+
+- parts_master_grid_spec.md: two new sections added at the end of
+  the spec — Implementation Recommendations and Open Questions
+  for Implementation Track. These sections close the spec arc by
+  bridging from specification to implementation guidance.
+
+- The chips condense toggle is documented as a Rev 1 feature
+  following the pattern in execution lens specs (operations_lens_spec.md
+  and project_view_spec.md). The grid spec cross-references those
+  specs rather than redocumenting the pattern — consistent with
+  the DRY principle for the spec corpus.
+
+- The View model schema documented in Implementation
+  Recommendations matches the model documented in the Views
+  System section earlier. Implementation lands the schema during
+  Phase 1B Parts Master backend work alongside the Part model
+  itself.
+
+No schema, seed, or AuditAction changes in this commit. All
+schema work referenced in the recommendations lands during Phase
+1B implementation.
+
+### Files affected
+
+- spec/parts_master_grid_spec.md
+
+---
