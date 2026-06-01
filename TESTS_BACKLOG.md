@@ -305,46 +305,6 @@ Phase: 1A — observed and operational
 
 ---
 
-### Shared P2002 collision detection helper
-
-Prisma's P2002 error `meta.target` field is omitted when using the
-driver adapter. The native query engine includes `meta.target` with
-an array of the unique-constraint field names that were violated;
-the driver adapter does not. Both paths are needed because the
-project uses the driver adapter (per ADR-009, the Neon serverless
-deployment requires PrismaPg adapter).
-
-Discovered while implementing ProcurementCategory service
-(commit 0e49904). The service distinguishes `categoryCode`
-collisions from `categoryName` collisions via the `isP2002OnField`
-helper, which checks `meta.target` if present and falls back to
-string-matching the error message (`"Unique constraint failed on
-the fields: (\"categoryCode\")"`) if not.
-
-The fallback's string-matching approach is fragile — Prisma
-could change the message format in a minor version bump, the
-field name might be quoted differently across databases, etc.
-
-Recommended extraction: when MaterialSpec backend is built, it
-has a composite unique constraint `@@unique([materialName, form])`
-and will need similar detection logic. At that point, extract a
-shared helper:
-
-```
-lib/db/p2002.ts
-  isP2002OnField(err, fieldName: string): boolean
-  isP2002OnComposite(err, fieldNames: string[]): boolean
-```
-
-Both helpers handle the `meta.target`-present path and the
-message-parsing fallback consistently. Service code in
-ProcurementCategory and MaterialSpec (and future entities) calls
-these helpers rather than duplicating logic.
-
-Phase: 1A — operational pattern observed
-
----
-
 ## Categories Summary
 
 | Category | Count | Notes |
