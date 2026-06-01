@@ -167,6 +167,7 @@ async function seedAuditActions() {
     { actionName: "RoutingTemplateCreated", category: "Definition", description: "New Routing Template Definition created" },
     { actionName: "RoutingTemplateEdited", category: "Definition", description: "Existing template edited (steps added/removed/reordered)" },
     { actionName: "RoutingTemplateRetired", category: "Definition", description: "Template isActive set to false" },
+    { actionName: "RoutingTemplateReactivated", category: "Definition", description: "Template isActive restored to true" },
 
     // Flag (4)
     { actionName: "DefinitionChangeFlagCreated", category: "Flag", description: "New definition change flag created (one entry per affected entity)" },
@@ -339,7 +340,7 @@ async function verify() {
   console.log("\nVerification:");
   console.log(`  ProcessTypes:           ${processTypeCount} (expected = 9)`);
   console.log(`  ProcessTypeSubStatuses: ${subStatusCount} (expected = 16)`);
-  console.log(`  AuditActions:           ${auditActionCount} (expected = 85)`);
+  console.log(`  AuditActions:           ${auditActionCount} (expected = 86)`);
   console.log(`  ProcurementCategories:  ${procurementCategoryCount} (expected = 5)`);
   console.log(`  Views:                  ${viewCount} (expected = 5)`);
   console.log(`  Admin user present:     ${userCount === 1 ? "yes" : "NO — check seed"}`);

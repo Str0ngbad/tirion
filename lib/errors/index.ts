@@ -41,6 +41,15 @@ export {
   ViewMasterImmutableError,
 } from "@/lib/errors/view";
 export {
+  RoutingTemplateNotFoundError,
+  RoutingTemplateNameCollisionError,
+  RoutingTemplateAlreadyActiveError,
+  RoutingTemplateAlreadyInactiveError,
+  RoutingTemplateStepCountError,
+  RoutingTemplateStepIndexError,
+  RoutingTemplateInvalidProcessTypeError,
+} from "@/lib/errors/routing-template";
+export {
   PartNotFoundError,
   PartNumberCollisionError,
   PartInventoryLocationCollisionError,
