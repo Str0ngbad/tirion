@@ -1064,3 +1064,94 @@ follow in subsequent commits as separate concerns.
 - spec/seed_data_spec.md
 
 ---
+
+## 2026-05-31 — View Modification Model added with Save / Save as new / Revert flows
+
+**Phase:** 1A
+**Spec section:** parts_master_grid_spec.md (View Modification Model section)
+**Discovered by:** User, during Parts Master Grid spec drafting
+**Status:** Resolved-Spec-Updated
+**Commit:** dcb11083f98c134edbab0966a76ef9ba4e1bb767
+
+### What the spec said
+
+The Views System foundation (commit f29b65d) documented the View
+data model, the View switcher, and the bootstrap with five seeded
+Views. It did not yet document how the grid handles divergence
+between a View's session state and its saved state — the dirty
+state concept, the resolution actions (Save, Save as new, Revert),
+or the Master View's special modification rules.
+
+### What was discovered
+
+The modification model needed several design decisions confirmed
+before landing in the spec:
+
+1. Dirty state detection by field-by-field comparison rather than
+   mutation tracking. This produces the intuitive behavior where
+   applying and clearing a change returns to clean state. Mutation
+   tracking would have left the user marked dirty even with state
+   matching the saved View.
+
+2. The Save action requires a confirmation dialog because Views
+   are shared resources — saving over a View affects everyone who
+   uses it. The confirmation explicitly notes the shared-resource
+   impact rather than just acting on the user's local state.
+
+3. Save as new uses an inline interaction: the View switcher's
+   name display transforms into a text input where the user types
+   the new name and presses Enter. This is lower-friction than a
+   modal dialog while still providing validation feedback.
+
+4. Revert does not require a confirmation in Rev 1. This is a
+   deliberate friction-vs-safety tradeoff — the user can re-apply
+   discarded changes with little overhead, and confirmation
+   dialogs on every Revert would slow the interrogation workflow
+   the grid is designed to support. The tradeoff is documented
+   explicitly so it can be revisited if accidental Reverts become
+   a real problem.
+
+5. Switching Views always loads the destination's saved state,
+   discarding ad-hoc modifications to the previous View. This is
+   documented as a deliberate design choice (each View represents
+   a defined frame for a question; carrying state across switches
+   would produce confusing behavior).
+
+6. The Master View has specific modification behavior captured in
+   a summary table: it can be modified in session, but Save is
+   disabled (can't overwrite the locked baseline), Save as new is
+   the primary path for deriving new Views, Revert restores the
+   baseline (every column, partNumber asc, no filters).
+
+### Resolution
+
+- parts_master_grid_spec.md: new View Modification Model section
+  added after the Views System section. Documents Dirty State
+  Detection (by field comparison), Modified Indicator (small dot
+  on View switcher trigger), Save (with confirmation dialog and
+  Master View exception), Save as new (inline text input
+  transformation with validation), Revert (no confirmation),
+  Switching Views behavior, and Master View Specific Behavior
+  summary table.
+
+- The Save confirmation dialog copy is specified with a [View
+  Name] substitution token: "Overwrite '[View Name]'? This will
+  replace the saved columns, sort, and filters with your current
+  view state. Other users will see this change next time they
+  load this view."
+
+- The Save as new interaction is specified concretely: the View
+  switcher's name display becomes a text input; Enter creates the
+  View with validation (1-30 chars, unique, free text); Escape
+  cancels.
+
+No schema or seed changes. No new AuditActions — the three from
+the Views foundation commit (ViewCreated, ViewUpdated, ViewDeleted)
+cover the modification flows: Save fires ViewUpdated, Save as new
+fires ViewCreated, Revert is session-only so does not log.
+
+### Files affected
+
+- spec/parts_master_grid_spec.md
+
+---
