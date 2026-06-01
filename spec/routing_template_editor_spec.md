@@ -22,10 +22,32 @@ Each row shows:
 - Step count
 - Step sequence (compact process type pills — one per step, ProcessType color)
 - Parts using this template (count)
-- Active toggle
+- Active indicator (read-only green dot for active, gray dot for inactive)
 
 Default sort: Template Name alphabetical.
-Filter: Active / Inactive / All (default: Active).
+
+**Library filter — three-state API, two-state UI:**
+
+The API accepts a three-state `active` filter parameter:
+- `active=true` (default) — active templates only
+- `active=false` — inactive templates only
+- `active=all` — both active and inactive
+
+This matches the convention established by the Vendor, MaterialSpec, User,
+and Part backends.
+
+The Rev 1 UI exposes a two-state control: a "Show Inactive" toggle that
+switches between `active=true` (off, default) and `active=all` (on). The
+`active=false` (inactive-only) API state is available for future UI needs
+but is not surfaced in the Rev 1 mockup.
+
+**Rationale:** Shop-use experience suggests the inactive-only query is
+vanishingly rare. The API retains the state for consistency across
+configuration entities and to avoid backend churn if the UI later needs it.
+
+**Retire and Reactivate actions** are accessed via a three-dot (⋯) menu on
+each row. The menu surfaces Retire on active template rows and Reactivate on
+inactive template rows. The Active indicator is never directly clickable.
 
 **Design note:** Template names should be descriptive enough to be self-explanatory
 in a dropdown. Examples: "Machined Part", "Machined + Blackened Part",
@@ -71,10 +93,14 @@ Clicking a template row opens the Template Form in edit mode.
 
 **Before the form opens — Edit-Time Dialog (Definition Change Flag System):**
 
-If the template is referenced by Parts (always the case for active templates) or
-has open Work Orders that would be affected, an acknowledgment dialog appears
-before opening the form. This is the Routing Template Editor surface of the
-Definition Change Flag system (see `definition_change_flag_spec.md`).
+The edit-time dialog fires when `partsReferencingCount > 0` OR `openWoCount > 0`.
+A newly created template with no Parts assigned and no Work Orders generated yet
+is a valid state — editing such a template skips the dialog and opens the form
+directly. This is the no-impact fast path.
+
+When the dialog condition is met, an acknowledgment dialog appears before opening
+the form. This is the Routing Template Editor surface of the Definition Change
+Flag system (see `definition_change_flag_spec.md`).
 
 The dialog shows:
 
@@ -127,6 +153,22 @@ Atomic transaction:
    their snapshot routing until manager resolves their flags
 8. Toast: "Template saved. [N] WOs flagged for review."
 
+**API contract — save response shape:**
+
+The save endpoint's success response includes a `flaggedWoCount` number field
+representing how many open Work Orders received a Definition Change Flag as a
+result of the save.
+
+In Rev 1 Phase 1C, this field is always `0` because the WorkOrder layer and
+the Definition Change Flag system do not yet exist. The field is present in the
+response shape from Phase 1C so the API contract is stable; when WorkOrder
+lands in a later phase, the field will populate from the actual flag-creation
+count.
+
+The frontend may suppress the "[N] WOs flagged for review" portion of the toast
+when `flaggedWoCount` is 0 and show a generic "Template saved." message instead.
+UI behavior on the zero case is a frontend decision; the API contract is fixed.
+
 ### Hard Rules
 
 - **RTE-DCF-1:** No Routing Template change silently affects open Work Orders
@@ -164,6 +206,26 @@ high-consequence action and requires the same confirmation screen as editing.
   template is blocked at compilation time — see Project Compilation Gate below
 - Retired templates remain visible in the template library under the
   Inactive filter and can be reactivated
+
+### Reactivation
+
+Reactivation is initiated from the three-dot (⋯) menu on an inactive template
+row in the library.
+
+Reactivation is immediate — no confirmation dialog. This matches the Vendor
+reactivation pattern established in Phase 1A. Reactivation does not introduce
+downstream risk (no Parts are being newly affected, no open WOs are modified),
+so the friction of a confirmation dialog is not warranted.
+
+The reactivation action writes a `TemplateReactivated` AuditAction entry on the
+template record.
+
+After reactivation the template is immediately available for assignment to Parts
+and for new Work Order generation at Project compilation.
+
+**Note on asymmetry:** Retirement requires confirmation because it has downstream
+impact — Parts referencing the template are blocked from future WO compilation.
+Reactivation does not introduce that risk and proceeds immediately.
 
 ---
 
