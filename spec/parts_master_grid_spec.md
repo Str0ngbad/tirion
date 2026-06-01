@@ -1297,3 +1297,140 @@ Active Filters chrome (clicking × to remove, or clicking a
 pill to open and edit) flows through the View Modification
 Model. The View becomes modified; the Save / Save as new /
 Revert actions surface as appropriate.
+
+---
+
+## View Management Modal
+
+The View Management Modal is the administrative surface for
+managing the View library. It complements two other View
+surfaces: the View switcher (for picking a View to use) and
+the View Modification Model (for capturing modifications to
+the active View). The modal is where users see all Views,
+rename them, and remove non-Master Views.
+
+### Access
+
+The modal is opened from the View switcher dropdown via a
+"Manage Views..." item at the bottom of the dropdown list. This
+placement is discoverable (users opening the dropdown to switch
+Views see the management option), does not add toolbar chrome,
+and matches the common convention for "manage the list of
+things this dropdown contains."
+
+### Layout
+
+The modal displays a table listing all Views in the system,
+with one row per View. The table has the following columns:
+
+| Column | Notes |
+|--------|-------|
+| Name | View name; inline-editable on click for non-locked Views |
+| Default | Indicator (e.g., a checkmark or "Default" label) showing which View is currently the system default |
+| Locked | Indicator showing whether this View is locked; Master View shows a lock icon, others are blank |
+| Delete | Action button or icon; disabled for the locked View (Master) |
+
+Row order: the default View (Master View in Rev 1) appears at
+the top, with all other Views below sorted alphabetically by
+name. This matches the order used in the View switcher dropdown.
+
+### Inline Rename
+
+Clicking a non-locked View's name in the table puts that cell
+into edit mode: the name becomes a text input focused for
+immediate typing.
+
+Validation:
+- Empty name: "Name is required" — Enter does nothing until
+  a name is entered
+- Length exceeds 30 characters: "Name must be 30 characters
+  or fewer"
+- Name conflicts with another existing View: "A View named
+  '[X]' already exists"
+
+Validation is the same as Save as new in the View Modification
+Model; the error messages should be consistent across both
+surfaces.
+
+Commit behavior:
+- Pressing Enter commits the rename if valid
+- Pressing Escape cancels the edit and reverts to the original
+  name
+- Clicking outside the edit cell treats it as Enter (commits
+  if valid; surfaces error if invalid)
+
+On successful rename, the table updates to show the new name
+in its alphabetical position. The renamed View fires a
+ViewUpdated audit event.
+
+The Master View's name cannot be edited; clicking its name has
+no effect (or surfaces a brief explanation, e.g., "Master View
+cannot be renamed").
+
+### Delete
+
+Each non-locked View has a delete action in the Delete column
+(an X or trash icon). Master View shows the action disabled
+(grayed out) with a tooltip explaining "Master View cannot be
+deleted."
+
+Clicking the delete action for a non-locked View opens a
+confirmation dialog:
+
+  Delete "[View Name]"?
+
+  This will remove this View for all users. Anyone currently
+  using this View will be moved to the Master View on their
+  next refresh.
+
+  [Cancel]  [Delete]
+
+Where [View Name] is the View being deleted, substituted at
+display time.
+
+On confirm:
+- The View is deleted from the database
+- A ViewDeleted audit event fires
+- The View Management Modal updates to remove the row
+- Any user with this View currently active will be transitioned
+  to Master View on their next page refresh (silent move; no
+  error or notification — the View switcher will simply show
+  Master selected instead)
+
+On cancel: the dialog closes without changes; the View remains.
+
+### Master View Display
+
+Master View appears in the modal with these characteristics:
+- Top of the table (always default)
+- "Default" indicator visible in the Default column
+- Lock icon in the Locked column
+- Disabled delete action in the Delete column with tooltip
+- Name not editable (clicking has no effect or shows
+  explanation)
+
+Master View is informational in this modal — users see it
+exists and that it has special status, but cannot modify it
+here.
+
+### Dismissal
+
+The modal closes when the user clicks outside the modal, presses
+Escape, or clicks an explicit close button (×) in the modal's
+header. All three are equivalent — there are no pending changes
+to save or discard since rename and delete operations commit
+immediately when confirmed.
+
+Reopening the modal shows the current state of the Views library.
+
+### Sync with Concurrent Changes
+
+If another user modifies the Views library while the modal is
+open (renames a View, deletes a View, etc.), the modal does
+not automatically update — it shows a snapshot from when the
+modal was opened. The user can close and reopen the modal to
+see the current state. For Rev 1 this is acceptable; concurrent
+rename/delete operations are rare in small-shop environments,
+and the small risk of acting on stale data is bounded.
+
+Rev 2+ may add live sync if operational use surfaces a need.
