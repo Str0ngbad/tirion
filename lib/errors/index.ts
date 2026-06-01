@@ -6,7 +6,7 @@ export {
   VendorNameCollisionError,
   VendorDeactivationBlockedError,
 } from "@/lib/errors/vendor";
-export { UserRequiredError, UserNotFoundError } from "@/lib/errors/auth";
+export { UserRequiredError } from "@/lib/errors/auth";
 export {
   ProcurementCategoryNotFoundError,
   ProcurementCategoryAlreadyActiveError,

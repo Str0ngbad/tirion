@@ -184,6 +184,10 @@ async function seedAuditActions() {
     { actionName: "MaterialSpecUpdated", category: "Configuration", description: "MaterialSpec attribute fields edited" },
     { actionName: "MaterialSpecDeactivated", category: "Configuration", description: "MaterialSpec isActive set to false" },
     { actionName: "MaterialSpecReactivated", category: "Configuration", description: "MaterialSpec isActive restored to true" },
+    { actionName: "UserCreated", category: "Configuration", description: "New User record created" },
+    { actionName: "UserUpdated", category: "Configuration", description: "User attribute fields or role edited" },
+    { actionName: "UserDeactivated", category: "Configuration", description: "User isActive set to false" },
+    { actionName: "UserReactivated", category: "Configuration", description: "User isActive restored to true" },
   ];
 
   for (const aa of auditActions) {
@@ -229,7 +233,7 @@ async function verify() {
   console.log("\nVerification:");
   console.log(`  ProcessTypes:           ${processTypeCount} (expected = 9)`);
   console.log(`  ProcessTypeSubStatuses: ${subStatusCount} (expected = 16)`);
-  console.log(`  AuditActions:           ${auditActionCount} (expected = 71)`);
+  console.log(`  AuditActions:           ${auditActionCount} (expected = 75)`);
   console.log(`  ProcurementCategories:  ${procurementCategoryCount} (expected = 5)`);
   console.log(`  Admin user present:     ${userCount === 1 ? "yes" : "NO — check seed"}`);
 }
