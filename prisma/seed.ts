@@ -180,6 +180,10 @@ async function seedAuditActions() {
     { actionName: "ProcurementCategoryUpdated", category: "Configuration", description: "ProcurementCategory attribute fields edited" },
     { actionName: "ProcurementCategoryDeactivated", category: "Configuration", description: "ProcurementCategory isActive set to false" },
     { actionName: "ProcurementCategoryReactivated", category: "Configuration", description: "ProcurementCategory isActive restored to true" },
+    { actionName: "MaterialSpecCreated", category: "Configuration", description: "New MaterialSpec record created" },
+    { actionName: "MaterialSpecUpdated", category: "Configuration", description: "MaterialSpec attribute fields edited" },
+    { actionName: "MaterialSpecDeactivated", category: "Configuration", description: "MaterialSpec isActive set to false" },
+    { actionName: "MaterialSpecReactivated", category: "Configuration", description: "MaterialSpec isActive restored to true" },
   ];
 
   for (const aa of auditActions) {
