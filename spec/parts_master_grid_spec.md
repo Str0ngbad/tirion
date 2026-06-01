@@ -91,9 +91,8 @@ and sourced from a specific Part field or a derived computation.
 |-----------|--------------|--------|------|-------|
 | partNumber | Part Number | Part.partNumber | string | Required, primary identifier |
 | partName | Part Name | Part.partName | string | Required |
-| description | Description | Part.description | string | Nullable |
-| partType | Part Type | Part.partType | enum | "Part" or "Assembly" |
-| procurementCategory | Procurement | Part.procurementCategory.categoryCode | string | Nullable; compact display with categoryName on hover; filter UI shows both |
+| partType | Type | Part.partType | enum | "Part" or "Assembly" |
+| procurementCategory | Proc | Part.procurementCategory.categoryCode | string | Nullable; compact display with categoryName on hover; filter UI shows both |
 | isActive | Active | Part.isActive | boolean | Soft-delete indicator |
 
 **Material:**
@@ -103,29 +102,28 @@ and sourced from a specific Part field or a derived computation.
 | materialName | Material | Part.materialSpec.materialName | string | Nullable |
 | materialForm | Form | Part.materialSpec.form | string | Nullable; separate column for filter purposes |
 | stockSize | Stock Size | Part.stockSize | string | Nullable; free text |
-| blankLength | Blank Length | Part.blankLength | decimal | Nullable |
+| blankLength | Length | Part.blankLength | decimal | Nullable |
 
 **Vendor & Purchasing:**
 
 | Column ID | Display Name | Source | Type | Notes |
 |-----------|--------------|--------|------|-------|
-| defaultVendorName | Default Vendor | Part.defaultVendor.vendorName | string | Nullable |
-| vendorPartNumber | Vendor Part Number | Part.vendorPartNumber | string | Nullable |
+| defaultVendorName | Vendor | Part.defaultVendor.vendorName | string | Nullable |
+| vendorPartNumber | Vendor Part# | Part.vendorPartNumber | string | Nullable |
 
 **Manufacturing:**
 
 | Column ID | Display Name | Source | Type | Notes |
 |-----------|--------------|--------|------|-------|
-| routingTemplate | Routing Template | Part.routingTemplateDefinition.name | string | Nullable; display name of template |
-| processTypes | Routing | Derived: process types in routing | chips | Render as ProcessTypeChip[]; sortable by template name; compact display with full template name and process list on hover |
-| machineCycleTime | Machine Cycle Time | Part.machineCycleTime | int | Nullable; minutes per part |
-| numberOfSetups | Number of Setups | Part.numberOfSetups | int | Nullable |
+| processTypes | Routing | Derived: process types in routing | chips | ProcessTypeChip[]; non-sortable; filterable via include/exclude matrix; compact display with full template name and process list on hover |
+| machineCycleTime | Cycle Time | Part.machineCycleTime | int | Nullable; minutes per part |
+| numberOfSetups | Setups | Part.numberOfSetups | int | Nullable |
 
 **Inventory:**
 
 | Column ID | Display Name | Source | Type | Notes |
 |-----------|--------------|--------|------|-------|
-| stockCount | Stock Count | Part.stockCount | int | Defaults to 0; see "Stock Count Type" note below |
+| stockCount | Stock | Part.stockCount | int | Defaults to 0; see "Stock Count Type" note below |
 | inventoryLocation | Location | Part.inventoryLocation | string | Nullable |
 | binMin | Bin Min | Part.binMin | int | Nullable; threshold |
 | binMax | Bin Max | Part.binMax | int | Nullable; threshold |
@@ -142,7 +140,13 @@ and sourced from a specific Part field or a derived computation.
 | Column ID | Display Name | Source | Type | Notes |
 |-----------|--------------|--------|------|-------|
 | partCost | Cost | Part.partCost | decimal | Nullable; displayed in USD format |
-| partCostUpdatedAt | Cost Last Updated | Part.partCostUpdatedAt | datetime | Nullable; auto-managed |
+| partCostUpdatedAt | Cost Updated | Part.partCostUpdatedAt | datetime | Nullable; auto-managed |
+
+**Relations:**
+
+| Column ID | Display Name | Source | Type | Notes |
+|-----------|--------------|--------|------|-------|
+| usedInCount | Used In | Derived: count of BOM records where this Part is a child | int | Read-only; surfaces the count of parent assemblies that reference this Part as a child. Useful for identifying parts considered for deactivation. |
 
 The grid renders columns in the order specified by the active View's
 visible_columns array. Users can reorder columns via the Columns
@@ -184,7 +188,7 @@ its sort behavior and available filter operators:
 | enum | By enum value order, nulls last | Display order matches enum order |
 | datetime | Chronological ascending/descending, nulls last | |
 | url | Alphabetical by URL string, nulls last | Treated as string for sort |
-| chips | By aggregate string (alphabetical) | E.g., processTypes sorts by routing template name |
+| chips | By aggregate string (alphabetical) | Non-sortable for processTypes (list has no natural sort key); sort behavior applies to any future sortable chips column |
 
 All columns support sort in both ascending and descending directions
 via the column-header menu. Default sort direction varies by
@@ -349,10 +353,10 @@ The Routing column displays an unordered list of process types
 matching a given process" would each produce different orderings,
 none of them clearly correct.
 
-Users who want to sort by routing-related criteria sort by the
-Routing Template column (which has a natural string sort on the
-template name) or filter by routing presence/absence and sort by
-a different column.
+Users who want to sort by routing-related criteria filter by
+routing presence/absence via the include/exclude matrix and sort
+by a different column (e.g., materialName, materialForm, or
+defaultVendorName).
 
 The Routing column's header menu therefore omits the Sort
 ascending, Sort descending, and Add to sort options. The Filter
@@ -515,9 +519,9 @@ Column-Header Menu section). Hovering the funnel displays a
 tooltip describing the active filter in plain language. Examples:
 
 - Text: "Material contains 'Alum'"
-- Numeric: "Stock Count greater than 50"
+- Numeric: "Stock greater than 50"
 - Range: "Cost between $10 and $100"
-- Date: "Cost Last Updated after 2026-01-01"
+- Date: "Cost Updated after 2026-01-01"
 - Multi-select: "Material is any of: 6061 Aluminum, 304 Stainless"
 - Routing: "Routing includes Machine and excludes Distribution"
 
