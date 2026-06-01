@@ -1194,3 +1194,106 @@ The column-header menu does not have an "unhide" option for
 hidden columns (because the hidden column's header is not
 visible to display a menu). The picker is therefore the
 required path back from hidden to visible.
+
+---
+
+## Active Filters Chrome
+
+When one or more filters are active on the current View, an
+Active Filters chrome area appears in the toolbar immediately
+before the Active Sorts chrome. This area surfaces the active
+filter state in a single persistent location regardless of
+which columns are currently visible.
+
+The chrome's existence addresses a specific operational
+problem: a user can apply a filter to a column, then hide
+that column via the column-header menu or the Columns picker.
+Without the chrome, the filter remains active but has no
+visual representation in the grid (the funnel icon on the
+column header is gone since the column itself is hidden). The
+user sees a filtered result set without an obvious indication
+of why certain rows are absent. The Active Filters chrome
+ensures that all active filters remain visible regardless of
+which columns are shown.
+
+### Visibility
+
+The Active Filters chrome appears only when at least one
+filter is active. When no filters are active, the chrome area
+is hidden — the toolbar is more compact.
+
+This matches the Active Sorts pattern (hidden when no sort is
+active, visible when at least one sort is active).
+
+### Layout
+
+The chrome area is labeled "Active Filters:" followed by a
+horizontal sequence of pills, one per active filter. Pills
+display in the order filters were added to the View.
+
+Toolbar order, left to right:
+
+[View switcher] [Columns picker] [Active Filters] [Active Sorts]
+
+When both Active Filters and Active Sorts are visible, they
+sit adjacent in the toolbar. The visual distinction between
+them (different labels, slightly different pill styling if
+desired) keeps them legible without explicit separation.
+
+### Pill Content
+
+Each pill displays a plain-language description of the active
+filter, the same description used in the column-header funnel
+icon's hover tooltip. Examples:
+
+- "Material contains 'alum'"
+- "Stock greater than 50"
+- "Cost between $10 and $100"
+- "Cost Updated after 2026-01-01"
+- "Material is any of: 6061 Aluminum, 304 Stainless"
+
+For descriptions that exceed the pill's display width, the
+pill truncates with ellipsis and the full description shows
+on hover. The truncation threshold is implementation-defined
+based on visual density preferences.
+
+### Pill Affordance
+
+Each pill has a close (×) affordance that removes the filter
+when clicked. Clicking the × removes that filter from the
+View's filters array. If the filter is the last remaining
+active filter, the Active Filters chrome disappears.
+
+Clicking elsewhere on the pill (the description text) opens
+the column's filter popover, allowing the user to modify the
+filter. This is parallel to clicking the column-header
+funnel icon when the column is visible — the filter is
+editable from either entry point. When the user commits the
+modified filter via Apply, the pill updates to reflect the
+new description.
+
+### Routing Filter Pill
+
+The Routing filter is structurally different from other
+filters: its data is the include/exclude matrix rather than
+a single operator/value pair. The pill description adapts to
+the matrix's complexity:
+
+- For 1-2 active rules (include or exclude states), the pill
+  lists each rule verbosely: "Routing: includes Machine,
+  excludes Distribution"
+- For 3 or more active rules, the pill uses a compact count
+  form: "Routing: 3 active rules" with the full breakdown on
+  hover
+
+This adapts to typical operational usage — most Routing
+filters are 1-2 rules; many-rule filters are atypical but
+supported.
+
+### Interaction with Modified State
+
+Like all filter-related actions, modifying a filter via the
+Active Filters chrome (clicking × to remove, or clicking a
+pill to open and edit) flows through the View Modification
+Model. The View becomes modified; the Save / Save as new /
+Revert actions surface as appropriate.
