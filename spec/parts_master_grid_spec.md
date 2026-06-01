@@ -869,3 +869,187 @@ The Rev 1 audit model captures the persistent mutations: a View
 was created, updated, or deleted. This is sufficient
 accountability for a trusted-shop context where permission
 gating is absent.
+
+---
+
+## View Modification Model
+
+Users frequently modify the active View's state in the course of
+using the grid: applying a filter to answer a specific question,
+adding a sort, hiding a column they don't need at the moment.
+These ad-hoc modifications are valuable for interrogation but
+may not warrant updating the saved View definition — sometimes
+the user wants to explore without committing, sometimes the
+modifications are exactly what should be saved, and sometimes
+they should be captured as a new derived View.
+
+The View Modification Model documents how the grid tracks and
+resolves divergence between the active View's session state and
+its saved state.
+
+### Dirty State Detection
+
+The grid compares the active View's current state against its
+saved state on every state change (column visibility change,
+column reorder, sort change, filter change). If any of the
+comparable fields differ from the saved values, the View is
+considered modified ("dirty").
+
+Comparable fields:
+- visibleColumns (array contents and order)
+- defaultSort (sort stack contents and order)
+- filters (filter array contents)
+
+The comparison is by value, not by mutation history. If a user
+adds a filter and then clears it, the resulting state matches
+the saved state and the View is not modified. This produces the
+intuitive behavior where the modified indicator reflects actual
+divergence from the saved configuration.
+
+Dirty state is session-only — it lives in the user's grid view,
+not in the View record. Reloading the page or switching to
+another View resets the dirty state by loading the saved
+configuration fresh.
+
+### Modified Indicator
+
+When the active View is modified, a small dot appears next to
+the View name in the View switcher dropdown trigger. The dot is
+a minimal visual indicator with established convention in other
+software (text editors, design tools) where it signals
+"unsaved changes."
+
+Adjacent to the View switcher (when the View is modified), the
+three resolution actions surface — Save, Save as new, and
+Revert — as accessible affordances. These are documented in
+the next subsections.
+
+### Save
+
+The Save action overwrites the saved View with the current
+session state. The View's visibleColumns, defaultSort, and
+filters fields are updated to match what the user is currently
+seeing.
+
+Save is destructive on a shared resource: Views are shared
+across all users, and saving over a View affects everyone who
+uses it. The action therefore requires a confirmation gate
+before committing.
+
+**Confirmation dialog:**
+
+  Overwrite "[View Name]"?
+
+  This will replace the saved columns, sort, and filters with
+  your current view state. Other users will see this change
+  next time they load this view.
+
+  [Cancel]  [Save]
+
+Where [View Name] is the active View's name, substituted at
+display time. Clicking Save commits the update; clicking
+Cancel closes the dialog without changes. The dialog can also
+be dismissed via Escape (equivalent to Cancel).
+
+On successful save, the modified indicator clears (the View is
+no longer dirty since session state now equals saved state).
+The grid continues to show the current configuration; nothing
+visually changes except the indicator.
+
+**Master View exception:**
+
+When the active View is Master View (isLocked: true), Save is
+disabled. The user cannot overwrite the locked baseline. The
+action either is hidden, grayed out, or surfaces a tooltip
+explaining "Master View cannot be saved over; use Save as new
+to capture this configuration."
+
+Users wanting to preserve their modifications to Master must
+use Save as new to create a new derived View.
+
+### Save as New
+
+Save as new captures the current session state as a new View,
+leaving the active View's saved state unchanged.
+
+**Interaction:**
+
+Clicking Save as new transforms the View switcher's name
+display into an inline text input. The input is focused, ready
+for the user to type a name. Pressing Enter creates the new
+View; pressing Escape cancels the action and restores the
+View switcher's name display.
+
+Validation surfaces inline as the user types or on Enter:
+
+- **Empty name:** "Name is required" — Enter does nothing
+  until a name is entered
+- **Length exceeds 30 characters:** "Name must be 30 characters
+  or fewer" — Enter does nothing until the name is shortened
+- **Name conflicts with existing View:** "A View named '[X]'
+  already exists" — Enter does nothing until the name is changed
+
+On valid Enter, the new View is created with:
+- name: the entered text
+- isDefault: false
+- isLocked: false
+- visibleColumns / defaultSort / filters: the current session
+  state
+
+The newly created View becomes the active View. The View
+switcher dropdown now shows it as the current selection. The
+modified indicator clears (session state equals saved state of
+the new View).
+
+Save as new is available from any View — Master or
+user-created, modified or unmodified. From Master, it's the
+primary mechanism for creating derived Views.
+
+### Revert
+
+Revert discards the user's ad-hoc modifications and restores
+the active View's saved state. After Revert, the modified
+indicator clears.
+
+Revert is not gated by a confirmation dialog in Rev 1. The user
+loses their session work with the click but can immediately
+re-apply changes if needed; the action is reversible by user
+action even though it's not undoable by a system mechanism.
+
+This trades a friction-vs-safety choice toward less friction. If
+user feedback in practice surfaces accidental Reverts losing
+meaningful work, a confirmation gate can be added in Rev 1.5.
+
+### Switching Views
+
+Switching to a different View via the View switcher dropdown
+always loads the destination View's saved state. Any ad-hoc
+modifications to the previously-active View are discarded.
+
+This is documented as a deliberate design choice rather than a
+side effect: each View represents a defined frame for asking a
+specific question, and switching Views should enter that
+frame's defined state. Carrying ad-hoc filters or column
+changes across View switches would produce confusing behavior
+where a View shows unexpected state based on what the user
+was looking at previously.
+
+Users who want their modifications preserved should Save or
+Save as new before switching Views.
+
+### Master View Specific Behavior
+
+The Master View has the following modification behavior:
+
+| Action | Behavior on Master View |
+|--------|-------------------------|
+| Modify (any of sort, filter, columns) | Permitted in session; modified indicator appears |
+| Save | Disabled; cannot overwrite the locked baseline |
+| Save as new | Permitted; creates a derived View from current state |
+| Revert | Permitted; restores Master to its baseline (every column, partNumber asc, no filters) |
+| Switching away | Permitted; ad-hoc modifications discarded |
+
+Master View serves as the canonical "show everything" starting
+point. Users discover the system's capabilities by working with
+Master, then capture useful configurations via Save as new for
+reuse.
