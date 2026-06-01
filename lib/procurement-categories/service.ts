@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/client";
+import { isP2002OnField } from "@/lib/db/p2002";
 import { mutateWithAudit } from "@/lib/audit/mutateWithAudit";
 import {
   ProcurementCategoryNotFoundError,
@@ -55,19 +56,6 @@ async function fetchWithCounts(
       },
     },
   });
-}
-
-// Prisma's driver adapter does not populate meta.target; detect the violated
-// constraint from the error message, which contains the column name.
-function isP2002OnField(err: unknown, fieldName: string): boolean {
-  if (!(err instanceof Prisma.PrismaClientKnownRequestError) || err.code !== "P2002") {
-    return false;
-  }
-  const target = (err.meta as { target?: unknown })?.target;
-  if (Array.isArray(target)) {
-    return (target as string[]).includes(fieldName);
-  }
-  return err.message.includes(`"${fieldName}"`);
 }
 
 function isCodeCollision(err: unknown): boolean {
