@@ -19,7 +19,6 @@ type Props = {
   depth: number;
   forceExpanded: boolean | null; // null = self-managed, true/false = externally controlled
   onOpenPartSheet: (part: MockPart) => void;
-  onNavigateAssembly: (partId: number) => void;
 };
 
 // ─── Cost freshness indicator ────────────────────────────────────────────────
@@ -51,7 +50,6 @@ export default function BomTreeRow({
   depth,
   forceExpanded,
   onOpenPartSheet,
-  onNavigateAssembly,
 }: Props) {
   const { part, quantity, children } = node;
   const isAssembly = part.partType === "Assembly";
@@ -78,11 +76,7 @@ export default function BomTreeRow({
 
   function handlePartNumberClick(e: React.MouseEvent) {
     e.stopPropagation();
-    if (isAssembly) {
-      onNavigateAssembly(part.partId);
-    } else {
-      onOpenPartSheet(part);
-    }
+    onOpenPartSheet(part);
   }
 
   function formatCost(c: number | null): string {
@@ -94,7 +88,7 @@ export default function BomTreeRow({
     <>
       {/* Row */}
       <div
-        className={`group flex items-center gap-0 border-b border-border/40 hover:bg-muted/50 transition-colors ${!isAssembly ? "dark:bg-muted/30" : ""}`}
+        className={`group flex items-center gap-0 border-b border-border/40 hover:bg-muted/50 transition-colors ${!isAssembly ? "bg-muted/60" : ""}`}
         style={{ minHeight: 36 }}
       >
         {/* Left: tree zone — constrained width so data columns stay left-anchored */}
@@ -203,7 +197,6 @@ export default function BomTreeRow({
             depth={depth + 1}
             forceExpanded={forceExpanded}
             onOpenPartSheet={onOpenPartSheet}
-            onNavigateAssembly={onNavigateAssembly}
           />
         ))}
     </>

@@ -1,122 +1,123 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, ExternalLink, ChevronDown, ChevronsUpDown } from "lucide-react";
-import { MOCK_PARTS, MockPart } from "@/app/mockups/parts/_data";
-import { buildBomTree, computeBuildable, computeCostRollup } from "../_lib/bom-utils";
+import { useState, useMemo, useEffect } from "react";
+import { useParams } from "next/navigation";
+import { ChevronDown, ChevronsUpDown, ExternalLink } from "lucide-react";
+import {
+  MOCK_PARTS,
+  MOCK_MATERIAL_SPECS,
+  MOCK_VENDORS,
+  MockPart,
+  MockMinimalMaterialSpec,
+  MockMinimalVendor,
+} from "@/app/mockups/parts/_data";
+import { buildBomTree } from "../_lib/bom-utils";
+import BomEditorChrome from "../_components/bom-editor-chrome";
 import BomTreeRow from "../_components/bom-tree-row";
-import BomPartSheet from "../_components/bom-part-sheet";
+import PartFormSheet, { SECTION_IDS } from "@/app/mockups/parts/_components/part-form-sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 export default function BomEditorDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const assemblyId = Number(params.assemblyId);
 
-  const [expandState, setExpandState] = useState<boolean | null>(null); // null = self-managed
+  const [expandState, setExpandState] = useState<boolean | null>(null);
   const [sheetPart, setSheetPart] = useState<MockPart | null>(null);
+  const [materialSpecs, setMaterialSpecs] = useState<MockMinimalMaterialSpec[]>(MOCK_MATERIAL_SPECS);
+  const [vendors, setVendors] = useState<MockMinimalVendor[]>(MOCK_VENDORS);
+  // treeVersion forces the memoized tree to recompute after MOCK_PARTS mutation
+  const [treeVersion, setTreeVersion] = useState(0);
+
+  // ESC closes the sheet (unless a dialog inside the sheet captured it first)
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape" && sheetPart) setSheetPart(null);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [sheetPart]);
 
   const assembly = MOCK_PARTS.find((p) => p.partId === assemblyId);
+
   const tree = useMemo(() => {
     if (!assembly || assembly.partType !== "Assembly") return [];
     return buildBomTree(assemblyId);
-  }, [assembly, assemblyId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assembly?.partId, treeVersion]);
 
-  function navigateAssembly(partId: number) {
-    router.push(`/mockups/bom-editor/${partId}`);
+  function handlePartUpdate(updated: MockPart) {
+    const idx = MOCK_PARTS.findIndex((p) => p.partId === updated.partId);
+    if (idx !== -1) MOCK_PARTS[idx] = updated;
+    setSheetPart(updated);
+    setTreeVersion((v) => v + 1);
+  }
+
+  function handleNavigateToPart(partId: number) {
+    const part = MOCK_PARTS.find((p) => p.partId === partId);
+    if (part) setSheetPart(part);
   }
 
   if (!assembly) {
     return (
-      <div className="flex h-screen flex-col items-center justify-center gap-4 bg-background">
-        <p className="text-lg font-medium text-foreground">Assembly not found</p>
-        <a href="/mockups/bom-editor" className="text-sm text-primary hover:underline">
-          ← Back to Assembly Search
-        </a>
+      <div className="flex h-screen flex-col bg-background font-sans text-foreground">
+        <BomEditorChrome />
+        <div className="flex flex-1 flex-col items-center justify-center gap-3">
+          <p className="text-base font-medium text-foreground">Assembly not found</p>
+          <a href="/mockups/bom-editor" className="text-sm text-primary hover:underline">
+            ← Search Assemblies
+          </a>
+        </div>
       </div>
     );
   }
 
   if (assembly.partType !== "Assembly") {
     return (
-      <div className="flex h-screen flex-col items-center justify-center gap-4 bg-background">
-        <p className="text-lg font-medium text-foreground">
-          {assembly.partNumber} is not an Assembly
-        </p>
-        <a href="/mockups/bom-editor" className="text-sm text-primary hover:underline">
-          ← Back to Assembly Search
-        </a>
+      <div className="flex h-screen flex-col bg-background font-sans text-foreground">
+        <BomEditorChrome />
+        <div className="flex flex-1 flex-col items-center justify-center gap-3">
+          <p className="text-base font-medium text-foreground">
+            {assembly.partNumber} is not an Assembly
+          </p>
+          <a href="/mockups/bom-editor" className="text-sm text-primary hover:underline">
+            ← Search Assemblies
+          </a>
+        </div>
       </div>
     );
   }
 
-  const buildable = computeBuildable(tree);
-  const costRollup = computeCostRollup(tree);
   const childCount = assembly.childParts.length;
 
   return (
     <div className="flex h-screen flex-col bg-background font-sans text-foreground">
-      {/* Mockup banner */}
-      <div className="shrink-0 border-b border-amber-900/30 bg-amber-500/10 px-6 py-1.5 text-center">
-        <span className="text-xs text-amber-700 dark:text-amber-400">
-          <strong className="font-medium">Mockup — BOM Editor</strong>
-          {" · "}Spec validation, not production · in-memory state, resets on reload
-        </span>
-      </div>
+      {/* Shared chrome — banner + page header + Assembly search */}
+      <BomEditorChrome currentAssemblyId={assemblyId} />
 
-      {/* Header band */}
-      <div className="shrink-0 border-b border-border bg-card px-6 py-4">
-        <div className="mx-auto max-w-screen-2xl">
-          {/* Breadcrumb / back */}
-          <div className="mb-3 flex items-center gap-2">
-            <a
-              href="/mockups/bom-editor"
-              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+      {/* Assembly identity band */}
+      <div className="shrink-0 border-b border-border bg-card px-6 py-3">
+        <div className="mx-auto max-w-screen-2xl flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="font-mono text-base font-semibold">{assembly.partNumber}</span>
+            <span className="text-sm text-muted-foreground">{assembly.partName}</span>
+            <Badge
+              variant="secondary"
+              className="bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
             >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              Search Assemblies
-            </a>
-          </div>
-
-          {/* Assembly identity + actions */}
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <span className="font-mono text-lg font-semibold">{assembly.partNumber}</span>
-              <span className="text-base text-muted-foreground">{assembly.partName}</span>
-              <Badge
-                variant="secondary"
-                className="bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
-              >
-                Assembly
-              </Badge>
-            </div>
-            <a
-              href="/mockups/parts"
-              className="flex items-center gap-1.5 text-xs text-foreground hover:underline"
-            >
-              Open in Parts Master
-              <ExternalLink className="h-3 w-3" />
-            </a>
-          </div>
-
-          {/* Stats row */}
-          <div className="mt-3 flex items-center gap-6 text-xs text-muted-foreground">
-            <span>{childCount} direct component{childCount !== 1 ? "s" : ""}</span>
-            <span>
-              Buildable:{" "}
-              <span className={`font-medium ${buildable === 0 ? "text-red-500" : "text-foreground"}`}>
-                {buildable}
-              </span>
+              Assembly
+            </Badge>
+            <span className="text-xs text-muted-foreground">
+              {childCount} direct component{childCount !== 1 ? "s" : ""}
             </span>
-            {costRollup !== null && (
-              <span>
-                Cost rollup:{" "}
-                <span className="font-medium text-foreground">${costRollup.toFixed(2)}</span>
-              </span>
-            )}
           </div>
+          <a
+            href="/mockups/parts"
+            className="flex items-center gap-1.5 text-xs text-foreground hover:underline"
+          >
+            Open in Parts Master
+            <ExternalLink className="h-3 w-3" />
+          </a>
         </div>
       </div>
 
@@ -154,9 +155,10 @@ export default function BomEditorDetailPage() {
         </div>
       </div>
 
-      {/* Tree */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-screen-2xl">
+      {/* Body — tree + optional Part Form Sheet side panel */}
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        {/* BOM tree */}
+        <div className="min-w-0 flex-1 overflow-y-auto">
           {/* Column headers */}
           <div className="flex items-center border-b border-border bg-muted/40 text-xs font-medium text-muted-foreground">
             <div className="w-[480px] shrink-0 px-2 py-2 pl-8">Component</div>
@@ -172,7 +174,7 @@ export default function BomEditorDetailPage() {
 
           {tree.length === 0 ? (
             <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
-              {assembly.partName} has no components. Add the first component to get started.
+              {assembly.partName} has no components.
             </div>
           ) : (
             tree.map((node) => (
@@ -182,19 +184,43 @@ export default function BomEditorDetailPage() {
                 depth={0}
                 forceExpanded={expandState}
                 onOpenPartSheet={setSheetPart}
-                onNavigateAssembly={navigateAssembly}
               />
             ))
           )}
         </div>
-      </div>
 
-      {/* Part detail sheet */}
-      <BomPartSheet
-        part={sheetPart}
-        onClose={() => setSheetPart(null)}
-        onNavigateAssembly={navigateAssembly}
-      />
+        {/* Part Form Sheet panel — pushes tree to ~67% */}
+        {sheetPart && (
+          <div className="flex w-1/3 shrink-0 flex-col border-l border-border">
+            {/* Open in Parts Master strip */}
+            <div className="shrink-0 border-b border-border px-4 py-2">
+              <a
+                href="/mockups/parts"
+                className="flex items-center gap-1.5 text-xs text-primary hover:underline"
+              >
+                Open in Parts Master
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            </div>
+
+            {/* PartFormSheet fills remaining height */}
+            <div className="min-h-0 flex-1 overflow-hidden">
+              <PartFormSheet
+                part={sheetPart}
+                actorName="Tony"
+                scrollToSectionId={SECTION_IDS.parents}
+                materialSpecs={materialSpecs}
+                vendors={vendors}
+                onClose={() => setSheetPart(null)}
+                onUpdate={handlePartUpdate}
+                onAddMaterialSpec={(spec) => setMaterialSpecs((prev) => [...prev, spec])}
+                onAddVendor={(vendor) => setVendors((prev) => [...prev, vendor])}
+                onNavigateToPart={handleNavigateToPart}
+              />
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
