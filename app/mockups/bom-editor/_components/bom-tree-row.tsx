@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { ChevronRight, AlertTriangle, Clock } from "lucide-react";
+import { ChevronRight, AlertTriangle, Clock, MoreVertical } from "lucide-react";
 import {
   BomNode,
   computeBuildable,
@@ -10,10 +10,17 @@ import {
   CostFreshness,
 } from "../_lib/bom-utils";
 import { sortBomChildren } from "../_lib/sort";
+import { EditorMode } from "../_lib/types";
 import { useTruncatedTitle } from "@/app/_lib/use-truncated-title";
 import { MockPart } from "@/app/mockups/parts/_data";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -22,6 +29,8 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import AddChildInputRow from "./add-child-input-row";
+import RemoveChildrenConfirmDialog from "./remove-children-confirm-dialog";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -36,6 +45,17 @@ type Props = {
   parentPartNumber?: string;
   onQtyChange?: (parentPartId: number, childPartId: number, newQty: number) => void;
   onChildRemove?: (parentPartId: number, childPartId: number, removedQty: number) => void;
+  // Editor mode
+  editorMode: EditorMode;
+  onStartAdd: (parentPartId: number) => void;
+  onStartRemove: (parentPartId: number) => void;
+  onCancelEdit: () => void;
+  onCommitAdd: (parentPartId: number, childPartId: number, qty: number) => void;
+  onBulkRemove: (parentPartId: number, childIds: number[]) => void;
+  onToggleRemoveChild: (childPartId: number) => void;
+  // Remove-selection state passed from parent
+  isInRemoveSelection?: boolean;
+  isRemoveSelected?: boolean;
 };
 
 // ─── Cost freshness indicator ────────────────────────────────────────────────
@@ -73,6 +93,15 @@ export default function BomTreeRow({
   parentPartNumber,
   onQtyChange,
   onChildRemove,
+  editorMode,
+  onStartAdd,
+  onStartRemove,
+  onCancelEdit,
+  onCommitAdd,
+  onBulkRemove,
+  onToggleRemoveChild,
+  isInRemoveSelection = false,
+  isRemoveSelected = false,
 }: Props) {
   const { part, quantity, children } = node;
   const isAssembly = part.partType === "Assembly";
@@ -83,7 +112,6 @@ export default function BomTreeRow({
 
   // Inline qty edit state
   const [editingQty, setEditingQty] = useState(false);
-  // Sync ref guards against double-commit when blur fires after Enter
   const isEditingRef = useRef(false);
   const [qtyInput, setQtyInput] = useState("");
   const [qtyError, setQtyError] = useState<string | null>(null);
@@ -91,6 +119,8 @@ export default function BomTreeRow({
 
   // 0-as-remove confirmation dialog
   const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
+  // Remove-children confirmation dialog
+  const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
 
   const { ref: nameRef, title: nameTitle } = useTruncatedTitle<HTMLSpanElement>(part.partName);
 
@@ -104,6 +134,25 @@ export default function BomTreeRow({
   const indentPx = depth * INDENT;
 
   const sortedChildren = sortBomChildren(children);
+
+  // Editor mode helpers
+  const anyEditActive = editorMode.type !== "idle";
+  const iAmInAddMode = editorMode.type === "adding" && editorMode.parentPartId === part.partId;
+  const iAmInRemoveMode =
+    editorMode.type === "removing" && editorMode.parentPartId === part.partId;
+  const otherEditActive = anyEditActive && !iAmInAddMode && !iAmInRemoveMode;
+  const menuDisabled = anyEditActive; // all ⋮ menus disabled during any edit
+
+  // Children flagged as in-remove-selection
+  const removeSelectedIds =
+    editorMode.type === "removing" && editorMode.parentPartId === part.partId
+      ? editorMode.selectedChildIds
+      : null;
+
+  const selectedRemoveChildren =
+    removeSelectedIds !== null
+      ? sortedChildren.filter((c) => removeSelectedIds.has(c.part.partId))
+      : [];
 
   useEffect(() => {
     if (editingQty) inputRef.current?.select();
@@ -121,6 +170,8 @@ export default function BomTreeRow({
 
   function handleChevronClick(e: React.MouseEvent) {
     e.stopPropagation();
+    // Chevron of the actively-editing assembly is disabled
+    if (iAmInAddMode || iAmInRemoveMode) return;
     if (forceExpanded !== null) return;
     setSelfExpanded((v) => !v);
   }
@@ -138,7 +189,6 @@ export default function BomTreeRow({
   }
 
   function commitQty() {
-    // Guard: if blur fires after Enter already committed, skip
     if (!isEditingRef.current || parentPartId === undefined) return;
     stopEditing();
 
@@ -149,24 +199,20 @@ export default function BomTreeRow({
     }
 
     const parsed = Number(raw);
-
     if (isNaN(parsed) || !isFinite(parsed)) {
-      setQtyError(null); // reject silently — non-numeric
+      setQtyError(null);
       return;
     }
 
     const asInt = Math.trunc(parsed);
-
     if (asInt < 0) {
       setQtyError("Quantity must be a positive integer");
       return;
     }
-
     if (asInt === 0) {
       setConfirmRemoveOpen(true);
       return;
     }
-
     onQtyChange?.(parentPartId, part.partId, asInt);
   }
 
@@ -189,6 +235,11 @@ export default function BomTreeRow({
     setConfirmRemoveOpen(false);
   }
 
+  function handleBulkConfirm() {
+    setBulkConfirmOpen(false);
+    onBulkRemove(part.partId, selectedRemoveChildren.map((c) => c.part.partId));
+  }
+
   function formatCost(c: number | null): string {
     if (c === null) return "—";
     return "$" + c.toFixed(2);
@@ -201,8 +252,22 @@ export default function BomTreeRow({
         className={`group flex items-center gap-0 border-b border-border/40 hover:bg-muted/50 transition-colors ${!isAssembly ? "bg-muted/80" : ""}`}
         style={{ minHeight: 36 }}
       >
+        {/* Checkbox column — visible when this row is a child in remove-selection mode */}
+        {isInRemoveSelection && (
+          <div className="flex w-6 shrink-0 items-center justify-center pl-1">
+            <input
+              type="checkbox"
+              checked={isRemoveSelected}
+              onChange={() => onToggleRemoveChild(part.partId)}
+              className="h-3.5 w-3.5 cursor-pointer rounded border-border accent-primary"
+            />
+          </div>
+        )}
+
         {/* Left: tree zone */}
-        <div className="flex w-[424px] max-w-[424px] shrink-0 items-center overflow-hidden">
+        <div
+          className={`flex max-w-[424px] shrink-0 items-center overflow-hidden ${isInRemoveSelection ? "w-[400px]" : "w-[424px]"}`}
+        >
           {depth > 0 && (
             <div className="shrink-0 self-stretch flex" style={{ width: indentPx }}>
               {Array.from({ length: depth }).map((_, i) => (
@@ -219,7 +284,8 @@ export default function BomTreeRow({
             {isAssembly && hasChildren ? (
               <button
                 onClick={handleChevronClick}
-                className="flex items-center justify-center rounded hover:bg-muted transition-colors"
+                disabled={iAmInAddMode || iAmInRemoveMode}
+                className="flex items-center justify-center rounded hover:bg-muted transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                 style={{ width: 20, height: 20 }}
               >
                 <ChevronRight
@@ -308,6 +374,47 @@ export default function BomTreeRow({
           <div className="w-24 px-2 text-left text-xs text-muted-foreground truncate">
             {part.inventoryLocation ?? "—"}
           </div>
+
+          {/* ⋮ menu — Assembly rows only */}
+          <div className="w-8 flex items-center justify-center">
+            {isAssembly ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    disabled={menuDisabled}
+                    className={`flex h-6 w-6 items-center justify-center rounded transition-opacity hover:opacity-100 disabled:cursor-not-allowed ${menuDisabled ? "opacity-30" : "opacity-50"}`}
+                    title={menuDisabled ? "Another edit is in progress" : undefined}
+                  >
+                    <MoreVertical className="h-3.5 w-3.5" />
+                  </button>
+                </DropdownMenuTrigger>
+                {!menuDisabled && (
+                  <DropdownMenuContent align="end" className="w-40">
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        if (!iAmInRemoveMode) {
+                          setSelfExpanded(true);
+                          onStartAdd(part.partId);
+                        }
+                      }}
+                    >
+                      Add Child
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        if (!iAmInAddMode) {
+                          setSelfExpanded(true);
+                          onStartRemove(part.partId);
+                        }
+                      }}
+                    >
+                      Remove Children
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                )}
+              </DropdownMenu>
+            ) : null}
+          </div>
         </div>
       </div>
 
@@ -315,6 +422,40 @@ export default function BomTreeRow({
       {qtyError && (
         <div className="flex items-center border-b border-border/40 bg-destructive/10 px-2 py-1 text-xs text-destructive">
           {qtyError}
+        </div>
+      )}
+
+      {/* Add-child inline-input row */}
+      {iAmInAddMode && (
+        <AddChildInputRow
+          parentPartId={part.partId}
+          parentPartNumber={part.partNumber}
+          depth={depth}
+          onCommit={(childPartId, qty) => onCommitAdd(part.partId, childPartId, qty)}
+          onCancel={onCancelEdit}
+        />
+      )}
+
+      {/* Remove-children action bar */}
+      {iAmInRemoveMode && (
+        <div className="flex items-center gap-2 border-b border-border/40 bg-destructive/5 px-3 py-1.5">
+          <Button
+            size="sm"
+            variant="destructive"
+            className="h-6 px-3 text-xs"
+            disabled={selectedRemoveChildren.length === 0}
+            onClick={() => setBulkConfirmOpen(true)}
+          >
+            Remove Selected ({selectedRemoveChildren.length})
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-6 px-2 text-xs"
+            onClick={onCancelEdit}
+          >
+            Cancel
+          </Button>
         </div>
       )}
 
@@ -340,6 +481,20 @@ export default function BomTreeRow({
         </DialogContent>
       </Dialog>
 
+      {/* Bulk remove confirmation dialog */}
+      <RemoveChildrenConfirmDialog
+        open={bulkConfirmOpen}
+        parentPartNumber={part.partNumber}
+        items={selectedRemoveChildren.map((c) => ({
+          partId: c.part.partId,
+          partNumber: c.part.partNumber,
+          partName: c.part.partName,
+          qty: c.quantity,
+        }))}
+        onCancel={() => setBulkConfirmOpen(false)}
+        onConfirm={handleBulkConfirm}
+      />
+
       {/* Children (recursive, sorted) */}
       {expanded &&
         sortedChildren.map((child) => (
@@ -353,6 +508,15 @@ export default function BomTreeRow({
             parentPartNumber={part.partNumber}
             onQtyChange={onQtyChange}
             onChildRemove={onChildRemove}
+            editorMode={editorMode}
+            onStartAdd={onStartAdd}
+            onStartRemove={onStartRemove}
+            onCancelEdit={onCancelEdit}
+            onCommitAdd={onCommitAdd}
+            onBulkRemove={onBulkRemove}
+            onToggleRemoveChild={onToggleRemoveChild}
+            isInRemoveSelection={iAmInRemoveMode}
+            isRemoveSelected={removeSelectedIds?.has(child.part.partId) ?? false}
           />
         ))}
     </>

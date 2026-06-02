@@ -12,6 +12,7 @@ import {
   MOCK_VENDORS,
 } from "@/app/mockups/parts/_data";
 import { buildBomTree, BomNode } from "../_lib/bom-utils";
+import { EditorMode } from "../_lib/types";
 import BomEditorChrome from "../_components/bom-editor-chrome";
 import BomTreeRow from "../_components/bom-tree-row";
 import PartFormSheet, { SECTION_IDS } from "@/app/mockups/parts/_components/part-form-sheet";
@@ -27,18 +28,25 @@ export default function BomEditorDetailPage() {
   const [materialSpecs, setMaterialSpecs] = useState<MockMinimalMaterialSpec[]>(MOCK_MATERIAL_SPECS);
   const [vendors, setVendors] = useState<MockMinimalVendor[]>(MOCK_VENDORS);
   const [treeVersion, setTreeVersion] = useState(0);
+  const [editorMode, setEditorMode] = useState<EditorMode>({ type: "idle" });
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape" && sheetPart) setSheetPart(null);
+      if (e.key === "Escape") {
+        // ESC unwinds topmost: sheet first, then edit mode
+        if (sheetPart) {
+          setSheetPart(null);
+        } else if (editorMode.type !== "idle") {
+          setEditorMode({ type: "idle" });
+        }
+      }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [sheetPart]);
+  }, [sheetPart, editorMode]);
 
   const assembly = MOCK_PARTS.find((p) => p.partId === assemblyId);
 
-  // Root BomNode wraps the assembly itself as the top-level tree row.
   const rootNode = useMemo<BomNode | null>(() => {
     if (!assembly || assembly.partType !== "Assembly") return null;
     const children = buildBomTree(assemblyId);
@@ -98,6 +106,134 @@ export default function BomEditorDetailPage() {
       ],
     });
     parent.childParts = parent.childParts.filter((c) => c.childPartId !== childPartId);
+    // Update child's parentAssemblies reciprocal
+    const child = MOCK_PARTS.find((p) => p.partId === childPartId);
+    if (child) {
+      child.parentAssemblies = child.parentAssemblies.filter(
+        (a) => a.assemblyPartId !== parentPartId
+      );
+    }
+    setTreeVersion((v) => v + 1);
+  }
+
+  // ─── Editor mode handlers ───────────────────────────────────────────────────
+
+  function handleStartAdd(parentPartId: number) {
+    setEditorMode({ type: "adding", parentPartId });
+  }
+
+  function handleStartRemove(parentPartId: number) {
+    setEditorMode({ type: "removing", parentPartId, selectedChildIds: new Set() });
+  }
+
+  function handleCancelEdit() {
+    setEditorMode({ type: "idle" });
+  }
+
+  function handleToggleRemoveChild(childPartId: number) {
+    if (editorMode.type !== "removing") return;
+    const next = new Set(editorMode.selectedChildIds);
+    if (next.has(childPartId)) {
+      next.delete(childPartId);
+    } else {
+      next.add(childPartId);
+    }
+    setEditorMode({ ...editorMode, selectedChildIds: next });
+  }
+
+  function handleCommitAdd(parentPartId: number, childPartId: number, qty: number) {
+    const parent = MOCK_PARTS.find((p) => p.partId === parentPartId);
+    const childPart = MOCK_PARTS.find((p) => p.partId === childPartId);
+    if (!parent || !childPart) return;
+
+    const existing = parent.childParts.find((c) => c.childPartId === childPartId);
+    if (existing) {
+      // Increment existing
+      const oldQty = existing.quantity;
+      existing.quantity += qty;
+      parent.auditLog.unshift({
+        timestamp: new Date().toISOString(),
+        userName: "Marcus Hill",
+        action: "BomChildQtyChanged",
+        changedFields: [
+          {
+            field: `BOM child [${existing.childPartNumber}]`,
+            before: `qty ${oldQty}`,
+            after: `qty ${existing.quantity}`,
+          },
+        ],
+      });
+      // Update reciprocal quantity
+      const reciprocal = childPart.parentAssemblies.find((a) => a.assemblyPartId === parentPartId);
+      if (reciprocal) reciprocal.quantityInParent = existing.quantity;
+    } else {
+      // Add new
+      parent.childParts.push({
+        childPartId,
+        childPartNumber: childPart.partNumber,
+        childPartName: childPart.partName,
+        quantity: qty,
+      });
+      parent.auditLog.unshift({
+        timestamp: new Date().toISOString(),
+        userName: "Marcus Hill",
+        action: "BomChildAdded",
+        changedFields: [
+          {
+            field: `BOM child [${childPart.partNumber}]`,
+            before: "not in BOM",
+            after: `qty ${qty}`,
+          },
+        ],
+      });
+      // Update child's parentAssemblies reciprocal
+      if (!childPart.parentAssemblies.find((a) => a.assemblyPartId === parentPartId)) {
+        childPart.parentAssemblies.push({
+          assemblyPartId: parentPartId,
+          partNumber: parent.partNumber,
+          partName: parent.partName,
+          quantityInParent: qty,
+        });
+        childPart.assembliesUsedInCount = childPart.parentAssemblies.length;
+      }
+    }
+
+    setEditorMode({ type: "idle" });
+    setTreeVersion((v) => v + 1);
+  }
+
+  function handleBulkRemove(parentPartId: number, childIds: number[]) {
+    const parent = MOCK_PARTS.find((p) => p.partId === parentPartId);
+    if (!parent) return;
+
+    for (const childId of childIds) {
+      const rel = parent.childParts.find((c) => c.childPartId === childId);
+      if (!rel) continue;
+      parent.auditLog.unshift({
+        timestamp: new Date().toISOString(),
+        userName: "Marcus Hill",
+        action: "BomChildRemoved",
+        changedFields: [
+          {
+            field: `BOM child [${rel.childPartNumber}]`,
+            before: `qty ${rel.quantity}`,
+            after: "removed",
+          },
+        ],
+      });
+      // Reciprocal update
+      const child = MOCK_PARTS.find((p) => p.partId === childId);
+      if (child) {
+        child.parentAssemblies = child.parentAssemblies.filter(
+          (a) => a.assemblyPartId !== parentPartId
+        );
+        child.assembliesUsedInCount = child.parentAssemblies.length;
+      }
+    }
+
+    parent.childParts = parent.childParts.filter((c) => !childIds.includes(c.childPartId));
+
+    setEditorMode({ type: "idle" });
     setTreeVersion((v) => v + 1);
   }
 
@@ -201,7 +337,7 @@ export default function BomEditorDetailPage() {
       {/* Body */}
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <div className="min-w-0 flex-1 overflow-y-auto">
-          {/* Column headers — width matches tree zone in BomTreeRow */}
+          {/* Column headers */}
           <div className="sticky top-0 z-10 flex items-center border-b border-border bg-muted/40 text-xs font-medium text-muted-foreground">
             <div className="w-[424px] shrink-0 px-2 py-2 pl-8">Component</div>
             <div className="flex shrink-0 items-center">
@@ -211,6 +347,7 @@ export default function BomEditorDetailPage() {
               <div className="w-24 px-2 py-2 text-right">Cost</div>
               <div className="w-8 py-2" />
               <div className="w-24 px-2 py-2 text-left">Location</div>
+              <div className="w-8 py-2" />
             </div>
           </div>
 
@@ -229,6 +366,13 @@ export default function BomEditorDetailPage() {
               initialExpanded={true}
               onQtyChange={handleQtyChange}
               onChildRemove={handleChildRemove}
+              editorMode={editorMode}
+              onStartAdd={handleStartAdd}
+              onStartRemove={handleStartRemove}
+              onCancelEdit={handleCancelEdit}
+              onCommitAdd={handleCommitAdd}
+              onBulkRemove={handleBulkRemove}
+              onToggleRemoveChild={handleToggleRemoveChild}
             />
           ) : null}
         </div>
