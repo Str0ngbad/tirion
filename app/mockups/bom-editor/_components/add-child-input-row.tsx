@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Check, ChevronsUpDown, AlertCircle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { MOCK_PARTS, MockPart } from "@/app/mockups/parts/_data";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandItem } from "@/components/ui/command";
@@ -204,23 +205,31 @@ export default function AddChildInputRow({
                           {part.partType}
                         </Badge>
                         {cycles && (
-                          <button
-                            type="button"
-                            title="Cycle detected — click for details"
-                            className="shrink-0 cursor-pointer text-destructive"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const chain = findCycleChain(parentPartId, part.partId);
-                              setDialog({
-                                kind: "cycle",
-                                chain: chain ?? [parentPartId, part.partId],
-                                fromIcon: true,
-                              });
-                              setComboOpen(false);
-                            }}
-                          >
-                            <AlertCircle className="h-3.5 w-3.5" />
-                          </button>
+                          <TooltipProvider delayDuration={150}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="shrink-0 cursor-pointer text-destructive"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const chain = findCycleChain(parentPartId, part.partId);
+                                    setDialog({
+                                      kind: "cycle",
+                                      chain: chain ?? [parentPartId, part.partId],
+                                      fromIcon: true,
+                                    });
+                                    setComboOpen(false);
+                                  }}
+                                >
+                                  <AlertCircle className="h-3.5 w-3.5" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent side="left" sideOffset={5}>
+                                Cycle detected — click for details
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         )}
                       </CommandItem>
                     );
