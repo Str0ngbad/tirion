@@ -202,8 +202,8 @@ export default function BomEditorDetailPage() {
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <div className="min-w-0 flex-1 overflow-y-auto">
           {/* Column headers — width matches tree zone in BomTreeRow */}
-          <div className="flex items-center border-b border-border bg-muted/40 text-xs font-medium text-muted-foreground">
-            <div className="w-[440px] shrink-0 px-2 py-2 pl-8">Component</div>
+          <div className="sticky top-0 z-10 flex items-center border-b border-border bg-muted/40 text-xs font-medium text-muted-foreground">
+            <div className="w-[424px] shrink-0 px-2 py-2 pl-8">Component</div>
             <div className="flex shrink-0 items-center">
               <div className="w-16 px-2 py-2 text-right">Qty</div>
               <div className="w-20 px-2 py-2 text-right">Stock</div>

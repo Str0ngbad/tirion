@@ -90,7 +90,7 @@ export default function ColumnHeaderMenu({
   }, []);
 
   const headerClass = [
-    "group px-3 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground select-none",
+    "group sticky top-0 z-10 bg-card px-3 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground select-none border-b border-border",
     meta.defaultWidth,
   ].join(" ");
 

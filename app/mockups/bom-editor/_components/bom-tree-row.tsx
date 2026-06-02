@@ -202,7 +202,7 @@ export default function BomTreeRow({
         style={{ minHeight: 36 }}
       >
         {/* Left: tree zone */}
-        <div className="flex w-[440px] max-w-[440px] shrink-0 items-center overflow-hidden">
+        <div className="flex w-[424px] max-w-[424px] shrink-0 items-center overflow-hidden">
           {depth > 0 && (
             <div className="shrink-0 self-stretch flex" style={{ width: indentPx }}>
               {Array.from({ length: depth }).map((_, i) => (
