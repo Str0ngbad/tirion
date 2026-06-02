@@ -18,6 +18,485 @@ Entries are ordered most recent first.
 
 ---
 
+## 2026-06-02 — BOM Editor (read-only tree, real-data integration, editing operations)
+
+**Surfaces touched:** /app/mockups/bom-editor/ (search-driven
+landing, expandable tree visualization, editing operations,
+validation systems), /app/mockups/parts/_data.ts (real-data
+integration replacing MOCK_PARTS)
+
+**Mockup commits:** approximately 12-15 commits in sequence:
+- BOM Editor surface + read-only tree visualization
+- Real data integration: 1893 Parts + 434 Assemblies + 2341 BOM
+  edges, sanitized customer names, generated cost freshness dates
+- Architecture polish: push-tree layout for Part Form Sheet,
+  persistent search in chrome, route collapse from two routes to
+  one, shared Part Form Sheet via cross-mockup import
+- Commit 2a: row tinting bumps, tree width tightening, root row at
+  top of tree, sort rule (Parts above Assemblies, alphabetical),
+  inline qty edit
+- Followup: 0-as-remove confirmation gate
+- Sticky column headers + tree width fix
+- Commit 2b: ⋮ menu, Add Child inline-input flow, Remove Children
+  multiselect mode, cycle detection with chain display, depth
+  validation, audit logging
+- Evaluation fixes: ⋮ menu position, edit-distance threshold,
+  relevance ranking, duplicate Add error, cycle icon UX, depth
+  thresholds adjusted to 6/8, ESC unwinding stack
+- Edit-distance prefix matching
+- Tooltip on cycle icon + pointer-events fix
+
+### Scope of exploration
+
+This session built out the BOM Editor — a standalone surface for
+viewing and editing BOM (Bill of Materials) relationships. The BOM
+Editor is structurally different from prior mockups: it visualizes
+a graph (Parts and Assemblies as nodes, BOM edges with quantities
+as edges), supports tree traversal in both directions, and gates
+edits through cycle and depth validation.
+
+The session also included substantial real-data integration. The
+mockup's MOCK_PARTS was replaced with sanitized data from the
+user's prior shop: 1893 Parts, 434 Assemblies, and 2341 BOM edges
+representing actual machine builds. Customer names were anonymized;
+costs and freshness dates were generated. The Parts grid, BOM
+Editor, Part Form Sheet, and all dependent surfaces now operate on
+this real-shape data.
+
+By session end, the BOM Editor supports:
+- Read-only tree visualization with hybrid expandable structure
+- Operational rollups (cost, buildable count, freshness indicators)
+  computed recursively over subtrees
+- Search-driven Assembly selection with persistent search in chrome
+- Cross-mockup integration with Part Form Sheet (full form, scrolled
+  to relevant section on open, push-tree layout)
+- Editing operations: inline qty edit with confirmation, Add Child
+  with cycle/depth validation, multiselect Remove with confirmation
+- Mode exclusivity (one edit at a time per Assembly; navigation
+  remains available; in-progress edits discard on navigation away)
+- ESC unwinding via modal stack (most recently activated closes first)
+
+### Design decisions made
+
+**1. Hybrid expandable tree visualization (not flat-list-with-
+navigation)**
+
+Question: how should the BOM tree be visualized — as a flat list
+of immediate children (one level at a time, click sub-Assembly to
+navigate into it) or as an expandable tree (show whole tree
+inline, expand/collapse sub-Assemblies)?
+
+Options considered: flat list with breadcrumb navigation;
+expandable tree (default collapsed, expand-on-click); always-fully-
+expanded tree.
+
+Decision: hybrid expandable tree. Sub-Assemblies show a chevron
+that expands them inline. "Expand all" / "Collapse all" toggles
+for bulk operations. Default state shows only the immediate
+children of the root Assembly.
+
+Reasons: at typical depths (3-5), the user benefits from seeing
+the full structure. At deeper depths, expand-collapse lets them
+focus. Flat list would have required excessive navigation for
+common workflows. Fully-expanded would have overwhelmed the user
+on first open.
+
+Implication: tree visualization handles arbitrary depth.
+Validation thresholds (soft at 6, hard at 8) reflect visual
+capacity, not engineering capacity. The execution lenses (Projects
+especially) inherit this pattern.
+
+**2. Search-driven landing collapsed into editor chrome**
+
+Question: should the BOM Editor have a separate landing page (for
+Assembly selection) and an editor page (for working on an
+Assembly's BOM)?
+
+Options considered: separate routes for landing and editor (two-
+page model); single route with persistent search in chrome.
+
+Decision: single route. /mockups/bom-editor renders the editor
+with empty body if no Assembly is selected. The search is
+persistent in the chrome. /mockups/bom-editor/[id] renders the
+same chrome plus that Assembly's tree.
+
+Reasons: switching between Assemblies is a common workflow; making
+it require navigation back to a landing page adds friction. The
+search bar in chrome handles all entry points uniformly. The
+landing's "what Assembly do I want to look at?" question is now
+always one search box away.
+
+Implication: the Parts Master and execution lenses can follow a
+similar pattern — persistent search in chrome for entity selection,
+empty-state landing when no entity is selected.
+
+**3. Push-tree layout (not push-chrome) for Part Form Sheet**
+
+Question: when the Part Form Sheet opens (from a Part Number
+click), should it push the page chrome aside or only push the
+tree?
+
+Decision: push only the tree. Chrome (search bar, page header,
+Assembly identity) stays full-width above. The tree compresses to
+~67%, the Sheet takes ~33% on the right. Both scroll independently.
+
+This pattern matches what we established in /mockups/parts: chrome
+above stays put; body content reflows around side panels. The
+execution lenses will use the same pattern.
+
+**4. Bidirectional BOM traversal via clickable rows**
+
+Question: should the user be able to navigate the BOM tree by
+clicking rows, and if so, in which directions?
+
+Decision: yes, bidirectional. Click a Part's Part Number → opens
+Part Form Sheet showing that Part's data, scrolled to Parent
+Assemblies section. From Part Form Sheet, click a parent row in
+the Parent Assemblies section → that parent becomes the Sheet's
+focus. Combined with the Sheet's Child Parts section (for
+Assemblies), full BOM tree walkable.
+
+This was the breakthrough on tree navigation — the surface isn't
+just for viewing one Assembly's BOM; it's for traversing the BOM
+graph by clicking, with the Part Form Sheet showing each node's
+full context.
+
+**5. Sort rule: Parts above Assemblies, alphabetical within**
+
+Question: in what order should children of an Assembly be
+displayed?
+
+Decision: Parts above Assemblies. Within each group, alphabetical
+by Part Number. Applied at render time, not stored in data.
+
+Reasons: BOM order isn't semantically meaningful (no "build this
+first, then this" — that's routing). Parts-above-Assemblies
+matches habitual organization in the real data and aids scanning
+(leaves before branches). Alphabetical-within keeps consistent
+positioning across reloads.
+
+Implication: future Rev might add drag-and-drop reordering with
+persisted custom order; for Rev 1, the sort rule is sufficient.
+
+**6. Operational rollups as first-class data, not just structure**
+
+Question: should the BOM Editor show only the structural
+relationships, or include computed operational data?
+
+Decision: include both. Each row shows the part's identity
+(structure) AND its operational state (own stock, buildable
+rollup for Assemblies, cost rollup, freshness, location).
+
+The Buildable rollup is particularly significant — for an
+Assembly, it answers "how many of this Assembly could we build
+right now from on-hand stock?" computed by minimum across all
+descendants, weighted by quantities, treating null stock as 0.
+
+Reasons: this answers operational questions inline ("what could
+we ship from stock today?") without requiring a separate report
+or aggregation surface. The user noted this feature was a
+limitation in the prior tool; surfacing it here uses the BOM
+Editor as analysis surface, not just structural editor.
+
+**7. Cycle detection on add, visible-but-disabled in combobox**
+
+Question: how should cycle prevention be surfaced — block at
+Save? Filter from search results? Show but disable?
+
+Decision: show cycle-creating candidates in the combobox but
+render them as disabled (greyed text + red error icon). Hover the
+icon for tooltip, click the icon for the chain display dialog.
+
+This preserves information (user sees the Part exists) while
+preventing the cycle. The dialog with chain becomes a learning
+moment — the user understands WHY the Part can't be used here
+(the chain through the tree that creates the cycle).
+
+Alternative would have been: pre-filter cycle-creators out of
+results (less informative); or let users select and block at Save
+with the dialog (more friction).
+
+**8. Depth validation: soft warning at 6, hard block at 8**
+
+Question: at what depth should the system warn or block?
+
+Decision: soft warning when proposed depth would be 6, 7, or 8.
+Hard block when proposed depth would be 9 or greater.
+
+These thresholds reflect the visual capacity of the interface:
+beyond depth 6, the tree zone constrains Part Names with
+truncation; beyond depth 8, the tree zone becomes too narrow to
+read. Engineering capacity (PostgreSQL recursive CTEs handle
+depth 20+ without issue) is not the binding constraint.
+
+The user's real-data maximum is depth 5, so the soft warning rarely
+fires on legitimate edits. When it does, the user can confirm
+intent or restructure.
+
+**9. Mode exclusivity with navigation still available**
+
+Question: when one Assembly is in an editing mode (Add Child,
+Remove Children), what can the user do?
+
+Decision: editing on OTHER Assemblies is blocked (their ⋮ menus
+disabled). But navigation — chevrons on other Assemblies, search
+in chrome, Part Form Sheet opens — remains available. Navigation
+away from the page silently discards in-progress edits.
+
+This matches "Add Child means start adding a child; don't undo
+my pending work just because I clicked the wrong button" reasoning.
+Navigation is non-destructive; explicit Cancel or Save resolves
+the edit.
+
+**10. ESC unwinding via most-recently-activated stack**
+
+Question: when multiple modal/mode states are active (e.g., Add
+Child open AND Part Form Sheet open), which closes first on ESC?
+
+Decision: most recently activated closes first. Implementation
+uses a stack — each modal/mode pushes on activation, ESC pops the
+top.
+
+shadcn Dialogs handle their own ESC via Radix; the custom stack
+only manages non-Dialog dismissibles (Sheet, Add mode, Remove
+mode). This separation works in practice because users perceive
+"close what I opened most recently" regardless of underlying
+mechanism.
+
+**11. Search results ranked by relevance**
+
+Question: when the user types in the Part Number combobox, what
+order should results appear in?
+
+Decision: exact match > prefix > substring > edit-distance, on
+Part Number first, then Part Name. Within tier, secondary sort by
+Part Number.
+
+This was a real bug fix discovered in evaluation: typing exact
+Part Numbers initially produced results buried behind fuzzy
+matches. The relevance ranking puts the user's most likely
+intended candidate at top.
+
+Implication: any search-with-fuzzy-match in the system should
+apply the same ranking. Worth establishing as a pattern.
+
+**12. Edit-distance: compare against same-length prefix**
+
+Question: when the user types a partial Part Number (e.g.,
+"41-02-1-"), should it match candidates like "41-02-0-XX" via
+edit-distance?
+
+Decision: compare the search string to the candidate's prefix of
+equal length to the search. Edit-distance 1 between "41-02-1-"
+and "41-02-0-" yields match for any candidate starting with
+"41-02-0-..."
+
+The naive full-string edit-distance treated the candidate's
+additional characters as insertions, inflating distance past
+threshold. The prefix-comparison rule reflects the user's mental
+model: "I'm searching for Part Numbers starting like this."
+
+**13. Real data integration — full dataset with sanitization**
+
+Question: should the mockup use real data, fabricated data, or a
+curated subset?
+
+Decision: full real dataset from the user's prior shop, with
+sanitization for customer names. 1893 Parts + 434 Assemblies +
+2341 BOM edges. Costs from real data; cost-last-updated dates
+regenerated for plausible freshness distribution.
+
+Reasons: the Pattern E filter system was designed for spreadsheet-
+scale interrogation; using 1893 Parts validates the system at
+real-world scale. Curation would have created arbitrary cutoffs.
+Fabrication would have lost authenticity (real BOMs have
+irregular structure that's hard to invent).
+
+Customer-identifying Assembly names anonymized ("Hines 3-column"
+→ "Customer A 3-column" with consistent letter per customer).
+Technical product names and component supplier names kept as-is.
+
+**14. Sticky column headers on scroll**
+
+Question: when the BOM tree (or Parts grid) is scrolled
+vertically through many rows, where do the column headers go?
+
+Decision: sticky to the top of the scroll container. Implemented
+at the `th` element level (not `thead`) because `position: sticky`
+on `thead` is unreliable across browsers. `th`-level sticky is
+the standard pattern.
+
+This was applied to both the BOM Editor's tree and the Parts
+Master grid as a consistent treatment.
+
+### Recommendations for implementation
+
+- **Hybrid expandable tree** for any tree-shaped visualization
+  (BOM Editor, Projects execution view). Default collapsed except
+  root; expand/collapse per node; bulk Expand all / Collapse all
+  toggles.
+
+- **Search-driven chrome on landing surfaces.** The search bar is
+  always available, not behind navigation. Empty-state body when
+  no entity is selected.
+
+- **Push-tree layout pattern** for any side-panel-over-list
+  surface. Chrome stays full-width above; body content (tree,
+  grid, etc.) compresses to make room for the panel; both scroll
+  independently. Inherits from Parts Master.
+
+- **Bidirectional BOM traversal.** Click any Part to open its
+  Sheet, scrolled to the relevant section (Parent Assemblies for
+  most contexts). Click any parent or child row to navigate the
+  Sheet to that record. BOM graph traversal as primary
+  interaction.
+
+- **Sort rule: Parts above Assemblies, alphabetical within.**
+  Applied at render. Sort key: partType (Part first), then
+  partNumber.
+
+- **Operational rollups on Assemblies:** cost (sum recursive),
+  buildable (min recursive, null stock = 0), freshness
+  (descending: missing > stale (>6mo) > healthy). Computed on-the-
+  fly; not persisted.
+
+- **Cycle detection prevents save (combobox-level), error icon
+  surfaces chain on demand.** Don't let the user proceed with a
+  cycle; do give them the information about why on request.
+  Validation as pure functions in /lib for reuse.
+
+- **Depth thresholds: soft warn at 6, hard block at 8.** Visual
+  capacity, not engineering. The schema's max depth (or whatever
+  the engineering limit is) is separate.
+
+- **Mode exclusivity within a single user's session.** One edit at
+  a time per Assembly; navigation remains available. Real
+  implementation should consider how this maps to multi-user
+  (last-write-wins? optimistic locking? explicit save conflicts?).
+
+- **ESC unwinding via most-recently-activated stack.** Either
+  custom hook coordinating shadcn Dialog primitives or pure custom
+  stack. shadcn Dialogs' built-in ESC is cooperative.
+
+- **Search ranking: exact > prefix > substring > edit-distance, on
+  Part Number then Part Name.** Apply consistently across any
+  fuzzy-search affordance in the system.
+
+- **Edit-distance: same-length prefix comparison.** Search "X"
+  matches candidate "X..." with substring; matches "Y..." (where
+  "Y" is edit-distance N from "X") if the candidate's prefix of
+  length |X| is distance ≤ threshold from X.
+
+- **Sticky column headers at `th` level**, not `thead`. Reliable
+  across browsers; Parts grid and BOM Editor both use this
+  pattern.
+
+- **Cross-mockup component reuse pattern.** The Part Form Sheet is
+  imported across mockups. Implementation should share via a
+  proper shared location (e.g., /app/_components/part-form-sheet/).
+  Same applies to: ProcessTypeChip, PROCESS_TYPE_META, MOCK_PARTS,
+  ProcessTypeLegend, edit-distance utilities, and now Part Form
+  Sheet itself. Multiple components are load-bearing across
+  surfaces.
+
+### Open questions for implementation
+
+- **BOM relationship persistence in database.** The mockup
+  represents BOM as denormalized arrays (`childParts`,
+  `parentAssemblies`) on each MockPart. Real schema uses a BOM
+  table with FK to Part. Queries for tree traversal use recursive
+  CTEs. Performance at scale needs validation.
+
+- **Concurrent editing.** Multiple users editing different
+  Assemblies' BOMs simultaneously: presumably fine. Multiple users
+  editing the SAME Assembly's BOM: needs decision. Optimistic
+  locking? Last-write-wins? Real-time sync (Liveblocks,
+  Y.js)? The mockup doesn't model this.
+
+- **In-flight edit recovery.** Mockup discards on navigation away.
+  Real implementation may want auto-save drafts or warn-on-leave.
+  User preference is "discard, but I can navigate freely" — match
+  in implementation.
+
+- **Buildable rollup performance.** With real data at 2300+
+  parts/assemblies and a full subtree calculation, the rollup is
+  fast enough in-memory in the mockup. With database queries +
+  network, this could be expensive. Caching strategy?
+  Materialized view? On-demand calculation?
+
+- **Cycle detection at scale.** Mockup's cycle check is O(N) walk
+  of proposed child's subtree. Real-world scale (10k+ parts)
+  should remain fast but worth confirming.
+
+- **Real-time updates.** If User A adds a child to Assembly X
+  while User B is looking at X's BOM, does B see the update?
+  Real-time sync, polling, or refresh-on-action?
+
+- **Audit log retention and query.** Per-Assembly audit entries
+  accumulate; how is this surfaced operationally? Filtering by
+  date range? Export? Implementation needs to decide retention.
+
+- **Stock count source-of-truth.** The mockup has stock counts on
+  Parts (set by the Receiving lens in production). The buildable
+  rollup reads these counts; the cost rollup reads costs. Both
+  are computed values, but the inputs come from different
+  operational surfaces. Implementation needs to define the data
+  flow.
+
+- **Sub-assembly stock-on-hand.** The mockup allows Assemblies to
+  carry their own stock count (e.g., pre-built sub-assemblies in
+  stock). The rollup logic accounts for this but the spec on how
+  this works operationally is thin. Worth clarifying.
+
+- **Part Form Sheet as shared component.** Cross-mockup import
+  works in mockup but Parts and BOM Editor both depend on it.
+  Implementation should lift to a shared location with proper
+  API. The "Open in Parts Master" link suggests the canonical
+  edit surface is Parts grid; BOM Editor uses the same Sheet
+  for context viewing.
+
+### Mockup-only refinements
+
+- **Specific row tinting values** (`bg-muted/80` for Parts) —
+  visually tuned; not spec language. Implementation matches for
+  consistency but pixel-perfect equivalence not required.
+
+- **Specific tree zone width** (`w-[424px]`) — visually tuned to
+  fit Location column next to Part Form Sheet at 1440px viewport.
+  Implementation should match the principle (data columns visible
+  with side panel open) but exact value may shift.
+
+- **Specific column widths and ordering** in the data zone (Type,
+  Qty, Stock, Buildable, Cost, Freshness, Location) — chosen for
+  the mockup; implementation should validate based on the real
+  operational queries users ask of this surface.
+
+- **Open in Parts Master link wording and position** — currently
+  in a strip above the Part Form Sheet; can be relocated.
+
+- **Cycle icon visual** (lucide AlertCircle, text-destructive
+  color) — implementation should keep an iconographic standard
+  but specific icon library/icon may shift.
+
+- **ESC stack vs alternative dismissal patterns** — the stack-
+  based approach worked but other patterns (focus-based, last-
+  registered modal) are also valid; implementation may choose.
+
+- **Real-data values** — costs, dates, stock counts, etc. The
+  mockup uses real-but-sanitized data; production uses live data
+  from the actual operational systems.
+
+- **Search ranking and edit-distance precise rules** — the
+  ranking tiers and prefix-comparison rule are documented above
+  and should be respected, but specific tie-breaking and edge
+  cases may shift in implementation.
+
+- **Specific tree max-depth thresholds (6/8)** — these are
+  intentional design choices for Rev 1; future Revs may adjust
+  based on user feedback or operational reality.
+
+---
+
 ## 2026-05-31 — Part Form side panel and Definition Change Flag
 
 **Surfaces touched:** /app/mockups/parts/ (Part Form side panel,
