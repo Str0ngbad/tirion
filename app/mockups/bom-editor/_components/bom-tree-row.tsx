@@ -309,6 +309,47 @@ export default function BomTreeRow({
           >
             {part.partName}
           </span>
+
+          {/* ⋮ menu — Assembly rows only, placed after Part Name */}
+          {isAssembly && (
+            <div className="shrink-0 ml-1">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    disabled={menuDisabled}
+                    className={`flex h-6 w-6 items-center justify-center rounded transition-opacity hover:opacity-100 disabled:cursor-not-allowed ${menuDisabled ? "opacity-30" : "opacity-50"}`}
+                    title={menuDisabled ? "Another edit is in progress" : undefined}
+                  >
+                    <MoreVertical className="h-3.5 w-3.5" />
+                  </button>
+                </DropdownMenuTrigger>
+                {!menuDisabled && (
+                  <DropdownMenuContent align="start" className="w-40">
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        if (!iAmInRemoveMode) {
+                          setSelfExpanded(true);
+                          onStartAdd(part.partId);
+                        }
+                      }}
+                    >
+                      Add Child
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        if (!iAmInAddMode) {
+                          setSelfExpanded(true);
+                          onStartRemove(part.partId);
+                        }
+                      }}
+                    >
+                      Remove Children
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                )}
+              </DropdownMenu>
+            </div>
+          )}
         </div>
 
         {/* Right: data columns */}
@@ -375,46 +416,8 @@ export default function BomTreeRow({
             {part.inventoryLocation ?? "—"}
           </div>
 
-          {/* ⋮ menu — Assembly rows only */}
-          <div className="w-8 flex items-center justify-center">
-            {isAssembly ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    disabled={menuDisabled}
-                    className={`flex h-6 w-6 items-center justify-center rounded transition-opacity hover:opacity-100 disabled:cursor-not-allowed ${menuDisabled ? "opacity-30" : "opacity-50"}`}
-                    title={menuDisabled ? "Another edit is in progress" : undefined}
-                  >
-                    <MoreVertical className="h-3.5 w-3.5" />
-                  </button>
-                </DropdownMenuTrigger>
-                {!menuDisabled && (
-                  <DropdownMenuContent align="end" className="w-40">
-                    <DropdownMenuItem
-                      onSelect={() => {
-                        if (!iAmInRemoveMode) {
-                          setSelfExpanded(true);
-                          onStartAdd(part.partId);
-                        }
-                      }}
-                    >
-                      Add Child
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onSelect={() => {
-                        if (!iAmInAddMode) {
-                          setSelfExpanded(true);
-                          onStartRemove(part.partId);
-                        }
-                      }}
-                    >
-                      Remove Children
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                )}
-              </DropdownMenu>
-            ) : null}
-          </div>
+          {/* ⋮ menu moved to tree zone after Part Name */}
+          <div className="w-8 shrink-0" />
         </div>
       </div>
 

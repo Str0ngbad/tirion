@@ -22,10 +22,10 @@ export default function DepthBlockDialog({ open, depth, onClose }: Props) {
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>This would create a {depth}-level deep BOM</DialogTitle>
+          <DialogTitle>Depth limit reached</DialogTitle>
           <DialogDescription>
-            Depth is capped at {DEPTH_HARD} levels. Restructure the BOM or reduce nesting to add
-            this child.
+            The depth limit for this interface is {DEPTH_HARD} layers. This change would create{" "}
+            {depth}.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

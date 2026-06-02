@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown, AlertCircle } from "lucide-react";
 import { MOCK_PARTS, MockPart } from "@/app/mockups/parts/_data";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandItem } from "@/components/ui/command";
@@ -13,6 +13,7 @@ import {
   findCycleChain,
   computeAddDepth,
   partMatchesQuery,
+  rankPartMatch,
   DEPTH_SOFT,
   DEPTH_HARD,
 } from "../_lib/validation";
@@ -32,7 +33,7 @@ type Props = {
 
 type ValidationDialog =
   | { kind: "none" }
-  | { kind: "cycle"; chain: number[] }
+  | { kind: "cycle"; chain: number[]; fromIcon?: boolean }
   | { kind: "depthWarn"; depth: number; childPartNumber: string }
   | { kind: "depthBlock"; depth: number };
 
@@ -48,6 +49,7 @@ export default function AddChildInputRow({
   const [selectedPart, setSelectedPart] = useState<MockPart | null>(null);
   const [qtyInput, setQtyInput] = useState("");
   const [dialog, setDialog] = useState<ValidationDialog>({ kind: "none" });
+  const [duplicateError, setDuplicateError] = useState<string | null>(null);
 
   const qtyRef = useRef<HTMLInputElement>(null);
 
@@ -73,11 +75,21 @@ export default function AddChildInputRow({
       p.isActive &&
       p.partId !== parentPartId &&
       (query === "" || partMatchesQuery(p.partNumber, p.partName, query))
-  ).slice(0, 50);
+  );
+
+  // Sort by relevance rank, then alphabetically within rank
+  const rankedParts = query
+    ? filteredParts
+        .map((p) => ({ part: p, rank: rankPartMatch(p.partNumber, p.partName, query) }))
+        .sort((a, b) => a.rank - b.rank || a.part.partNumber.localeCompare(b.part.partNumber))
+        .map((x) => x.part)
+        .slice(0, 50)
+    : filteredParts.slice(0, 50);
 
   function handleSelect(part: MockPart) {
     setSelectedPart(part);
     setQuery("");
+    setDuplicateError(null);
     setComboOpen(false);
     qtyRef.current?.focus();
   }
@@ -85,6 +97,16 @@ export default function AddChildInputRow({
   function attemptSave() {
     if (!canSave || !selectedPart) return;
     const qty = parsedQty;
+
+    // Duplicate check
+    const parent = MOCK_PARTS.find((p) => p.partId === parentPartId);
+    const existing = parent?.childParts.find((c) => c.childPartId === selectedPart.partId);
+    if (existing) {
+      setDuplicateError(
+        `${selectedPart.partNumber} is already in this BOM with quantity ${existing.quantity}. Edit the existing quantity instead.`
+      );
+      return;
+    }
 
     // Cycle check
     if (wouldCreateCycle(parentPartId, selectedPart.partId)) {
@@ -124,111 +146,135 @@ export default function AddChildInputRow({
   return (
     <>
       <div
-        className="flex items-center border-b border-border/40 border-l-2 border-l-primary bg-primary/5"
-        style={{ minHeight: 40 }}
+        className="flex flex-col border-b border-border/40 border-l-2 border-l-primary bg-primary/5"
       >
-        {/* Indent to child level */}
-        <div className="shrink-0" style={{ width: indentPx }} />
+        <div className="flex items-center" style={{ minHeight: 40 }}>
+          {/* Indent to child level */}
+          <div className="shrink-0" style={{ width: indentPx }} />
 
-        {/* No chevron placeholder */}
-        <div className="w-6 shrink-0" />
+          {/* No chevron placeholder */}
+          <div className="w-6 shrink-0" />
 
-        {/* Part Number combobox */}
-        <Popover open={comboOpen} onOpenChange={setComboOpen}>
-          <PopoverTrigger asChild>
-            <button
-              className="flex h-7 w-40 items-center justify-between rounded border border-input bg-background px-2 text-xs hover:bg-muted"
-              aria-expanded={comboOpen}
-            >
-              <span className={selectedPart ? "font-mono" : "text-muted-foreground"}>
-                {selectedPart ? selectedPart.partNumber : "Select part…"}
-              </span>
-              <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 text-muted-foreground" />
-            </button>
-          </PopoverTrigger>
-          <PopoverContent className="w-80 p-0" align="start">
-            <Command shouldFilter={false}>
-              <CommandInput
-                value={query}
-                onValueChange={setQuery}
-                placeholder="Search by part number or name…"
-                className="h-8 text-xs"
-              />
-              <CommandList className="max-h-52">
-                {filteredParts.length === 0 && (
-                  <CommandEmpty className="py-4 text-xs text-muted-foreground">
-                    No parts found
-                  </CommandEmpty>
-                )}
-                {filteredParts.map((part) => {
-                  const cycles = wouldCreateCycle(parentPartId, part.partId);
-                  return (
-                    <CommandItem
-                      key={part.partId}
-                      value={String(part.partId)}
-                      disabled={cycles}
-                      onSelect={() => !cycles && handleSelect(part)}
-                      className="flex items-center gap-2 py-1.5 text-xs"
-                    >
-                      <Check
-                        className={`h-3 w-3 shrink-0 ${selectedPart?.partId === part.partId ? "opacity-100" : "opacity-0"}`}
-                      />
-                      <span className="font-mono shrink-0">{part.partNumber}</span>
-                      <span className="flex-1 truncate text-muted-foreground">{part.partName}</span>
-                      <Badge
-                        variant="secondary"
-                        className={`shrink-0 text-[10px] ${part.partType === "Assembly" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" : ""}`}
+          {/* Part Number combobox */}
+          <Popover open={comboOpen} onOpenChange={setComboOpen}>
+            <PopoverTrigger asChild>
+              <button
+                className="flex h-7 w-40 items-center justify-between rounded border border-input bg-background px-2 text-xs hover:bg-muted"
+                aria-expanded={comboOpen}
+              >
+                <span className={selectedPart ? "font-mono" : "text-muted-foreground"}>
+                  {selectedPart ? selectedPart.partNumber : "Select part…"}
+                </span>
+                <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 text-muted-foreground" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 p-0" align="start">
+              <Command shouldFilter={false}>
+                <CommandInput
+                  value={query}
+                  onValueChange={setQuery}
+                  placeholder="Search by part number or name…"
+                  className="h-8 text-xs"
+                />
+                <CommandList className="max-h-52">
+                  {rankedParts.length === 0 && (
+                    <CommandEmpty className="py-4 text-xs text-muted-foreground">
+                      No parts found
+                    </CommandEmpty>
+                  )}
+                  {rankedParts.map((part) => {
+                    const cycles = wouldCreateCycle(parentPartId, part.partId);
+                    return (
+                      <CommandItem
+                        key={part.partId}
+                        value={String(part.partId)}
+                        disabled={cycles}
+                        onSelect={() => !cycles && handleSelect(part)}
+                        className={`flex items-center gap-2 py-1.5 text-xs ${cycles ? "cursor-not-allowed opacity-50" : ""}`}
                       >
-                        {part.partType}
-                      </Badge>
-                      {cycles && (
-                        <span className="shrink-0 text-[10px] text-destructive">cycle</span>
-                      )}
-                    </CommandItem>
-                  );
-                })}
-              </CommandList>
-            </Command>
-          </PopoverContent>
-        </Popover>
+                        <Check
+                          className={`h-3 w-3 shrink-0 ${selectedPart?.partId === part.partId ? "opacity-100" : "opacity-0"}`}
+                        />
+                        <span className="font-mono shrink-0">{part.partNumber}</span>
+                        <span className="flex-1 truncate text-muted-foreground">{part.partName}</span>
+                        <Badge
+                          variant="secondary"
+                          className={`shrink-0 text-[10px] ${part.partType === "Assembly" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" : ""}`}
+                        >
+                          {part.partType}
+                        </Badge>
+                        {cycles && (
+                          <button
+                            type="button"
+                            title="Cycle detected — click for details"
+                            className="shrink-0 cursor-pointer text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const chain = findCycleChain(parentPartId, part.partId);
+                              setDialog({
+                                kind: "cycle",
+                                chain: chain ?? [parentPartId, part.partId],
+                                fromIcon: true,
+                              });
+                              setComboOpen(false);
+                            }}
+                          >
+                            <AlertCircle className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </CommandItem>
+                    );
+                  })}
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
 
-        {/* Part Name display */}
-        <span className="ml-2 w-36 truncate text-xs text-muted-foreground">
-          {selectedPart?.partName ?? ""}
-        </span>
+          {/* Part Name display */}
+          <span className="ml-2 w-36 truncate text-xs text-muted-foreground">
+            {selectedPart?.partName ?? ""}
+          </span>
 
-        {/* Qty input */}
-        <Input
-          ref={qtyRef}
-          value={qtyInput}
-          onChange={(e) => setQtyInput(e.target.value)}
-          onKeyDown={handleQtyKeyDown}
-          placeholder="Qty"
-          className="ml-2 h-7 w-16 px-2 text-right text-xs"
-          type="number"
-          min={1}
-          step={1}
-        />
+          {/* Qty input */}
+          <Input
+            ref={qtyRef}
+            value={qtyInput}
+            onChange={(e) => { setQtyInput(e.target.value); setDuplicateError(null); }}
+            onKeyDown={handleQtyKeyDown}
+            placeholder="Qty"
+            className="ml-2 h-7 w-16 px-2 text-right text-xs"
+            type="number"
+            min={1}
+            step={1}
+          />
 
-        {/* Save */}
-        <Button
-          size="sm"
-          className="ml-2 h-7 px-3 text-xs"
-          disabled={!canSave}
-          onClick={attemptSave}
-        >
-          Save
-        </Button>
+          {/* Save */}
+          <Button
+            size="sm"
+            className="ml-2 h-7 px-3 text-xs"
+            disabled={!canSave}
+            onClick={attemptSave}
+          >
+            Save
+          </Button>
 
-        {/* Cancel */}
-        <Button
-          variant="ghost"
-          size="sm"
-          className="ml-1 h-7 px-2 text-xs"
-          onClick={onCancel}
-        >
-          Cancel
-        </Button>
+          {/* Cancel */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="ml-1 h-7 px-2 text-xs"
+            onClick={onCancel}
+          >
+            Cancel
+          </Button>
+        </div>
+
+        {/* Duplicate error inline */}
+        {duplicateError && (
+          <div className="px-3 pb-2 text-xs text-destructive">
+            {duplicateError}
+          </div>
+        )}
       </div>
 
       {/* Validation dialogs */}
@@ -236,6 +282,7 @@ export default function AddChildInputRow({
         open={dialog.kind === "cycle"}
         chain={dialog.kind === "cycle" ? dialog.chain : []}
         onClose={() => setDialog({ kind: "none" })}
+        buttonLabel={dialog.kind === "cycle" && dialog.fromIcon ? "OK" : "Cancel"}
       />
 
       <DepthWarningDialog

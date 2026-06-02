@@ -16,6 +16,7 @@ type Props = {
   open: boolean;
   chain: number[]; // [parentId, candidateId, …, parentId]
   onClose: () => void;
+  buttonLabel?: "OK" | "Cancel";
 };
 
 function partLabel(partId: number): { partNumber: string; partName: string } {
@@ -23,7 +24,7 @@ function partLabel(partId: number): { partNumber: string; partName: string } {
   return { partNumber: p?.partNumber ?? String(partId), partName: p?.partName ?? "Unknown" };
 }
 
-export default function CycleErrorDialog({ open, chain, onClose }: Props) {
+export default function CycleErrorDialog({ open, chain, onClose, buttonLabel = "Cancel" }: Props) {
   const router = useRouter();
 
   return (
@@ -66,8 +67,8 @@ export default function CycleErrorDialog({ open, chain, onClose }: Props) {
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Cancel
+          <Button variant={buttonLabel === "OK" ? "default" : "outline"} onClick={onClose}>
+            {buttonLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

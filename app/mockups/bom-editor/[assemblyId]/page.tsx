@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { ChevronDown, ChevronsUpDown, ExternalLink } from "lucide-react";
 import {
@@ -30,20 +30,48 @@ export default function BomEditorDetailPage() {
   const [treeVersion, setTreeVersion] = useState(0);
   const [editorMode, setEditorMode] = useState<EditorMode>({ type: "idle" });
 
+  // ESC stack — most recently pushed dismissible closes first
+  const escStackRef = useRef<Array<{ id: string; cancelFn: () => void }>>([]);
+
+  const pushEsc = useCallback((id: string, cancelFn: () => void) => {
+    escStackRef.current = escStackRef.current.filter((e) => e.id !== id);
+    escStackRef.current.push({ id, cancelFn });
+  }, []);
+
+  const popEsc = useCallback((id: string) => {
+    escStackRef.current = escStackRef.current.filter((e) => e.id !== id);
+  }, []);
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        // ESC unwinds topmost: sheet first, then edit mode
-        if (sheetPart) {
-          setSheetPart(null);
-        } else if (editorMode.type !== "idle") {
-          setEditorMode({ type: "idle" });
-        }
+      if (e.key !== "Escape") return;
+      const stack = escStackRef.current;
+      if (stack.length > 0) {
+        const top = stack[stack.length - 1]!;
+        top.cancelFn();
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [sheetPart, editorMode]);
+  }, []);
+
+  // Register/unregister sheet in ESC stack
+  useEffect(() => {
+    if (sheetPart) {
+      pushEsc("sheet", () => setSheetPart(null));
+    } else {
+      popEsc("sheet");
+    }
+  }, [sheetPart, pushEsc, popEsc]);
+
+  // Register/unregister editor mode in ESC stack
+  useEffect(() => {
+    if (editorMode.type !== "idle") {
+      pushEsc("editorMode", () => setEditorMode({ type: "idle" }));
+    } else {
+      popEsc("editorMode");
+    }
+  }, [editorMode.type, pushEsc, popEsc]);
 
   const assembly = MOCK_PARTS.find((p) => p.partId === assemblyId);
 
@@ -148,24 +176,8 @@ export default function BomEditorDetailPage() {
 
     const existing = parent.childParts.find((c) => c.childPartId === childPartId);
     if (existing) {
-      // Increment existing
-      const oldQty = existing.quantity;
-      existing.quantity += qty;
-      parent.auditLog.unshift({
-        timestamp: new Date().toISOString(),
-        userName: "Marcus Hill",
-        action: "BomChildQtyChanged",
-        changedFields: [
-          {
-            field: `BOM child [${existing.childPartNumber}]`,
-            before: `qty ${oldQty}`,
-            after: `qty ${existing.quantity}`,
-          },
-        ],
-      });
-      // Update reciprocal quantity
-      const reciprocal = childPart.parentAssemblies.find((a) => a.assemblyPartId === parentPartId);
-      if (reciprocal) reciprocal.quantityInParent = existing.quantity;
+      // Duplicate — AddChildInputRow blocks this via inline error; nothing to do
+      return;
     } else {
       // Add new
       parent.childParts.push({

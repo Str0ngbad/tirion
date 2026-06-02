@@ -1,7 +1,7 @@
 import { MOCK_PARTS } from "@/app/mockups/parts/_data";
 
-export const DEPTH_SOFT = 10;
-export const DEPTH_HARD = 20;
+export const DEPTH_SOFT = 6;
+export const DEPTH_HARD = 8;
 
 // ─── Cycle detection ─────────────────────────────────────────────────────────
 
@@ -104,6 +104,39 @@ function editDistance(a: string, b: string): number {
   return dp[n]!;
 }
 
+/**
+ * Returns a rank for relevance sorting (lower = better match):
+ *  1 exact PN, 2 prefix PN, 3 substring PN, 4 edit-distance PN,
+ *  5 substring Name, 6 edit-distance Name, 99 no match
+ */
+export function rankPartMatch(
+  partNumber: string,
+  partName: string,
+  query: string
+): number {
+  if (!query) return 99;
+  const q = query.toLowerCase();
+  const pn = partNumber.toLowerCase();
+  const nm = partName.toLowerCase();
+  if (pn === q) return 1;
+  if (pn.startsWith(q)) return 2;
+  if (pn.includes(q)) return 3;
+  if (q.length >= 3) {
+    for (let i = 0; i <= pn.length - q.length + 1; i++) {
+      const w = pn.substring(i, i + q.length + 1);
+      if (editDistance(q, w) <= 1) return 4;
+    }
+  }
+  if (nm.includes(q)) return 5;
+  if (q.length >= 3) {
+    for (let i = 0; i <= nm.length - q.length + 1; i++) {
+      const w = nm.substring(i, i + q.length + 1);
+      if (editDistance(q, w) <= 1) return 6;
+    }
+  }
+  return 99;
+}
+
 /** Returns true if the query matches the part number or name via substring or edit-distance. */
 export function partMatchesQuery(
   partNumber: string,
@@ -117,7 +150,7 @@ export function partMatchesQuery(
   if (pn.includes(q) || nm.includes(q)) return true;
   if (q.length < 3) return false;
   // Fuzzy: edit distance ≤ 2 against any window of the fields
-  const threshold = 2;
+  const threshold = 1;
   for (const field of [pn, nm]) {
     for (let i = 0; i <= field.length - q.length + threshold; i++) {
       const window = field.substring(i, i + q.length + threshold);

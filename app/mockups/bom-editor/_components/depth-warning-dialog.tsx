@@ -9,7 +9,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { DEPTH_SOFT } from "../_lib/validation";
+import { DEPTH_SOFT, DEPTH_HARD } from "../_lib/validation";
 
 type Props = {
   open: boolean;
@@ -34,8 +34,8 @@ export default function DepthWarningDialog({
         <DialogHeader>
           <DialogTitle>This will create a {depth}-level deep BOM</DialogTitle>
           <DialogDescription>
-            Adding {childPartNumber} to {parentPartNumber} would create a BOM up to {depth} levels
-            deep. This exceeds the {DEPTH_SOFT}-level soft threshold. Confirm this is intentional.
+            {DEPTH_SOFT} levels is the recommended depth limit for this interface. The change would
+            put this BOM at {depth} levels, with a hard limit of {DEPTH_HARD}.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
