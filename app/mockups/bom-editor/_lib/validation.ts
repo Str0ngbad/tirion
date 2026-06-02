@@ -87,6 +87,25 @@ function maxDescendantDepth(partId: number, visited: Set<number>): number {
 
 // ─── Edit-distance fuzzy match ────────────────────────────────────────────────
 
+/**
+ * For Part Number search: compare the search string against the candidate's
+ * prefix of equal length. This avoids inflated distances when the user is
+ * mid-typing (e.g., "41-02-1-" vs "41-02-0-AB" — the prefix "41-02-0-" has
+ * distance 1, but the full string comparison gives distance 2).
+ * If search is longer than the candidate, falls back to full edit distance.
+ */
+function partNumberEditDistanceMatches(
+  search: string,
+  candidatePartNumber: string,
+  threshold: number
+): boolean {
+  const target =
+    search.length <= candidatePartNumber.length
+      ? candidatePartNumber.slice(0, search.length)
+      : candidatePartNumber;
+  return editDistance(search, target) <= threshold;
+}
+
 function editDistance(a: string, b: string): number {
   const m = a.length;
   const n = b.length;
@@ -121,12 +140,7 @@ export function rankPartMatch(
   if (pn === q) return 1;
   if (pn.startsWith(q)) return 2;
   if (pn.includes(q)) return 3;
-  if (q.length >= 3) {
-    for (let i = 0; i <= pn.length - q.length + 1; i++) {
-      const w = pn.substring(i, i + q.length + 1);
-      if (editDistance(q, w) <= 1) return 4;
-    }
-  }
+  if (q.length >= 3 && partNumberEditDistanceMatches(q, pn, 1)) return 4;
   if (nm.includes(q)) return 5;
   if (q.length >= 3) {
     for (let i = 0; i <= nm.length - q.length + 1; i++) {
@@ -149,13 +163,13 @@ export function partMatchesQuery(
   const nm = partName.toLowerCase();
   if (pn.includes(q) || nm.includes(q)) return true;
   if (q.length < 3) return false;
-  // Fuzzy: edit distance ≤ 2 against any window of the fields
   const threshold = 1;
-  for (const field of [pn, nm]) {
-    for (let i = 0; i <= field.length - q.length + threshold; i++) {
-      const window = field.substring(i, i + q.length + threshold);
-      if (editDistance(q, window) <= threshold) return true;
-    }
+  // Part number: prefix-based edit distance (avoids inflation mid-typing)
+  if (partNumberEditDistanceMatches(q, pn, threshold)) return true;
+  // Part name: sliding window edit distance
+  for (let i = 0; i <= nm.length - q.length + threshold; i++) {
+    const window = nm.substring(i, i + q.length + threshold);
+    if (editDistance(q, window) <= threshold) return true;
   }
   return false;
 }
