@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { ChevronRight, AlertTriangle, Clock } from "lucide-react";
 import {
   BomNode,
@@ -9,16 +9,23 @@ import {
   subtreeCostFreshness,
   CostFreshness,
 } from "../_lib/bom-utils";
+import { sortBomChildren } from "../_lib/sort";
 import { useTruncatedTitle } from "@/app/_lib/use-truncated-title";
 import { MockPart } from "@/app/mockups/parts/_data";
+import { Input } from "@/components/ui/input";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
 type Props = {
   node: BomNode;
   depth: number;
-  forceExpanded: boolean | null; // null = self-managed, true/false = externally controlled
+  forceExpanded: boolean | null;
   onOpenPartSheet: (part: MockPart) => void;
+  isRoot?: boolean;
+  initialExpanded?: boolean;
+  parentPartId?: number;
+  onQtyChange?: (parentPartId: number, childPartId: number, newQty: number) => void;
+  onChildRemove?: (parentPartId: number, childPartId: number, removedQty: number) => void;
 };
 
 // ─── Cost freshness indicator ────────────────────────────────────────────────
@@ -50,33 +57,98 @@ export default function BomTreeRow({
   depth,
   forceExpanded,
   onOpenPartSheet,
+  isRoot = false,
+  initialExpanded = false,
+  parentPartId,
+  onQtyChange,
+  onChildRemove,
 }: Props) {
   const { part, quantity, children } = node;
   const isAssembly = part.partType === "Assembly";
   const hasChildren = children.length > 0;
 
-  const [selfExpanded, setSelfExpanded] = useState(false);
+  const [selfExpanded, setSelfExpanded] = useState(initialExpanded);
   const expanded = forceExpanded !== null ? forceExpanded : selfExpanded;
+
+  // Inline qty edit state
+  const [editingQty, setEditingQty] = useState(false);
+  const [qtyInput, setQtyInput] = useState("");
+  const [qtyError, setQtyError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const { ref: nameRef, title: nameTitle } = useTruncatedTitle<HTMLSpanElement>(part.partName);
 
-  // Cost / stock derivations
   const costRollup = isAssembly ? computeCostRollup(children) : part.cost;
   const buildable = isAssembly ? computeBuildable(children) : null;
-  const freshness = isAssembly ? subtreeCostFreshness(children) : (part.cost === null ? "missing" : "ok" as CostFreshness);
+  const freshness = isAssembly
+    ? subtreeCostFreshness(children)
+    : (part.cost === null ? "missing" : ("ok" as CostFreshness));
 
-  const INDENT = 24; // px per level
+  const INDENT = 24;
   const indentPx = depth * INDENT;
+
+  const sortedChildren = sortBomChildren(children);
+
+  useEffect(() => {
+    if (editingQty) inputRef.current?.select();
+  }, [editingQty]);
 
   function handleChevronClick(e: React.MouseEvent) {
     e.stopPropagation();
-    if (forceExpanded !== null) return; // controlled externally
+    if (forceExpanded !== null) return;
     setSelfExpanded((v) => !v);
   }
 
   function handlePartNumberClick(e: React.MouseEvent) {
     e.stopPropagation();
     onOpenPartSheet(part);
+  }
+
+  function handleQtyCellClick() {
+    if (isRoot || parentPartId === undefined) return;
+    setQtyInput(String(quantity));
+    setQtyError(null);
+    setEditingQty(true);
+  }
+
+  function commitQty() {
+    if (!editingQty || parentPartId === undefined) return;
+    setEditingQty(false);
+
+    const raw = qtyInput.trim();
+    if (raw === "" || raw === String(quantity)) {
+      setQtyError(null);
+      return;
+    }
+
+    const parsed = Number(raw);
+
+    if (isNaN(parsed) || !isFinite(parsed)) {
+      setQtyError(null); // reject silently — non-numeric
+      return;
+    }
+
+    const asInt = Math.trunc(parsed);
+
+    if (asInt < 0) {
+      setQtyError("Quantity must be a positive integer");
+      return;
+    }
+
+    if (asInt === 0) {
+      onChildRemove?.(parentPartId, part.partId, quantity);
+      return;
+    }
+
+    onQtyChange?.(parentPartId, part.partId, asInt);
+  }
+
+  function handleQtyKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") commitQty();
+    if (e.key === "Escape") {
+      setEditingQty(false);
+      setQtyError(null);
+    }
   }
 
   function formatCost(c: number | null): string {
@@ -88,17 +160,14 @@ export default function BomTreeRow({
     <>
       {/* Row */}
       <div
-        className={`group flex items-center gap-0 border-b border-border/40 hover:bg-muted/50 transition-colors ${!isAssembly ? "bg-muted/60" : ""}`}
+        className={`group flex items-center gap-0 border-b border-border/40 hover:bg-muted/50 transition-colors ${!isAssembly ? "bg-muted/80" : ""}`}
         style={{ minHeight: 36 }}
       >
-        {/* Left: tree zone — constrained width so data columns stay left-anchored */}
-        <div className="flex w-[480px] max-w-[480px] shrink-0 items-center overflow-hidden">
+        {/* Left: tree zone */}
+        <div className="flex w-[440px] max-w-[440px] shrink-0 items-center overflow-hidden">
           {/* Indent spacer with guide lines */}
           {depth > 0 && (
-            <div
-              className="shrink-0 self-stretch flex"
-              style={{ width: indentPx }}
-            >
+            <div className="shrink-0 self-stretch flex" style={{ width: indentPx }}>
               {Array.from({ length: depth }).map((_, i) => (
                 <span
                   key={i}
@@ -142,21 +211,51 @@ export default function BomTreeRow({
           </span>
         </div>
 
-        {/* Right: data columns — fixed layout, left-anchored after tree zone */}
+        {/* Right: data columns */}
         <div className="flex shrink-0 items-center gap-0 text-right">
           {/* Qty */}
           <div className="w-16 px-2 text-right text-xs tabular-nums text-foreground">
-            {quantity}
+            {isRoot ? (
+              <span className="text-muted-foreground">—</span>
+            ) : editingQty ? (
+              <Input
+                ref={inputRef}
+                value={qtyInput}
+                onChange={(e) => { setQtyInput(e.target.value); setQtyError(null); }}
+                onBlur={commitQty}
+                onKeyDown={handleQtyKeyDown}
+                className="h-6 w-14 px-1 text-right text-xs tabular-nums"
+                autoComplete="off"
+              />
+            ) : (
+              <span
+                onClick={parentPartId !== undefined ? handleQtyCellClick : undefined}
+                className={parentPartId !== undefined ? "cursor-pointer rounded px-0.5 hover:bg-muted" : ""}
+                title={parentPartId !== undefined ? "Click to edit quantity" : undefined}
+              >
+                {quantity}
+              </span>
+            )}
           </div>
 
-          {/* Stock (own stock-on-hand for both Parts and Assemblies) */}
+          {/* Inline qty error tooltip */}
+          {qtyError && (
+            <div
+              className="absolute z-50 ml-1 rounded bg-destructive px-2 py-1 text-xs text-destructive-foreground shadow"
+              style={{ marginTop: 36 }}
+            >
+              {qtyError}
+            </div>
+          )}
+
+          {/* Stock */}
           <div className="w-20 px-2 text-right text-xs tabular-nums">
             <span className={part.stockCount === 0 ? "text-red-500" : "text-foreground"}>
               {part.stockCount ?? "—"}
             </span>
           </div>
 
-          {/* Buildable (Assemblies only — subtree rollup) */}
+          {/* Buildable (Assemblies only) */}
           <div className="w-20 px-2 text-right text-xs tabular-nums">
             {isAssembly ? (
               buildable !== null ? (
@@ -188,15 +287,25 @@ export default function BomTreeRow({
         </div>
       </div>
 
-      {/* Children (recursive) */}
+      {/* Inline qty error — shown below the row */}
+      {qtyError && (
+        <div className="flex items-center border-b border-border/40 bg-destructive/10 px-2 py-1 text-xs text-destructive">
+          {qtyError}
+        </div>
+      )}
+
+      {/* Children (recursive, sorted) */}
       {expanded &&
-        children.map((child) => (
+        sortedChildren.map((child) => (
           <BomTreeRow
             key={child.part.partId}
             node={child}
             depth={depth + 1}
             forceExpanded={forceExpanded}
             onOpenPartSheet={onOpenPartSheet}
+            parentPartId={part.partId}
+            onQtyChange={onQtyChange}
+            onChildRemove={onChildRemove}
           />
         ))}
     </>

@@ -23,19 +23,25 @@ function formatTs(iso: string): string {
 
 function actionLabel(action: MockPartAuditEntry["action"]): string {
   switch (action) {
-    case "PartCreated":     return "Created";
-    case "PartUpdated":     return "Updated";
-    case "PartDeactivated": return "Deactivated";
-    case "PartReactivated": return "Reactivated";
+    case "PartCreated":        return "Created";
+    case "PartUpdated":        return "Updated";
+    case "PartDeactivated":    return "Deactivated";
+    case "PartReactivated":    return "Reactivated";
+    case "BomChildAdded":      return "BOM Child Added";
+    case "BomChildRemoved":    return "BOM Child Removed";
+    case "BomChildQtyChanged": return "BOM Qty Changed";
   }
 }
 
 function actionColor(action: MockPartAuditEntry["action"]): string {
   switch (action) {
-    case "PartCreated":     return "text-green-400";
-    case "PartUpdated":     return "text-blue-400";
-    case "PartDeactivated": return "text-amber-400";
-    case "PartReactivated": return "text-green-400";
+    case "PartCreated":        return "text-green-400";
+    case "PartUpdated":        return "text-blue-400";
+    case "PartDeactivated":    return "text-amber-400";
+    case "PartReactivated":    return "text-green-400";
+    case "BomChildAdded":      return "text-green-400";
+    case "BomChildRemoved":    return "text-red-400";
+    case "BomChildQtyChanged": return "text-blue-400";
   }
 }
 

@@ -24,7 +24,14 @@ export type MockMinimalRoutingTemplate = {
 export type MockPartAuditEntry = {
   timestamp: string;
   userName: string;
-  action: "PartCreated" | "PartUpdated" | "PartDeactivated" | "PartReactivated";
+  action:
+    | "PartCreated"
+    | "PartUpdated"
+    | "PartDeactivated"
+    | "PartReactivated"
+    | "BomChildAdded"
+    | "BomChildRemoved"
+    | "BomChildQtyChanged";
   changedFields?: { field: string; before: string | null; after: string | null }[];
 };
 
