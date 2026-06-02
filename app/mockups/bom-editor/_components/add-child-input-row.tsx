@@ -210,7 +210,7 @@ export default function AddChildInputRow({
                               <TooltipTrigger asChild>
                                 <button
                                   type="button"
-                                  className="shrink-0 cursor-pointer text-destructive"
+                                  className="shrink-0 cursor-pointer text-destructive pointer-events-auto"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     const chain = findCycleChain(parentPartId, part.partId);
