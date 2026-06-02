@@ -94,7 +94,7 @@ export default function BomEditorDetailPage() {
             </div>
             <a
               href="/mockups/parts"
-              className="flex items-center gap-1.5 text-xs text-primary hover:underline"
+              className="flex items-center gap-1.5 text-xs text-foreground hover:underline"
             >
               Open in Parts Master
               <ExternalLink className="h-3 w-3" />
@@ -159,12 +159,14 @@ export default function BomEditorDetailPage() {
         <div className="mx-auto max-w-screen-2xl">
           {/* Column headers */}
           <div className="flex items-center border-b border-border bg-muted/40 text-xs font-medium text-muted-foreground">
-            <div className="flex-1 px-2 py-2 pl-8">Component</div>
+            <div className="w-[480px] shrink-0 px-2 py-2 pl-8">Component</div>
             <div className="flex shrink-0 items-center">
               <div className="w-16 px-2 py-2 text-right">Qty</div>
-              <div className="w-40 px-2 py-2 text-right">Stock / Buildable</div>
+              <div className="w-20 px-2 py-2 text-right">Stock</div>
+              <div className="w-20 px-2 py-2 text-right">Buildable</div>
               <div className="w-24 px-2 py-2 text-right">Cost</div>
               <div className="w-8 py-2" />
+              <div className="w-24 px-2 py-2 text-left">Location</div>
             </div>
           </div>
 

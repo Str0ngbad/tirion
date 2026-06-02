@@ -94,11 +94,11 @@ export default function BomTreeRow({
     <>
       {/* Row */}
       <div
-        className="group flex items-center gap-0 border-b border-border/40 hover:bg-muted/50 transition-colors"
+        className={`group flex items-center gap-0 border-b border-border/40 hover:bg-muted/50 transition-colors ${!isAssembly ? "dark:bg-muted/30" : ""}`}
         style={{ minHeight: 36 }}
       >
-        {/* Left: indent + chevron + number + name + type */}
-        <div className="flex flex-1 items-center overflow-hidden">
+        {/* Left: tree zone — constrained width so data columns stay left-anchored */}
+        <div className="flex w-[480px] max-w-[480px] shrink-0 items-center overflow-hidden">
           {/* Indent spacer with guide lines */}
           {depth > 0 && (
             <div
@@ -133,7 +133,7 @@ export default function BomTreeRow({
           {/* Part Number */}
           <button
             onClick={handlePartNumberClick}
-            className="font-mono text-xs text-primary hover:underline shrink-0 px-1"
+            className="font-mono text-xs text-foreground hover:underline shrink-0 px-1"
           >
             {part.partNumber}
           </button>
@@ -146,46 +146,31 @@ export default function BomTreeRow({
           >
             {part.partName}
           </span>
-
-          {/* Type badge */}
-          <span
-            className={`ml-2 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium leading-none ${
-              isAssembly
-                ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
-                : "bg-muted text-muted-foreground"
-            }`}
-          >
-            {isAssembly ? "Assembly" : "Part"}
-          </span>
         </div>
 
-        {/* Right: data columns — fixed layout */}
+        {/* Right: data columns — fixed layout, left-anchored after tree zone */}
         <div className="flex shrink-0 items-center gap-0 text-right">
           {/* Qty */}
           <div className="w-16 px-2 text-right text-xs tabular-nums text-foreground">
             {quantity}
           </div>
 
-          {/* Stock */}
-          <div className="w-40 px-2 text-right text-xs tabular-nums">
+          {/* Stock (own stock-on-hand for both Parts and Assemblies) */}
+          <div className="w-20 px-2 text-right text-xs tabular-nums">
+            <span className={part.stockCount === 0 ? "text-red-500" : "text-foreground"}>
+              {part.stockCount ?? "—"}
+            </span>
+          </div>
+
+          {/* Buildable (Assemblies only — subtree rollup) */}
+          <div className="w-20 px-2 text-right text-xs tabular-nums">
             {isAssembly ? (
-              <span className="text-foreground">
-                {buildable !== null ? (
-                  <>
-                    <span className={buildable === 0 ? "text-red-500" : ""}>{buildable}</span>
-                    <span className="text-muted-foreground text-[10px]">
-                      {" "}/ own {part.stockCount ?? 0}
-                    </span>
-                  </>
-                ) : (
-                  <span className="text-muted-foreground">—</span>
-                )}
-              </span>
-            ) : (
-              <span className={part.stockCount === 0 ? "text-red-500" : "text-foreground"}>
-                {part.stockCount ?? <span className="text-amber-500">—</span>}
-              </span>
-            )}
+              buildable !== null ? (
+                <span className={buildable === 0 ? "text-red-500" : "text-foreground"}>{buildable}</span>
+              ) : (
+                <span className="text-muted-foreground">—</span>
+              )
+            ) : null}
           </div>
 
           {/* Cost */}
@@ -200,6 +185,11 @@ export default function BomTreeRow({
           {/* Freshness */}
           <div className="w-8 flex items-center justify-center px-1">
             <FreshnessIndicator freshness={freshness} />
+          </div>
+
+          {/* Inventory Location */}
+          <div className="w-24 px-2 text-left text-xs text-muted-foreground truncate">
+            {part.inventoryLocation ?? "—"}
           </div>
         </div>
       </div>
