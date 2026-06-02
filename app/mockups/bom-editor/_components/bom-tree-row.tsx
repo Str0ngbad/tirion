@@ -13,6 +13,15 @@ import { sortBomChildren } from "../_lib/sort";
 import { useTruncatedTitle } from "@/app/_lib/use-truncated-title";
 import { MockPart } from "@/app/mockups/parts/_data";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -24,6 +33,7 @@ type Props = {
   isRoot?: boolean;
   initialExpanded?: boolean;
   parentPartId?: number;
+  parentPartNumber?: string;
   onQtyChange?: (parentPartId: number, childPartId: number, newQty: number) => void;
   onChildRemove?: (parentPartId: number, childPartId: number, removedQty: number) => void;
 };
@@ -60,6 +70,7 @@ export default function BomTreeRow({
   isRoot = false,
   initialExpanded = false,
   parentPartId,
+  parentPartNumber,
   onQtyChange,
   onChildRemove,
 }: Props) {
@@ -72,9 +83,14 @@ export default function BomTreeRow({
 
   // Inline qty edit state
   const [editingQty, setEditingQty] = useState(false);
+  // Sync ref guards against double-commit when blur fires after Enter
+  const isEditingRef = useRef(false);
   const [qtyInput, setQtyInput] = useState("");
   const [qtyError, setQtyError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // 0-as-remove confirmation dialog
+  const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
 
   const { ref: nameRef, title: nameTitle } = useTruncatedTitle<HTMLSpanElement>(part.partName);
 
@@ -93,6 +109,16 @@ export default function BomTreeRow({
     if (editingQty) inputRef.current?.select();
   }, [editingQty]);
 
+  function startEditing() {
+    isEditingRef.current = true;
+    setEditingQty(true);
+  }
+
+  function stopEditing() {
+    isEditingRef.current = false;
+    setEditingQty(false);
+  }
+
   function handleChevronClick(e: React.MouseEvent) {
     e.stopPropagation();
     if (forceExpanded !== null) return;
@@ -108,12 +134,13 @@ export default function BomTreeRow({
     if (isRoot || parentPartId === undefined) return;
     setQtyInput(String(quantity));
     setQtyError(null);
-    setEditingQty(true);
+    startEditing();
   }
 
   function commitQty() {
-    if (!editingQty || parentPartId === undefined) return;
-    setEditingQty(false);
+    // Guard: if blur fires after Enter already committed, skip
+    if (!isEditingRef.current || parentPartId === undefined) return;
+    stopEditing();
 
     const raw = qtyInput.trim();
     if (raw === "" || raw === String(quantity)) {
@@ -136,7 +163,7 @@ export default function BomTreeRow({
     }
 
     if (asInt === 0) {
-      onChildRemove?.(parentPartId, part.partId, quantity);
+      setConfirmRemoveOpen(true);
       return;
     }
 
@@ -146,9 +173,20 @@ export default function BomTreeRow({
   function handleQtyKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter") commitQty();
     if (e.key === "Escape") {
-      setEditingQty(false);
+      stopEditing();
       setQtyError(null);
     }
+  }
+
+  function handleConfirmRemove() {
+    setConfirmRemoveOpen(false);
+    if (parentPartId !== undefined) {
+      onChildRemove?.(parentPartId, part.partId, quantity);
+    }
+  }
+
+  function handleCancelRemove() {
+    setConfirmRemoveOpen(false);
   }
 
   function formatCost(c: number | null): string {
@@ -165,7 +203,6 @@ export default function BomTreeRow({
       >
         {/* Left: tree zone */}
         <div className="flex w-[440px] max-w-[440px] shrink-0 items-center overflow-hidden">
-          {/* Indent spacer with guide lines */}
           {depth > 0 && (
             <div className="shrink-0 self-stretch flex" style={{ width: indentPx }}>
               {Array.from({ length: depth }).map((_, i) => (
@@ -178,7 +215,6 @@ export default function BomTreeRow({
             </div>
           )}
 
-          {/* Chevron */}
           <div className="w-6 shrink-0 flex items-center justify-center">
             {isAssembly && hasChildren ? (
               <button
@@ -193,7 +229,6 @@ export default function BomTreeRow({
             ) : null}
           </div>
 
-          {/* Part Number */}
           <button
             onClick={handlePartNumberClick}
             className="font-mono text-xs text-foreground hover:underline shrink-0 px-1"
@@ -201,7 +236,6 @@ export default function BomTreeRow({
             {part.partNumber}
           </button>
 
-          {/* Part Name */}
           <span
             ref={nameRef}
             title={nameTitle}
@@ -237,16 +271,6 @@ export default function BomTreeRow({
               </span>
             )}
           </div>
-
-          {/* Inline qty error tooltip */}
-          {qtyError && (
-            <div
-              className="absolute z-50 ml-1 rounded bg-destructive px-2 py-1 text-xs text-destructive-foreground shadow"
-              style={{ marginTop: 36 }}
-            >
-              {qtyError}
-            </div>
-          )}
 
           {/* Stock */}
           <div className="w-20 px-2 text-right text-xs tabular-nums">
@@ -287,12 +311,34 @@ export default function BomTreeRow({
         </div>
       </div>
 
-      {/* Inline qty error — shown below the row */}
+      {/* Inline qty validation error */}
       {qtyError && (
         <div className="flex items-center border-b border-border/40 bg-destructive/10 px-2 py-1 text-xs text-destructive">
           {qtyError}
         </div>
       )}
+
+      {/* 0-as-remove confirmation dialog */}
+      <Dialog open={confirmRemoveOpen} onOpenChange={(open) => { if (!open) handleCancelRemove(); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>
+              Remove {part.partNumber} from {parentPartNumber ?? "this assembly"}?
+            </DialogTitle>
+            <DialogDescription>
+              Setting quantity to 0 will remove this child from the BOM. This cannot be undone here.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCancelRemove}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmRemove}>
+              Remove
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Children (recursive, sorted) */}
       {expanded &&
@@ -304,6 +350,7 @@ export default function BomTreeRow({
             forceExpanded={forceExpanded}
             onOpenPartSheet={onOpenPartSheet}
             parentPartId={part.partId}
+            parentPartNumber={part.partNumber}
             onQtyChange={onQtyChange}
             onChildRemove={onChildRemove}
           />
