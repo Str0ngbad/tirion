@@ -22,7 +22,6 @@ import { CreatePartSchema, UpdatePartSchema, UpdateStockCountSchema } from "../l
 import {
   PartNotFoundError,
   PartNumberCollisionError,
-  PartInventoryLocationCollisionError,
   PartAlreadyActiveError,
   PartAlreadyInactiveError,
   PartVendorInvalidError,
@@ -253,15 +252,15 @@ async function main() {
     if (locationUpdated.inventoryLocation !== "BIN-TEST-001") throw new Error("Expected location BIN-TEST-001");
     console.log(`r) updateInventoryLocation: inventoryLocation=${locationUpdated.inventoryLocation}`);
 
-    // ── s) updateInventoryLocation collision ──────────────────────────────────
+    // ── s) updateInventoryLocation duplicate — succeeds (no unique constraint) ──
+    // The @unique constraint was removed; duplicates are allowed and surfaced via
+    // UI confirmation dialog rather than rejected at the DB layer.
 
     await updateInventoryLocation(partB.partId, { inventoryLocation: "BIN-TEST-002" }, USER_ID);
 
-    await assertThrows(
-      () => updateInventoryLocation(partA.partId, { inventoryLocation: "BIN-TEST-002" }, USER_ID),
-      PartInventoryLocationCollisionError,
-      "s) inventoryLocation collision"
-    );
+    const dupLocation = await updateInventoryLocation(partA.partId, { inventoryLocation: "BIN-TEST-002" }, USER_ID);
+    if (dupLocation.inventoryLocation !== "BIN-TEST-002") throw new Error("Expected duplicate location assignment to succeed");
+    console.log(`s) updateInventoryLocation duplicate: both parts now share BIN-TEST-002 (expected — constraint removed)`);
 
     // ── t) deactivatePart ─────────────────────────────────────────────────────
 

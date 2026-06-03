@@ -435,6 +435,36 @@ Suggested timing: Phase 1E — handled in the data mapping spec
 (/spec/data_import_mapping.md, drafted during the Phase 1E
 consultant session).
 
+### Inventory Location collision warning behavior on Part create/update endpoints
+
+The Part.inventoryLocation @unique constraint was removed (Phase 1E). The
+schema no longer enforces uniqueness, and the dead
+PartInventoryLocationCollisionError throw path in /lib/parts/service.ts is
+unreachable.
+
+The intended replacement behavior (per spec/parts_master_spec.md Inline
+Editing section): the create and update endpoints succeed when a duplicate
+location is provided, but include a warning in the response body identifying
+the conflicting Part.
+
+Implementation work required:
+- Detect inventoryLocation duplicates against active Parts in
+  createPart and updatePart (and updateInventoryLocation), inside
+  the mutateWithAudit transaction.
+- Return shape change: responses include an optional warnings array of
+  `{ code, message, conflictingPartId, conflictingPartNumber }`.
+- Optional: add a lookup endpoint (GET /api/v1/parts/by-location/[location])
+  to support frontend pre-submit confirmation dialogs.
+- Remove the PartInventoryLocationCollisionError class entirely once the
+  dead reference is replaced.
+
+Tie to: Parts Master UI work, when the frontend implements the confirmation
+dialog. The API change should be informed by the frontend's consumption shape;
+landing the API change before the UI is designed risks rework.
+
+Discovered: Phase 1E import preparation; 41 collisions across 9 locations in
+the Part Master CSV demonstrated the constraint did not match shop reality.
+
 ---
 
 ## Operational Patterns

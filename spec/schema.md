@@ -97,7 +97,7 @@ model Part {
   machineCycleTime            Int?      // minutes per part for dominant machining operation; nullable
   numberOfSetups              Int?      // count of separate setups required to make the part; nullable
   procurementCategoryId       Int?
-  inventoryLocation           String?   @unique  // enforced unique; default sort field for Parts Master
+  inventoryLocation           String?   // default sort field for Parts Master; not enforced unique — UI confirms on collision
   stockCount                  Decimal?  @default(0)  // current on-hand count; core for distribution and stock fulfillment
   binMin                      Int?      // minimum inventory threshold; informational, no auto-replenishment in Rev 1
   binMax                      Int?      // maximum inventory threshold; informational

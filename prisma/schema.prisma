@@ -28,7 +28,7 @@ model Part {
   machineCycleTime            Int?
   numberOfSetups              Int?
   procurementCategoryId       Int?
-  inventoryLocation           String?   @unique  // enforced unique; default sort field for Parts Master
+  inventoryLocation           String?   // default sort field for Parts Master; not enforced unique — UI confirms on collision
   stockCount                  Decimal?  @default(0)  // current on-hand count; core for distribution and stock fulfillment
   binMin                      Int?
   binMax                      Int?

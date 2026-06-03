@@ -22,6 +22,8 @@ export class PartNumberCollisionError extends DomainError {
   }
 }
 
+// Retained for future warning-on-collision response work (TESTS_BACKLOG.md).
+// The throw path in service.ts is unreachable since the @unique constraint was removed.
 export class PartInventoryLocationCollisionError extends DomainError {
   readonly statusCode = 409;
   readonly errorCode = "PART_INVENTORY_LOCATION_COLLISION";

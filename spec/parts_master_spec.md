@@ -498,6 +498,19 @@ This is distinct from definition fields (MaterialSpec, Vendor, Routing Template,
 Procurement Type) which do not cascade to open Work Orders and require
 confirmation when open WOs exist.
 
+**Inventory Location collision handling.** Inventory location is not enforced
+unique. When a user enters or edits a location that is already assigned to
+another active Part, a confirmation dialog appears showing which Part currently
+uses that location. The user can confirm (proceeding with the duplicate
+assignment, accepting that the bin holds multiple parts) or cancel (returning
+to the previous value).
+
+This posture reflects shop reality: bins sometimes hold more than one part type
+when physical inventory infrastructure has not kept pace with the need for new
+locations. Surfacing the conflict to the user — rather than enforcing uniqueness
+at the database — keeps the user in control of the assignment decision while
+flagging potential mistakes for review.
+
 ---
 
 ## Soft Delete Behavior

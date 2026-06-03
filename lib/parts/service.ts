@@ -9,7 +9,6 @@ import type { GridQueryBody } from "@/lib/grids/schemas";
 import {
   PartNotFoundError,
   PartNumberCollisionError,
-  PartInventoryLocationCollisionError,
   PartAlreadyActiveError,
   PartAlreadyInactiveError,
   PartVendorInvalidError,
@@ -112,13 +111,13 @@ async function fetchPart(
   }) as Promise<PartRaw>;
 }
 
-function handleP2002(err: unknown, partNumber?: string, inventoryLocation?: string): never {
+function handleP2002(err: unknown, partNumber?: string): never {
   if (isP2002OnField(err, "partNumber")) {
     throw new PartNumberCollisionError(partNumber ?? "");
   }
-  if (isP2002OnField(err, "inventoryLocation")) {
-    throw new PartInventoryLocationCollisionError(inventoryLocation ?? "");
-  }
+  // P2002 on inventoryLocation is no longer possible since the
+  // @unique constraint was removed. The warning-on-collision behavior
+  // is tracked in TESTS_BACKLOG.md.
   throw err;
 }
 
@@ -276,7 +275,7 @@ export async function createPart(
       },
     });
   } catch (err) {
-    return handleP2002(err, input.partNumber, undefined);
+    return handleP2002(err, input.partNumber);
   }
 }
 
@@ -337,7 +336,7 @@ export async function updatePart(
       },
     });
   } catch (err) {
-    return handleP2002(err, input.partNumber, undefined);
+    return handleP2002(err, input.partNumber);
   }
 }
 
@@ -378,35 +377,31 @@ export async function updateInventoryLocation(
   input: UpdateInventoryLocationInput,
   userId: number
 ): Promise<PartRow> {
-  try {
-    return await mutateWithAudit<PartRow>({
-      userId,
-      entityType: "Part",
-      action: "InventoryLocationUpdated",
-      work: async (tx) => {
-        const existing = await tx.part.findUnique({
-          where: { partId },
-          select: { inventoryLocation: true },
-        });
-        if (existing === null) throw new PartNotFoundError(partId);
+  return mutateWithAudit<PartRow>({
+    userId,
+    entityType: "Part",
+    action: "InventoryLocationUpdated",
+    work: async (tx) => {
+      const existing = await tx.part.findUnique({
+        where: { partId },
+        select: { inventoryLocation: true },
+      });
+      if (existing === null) throw new PartNotFoundError(partId);
 
-        const previousLocation = existing.inventoryLocation;
+      const previousLocation = existing.inventoryLocation;
 
-        await tx.part.update({ where: { partId }, data: { inventoryLocation: input.inventoryLocation } });
+      await tx.part.update({ where: { partId }, data: { inventoryLocation: input.inventoryLocation } });
 
-        const result = toPartRow(await fetchPart(tx, partId));
+      const result = toPartRow(await fetchPart(tx, partId));
 
-        return {
-          entityId: partId,
-          previousValue: { inventoryLocation: previousLocation },
-          newValue: { inventoryLocation: input.inventoryLocation },
-          result,
-        };
-      },
-    });
-  } catch (err) {
-    return handleP2002(err, undefined, input.inventoryLocation ?? undefined);
-  }
+      return {
+        entityId: partId,
+        previousValue: { inventoryLocation: previousLocation },
+        newValue: { inventoryLocation: input.inventoryLocation },
+        result,
+      };
+    },
+  });
 }
 
 export async function deactivatePart(partId: number, userId: number): Promise<PartRow> {
