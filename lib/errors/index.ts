@@ -50,6 +50,16 @@ export {
   RoutingTemplateInvalidProcessTypeError,
 } from "@/lib/errors/routing-template";
 export {
+  BomEdgeNotFoundError,
+  BomParentInvalidError,
+  BomChildInvalidError,
+  BomSelfReferenceError,
+  BomDuplicateChildError,
+  BomCycleError,
+  BomDepthExceededError,
+  BomBulkDeleteInvalidError,
+} from "@/lib/errors/bom";
+export {
   PartNotFoundError,
   PartNumberCollisionError,
   PartInventoryLocationCollisionError,
