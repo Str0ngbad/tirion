@@ -99,6 +99,42 @@ Phase: 1A — observed but deferred
 
 ---
 
+### Verification scripts can leave residual test data on failure
+
+The entity verification scripts (/scripts/verify-*-service.ts) follow a
+try/finally cleanup pattern. However, if a script process is killed
+hard (SIGKILL, container restart, abrupt window close) before reaching
+the finally block, partial test data persists in the database.
+
+This was observed during Phase 1D when verify-routing-template-service.ts
+failed due to a residual record named __verify_template_A__ from a
+prior aborted run. The failure was unrelated to the change under test
+(BOM displayOrder removal) but presented as a regression.
+
+The current mitigation is manual cleanup when a failure is diagnosed
+as residual data. A more durable mitigation would be one of:
+
+- Idempotent test data setup: prefix all verify-script test records
+  with a known sentinel and delete-by-prefix at the start of every
+  script (idempotent setup, not idempotent cleanup).
+- Per-run unique suffix: include a random or timestamp suffix in
+  test record names so collisions are statistically impossible.
+- A dedicated cleanup script: /scripts/cleanup-verify-residuals.sh
+  that deletes all records matching the verify-prefix pattern.
+
+The first option (idempotent setup at script start) is the lightest
+intervention.
+
+Discovered: Phase 1D, during the displayOrder schema migration
+verification sweep.
+
+Suggested timing: When a future verification script failure is
+traced to residual data again, take the cleanup pattern as part
+of that triage. Until then, the current cost (one manual cleanup
+every few months) is acceptable.
+
+---
+
 ### project_tracker.md has no "In Progress" status
 
 The tracker script reports each phase as either "Not Started" or

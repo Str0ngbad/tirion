@@ -1584,3 +1584,92 @@ Five spec sections updated in commit 5bdbf13:
 - DEVIATIONS.md (this entry)
 
 ---
+
+## 2026-06-02 — Six Phase 1D mockup alignment resolutions: column set, rollups, expand state, sort+displayOrder removal, Remove UX, Used In removal
+
+**Phase:** 1D (mockup-vs-spec alignment review, before backend implementation)
+**Spec section:** spec/bom_editor_spec.md (Component Tree Display, Tree Structure, Schema Note, Add Component, Remove Component, Viewing Parent Context, Edit-Time Dialog)
+**Discovered by:** Code (via mockup source code inspection — Playwright MCP was browser-locked, so Code read the mockup's React components and state machines directly) during a read-only alignment review task; consultant walked the user through the seven backend-relevant decisions that surfaced; user resolved each before the spec edit landed.
+**Status:** Resolved-Spec-Updated
+**Commit:** 5da0c20
+
+### What the spec says
+
+Prior to this change, spec/bom_editor_spec.md had multiple sections that conflicted with the mockup's behavior or were silent on patterns the mockup had explored:
+
+1. The Component Tree Display column inventory listed structural part identity columns (Part Type indicator, Procurement Type, Material, Stock Size, Routing) but did not include the operational columns (Stock, Buildable, Cost, Freshness, Location).
+
+2. No subsection described operational rollups (Buildable, Cost, Freshness). The spec was silent on whether and how these were computed.
+
+3. Tree Structure stated "Default state: all levels expanded."
+
+4. Child rendering order was implied to follow displayOrder, with a Reorder action (drag-and-drop or up/down controls) as a defined user action updating displayOrder values for siblings.
+
+5. Add Component included a Display Order field defaulting to next available position.
+
+6. Remove Component was described as a per-row action available on any component row.
+
+7. A "Used In" indicator was described as a top-of-tree element showing parent assemblies that reference the current assembly, with a click-to-list affordance.
+
+8. No section described BOM depth limits — no soft warning threshold, no hard rejection threshold, no computation rule.
+
+9. The Edit-Time Dialog (Definition Change Flag) section described the full flag-creation workflow without noting it was deferred to a later phase.
+
+### What was discovered
+
+The Phase 1D mockup explored substantially more BOM Editor surface than the spec documented. A read-only alignment review surfaced seven backend-relevant decisions and one frontend-only correction. The mockup track also produced 1893 Parts + 434 Assemblies + 2341 BOM edges of sanitized real-data integration that informed the depth-limit thresholds and operational-rollup design.
+
+Key findings:
+
+- The mockup wholesale replaced the spec's structural column inventory with an operational column inventory. Structural identity moved to the Part Form Sheet (opened by clicking a Part Number).
+- Operational rollups (Buildable computed as the minimum buildable count across descendants weighted by quantities; Cost as a sum rollup of leaf descendants; Freshness as a subtree quality scan) were a substantial design decision absent from spec.
+- The mockup expanded only the root level by default — the spec's "all levels expanded" default was never deliberately validated and would overwhelm at typical real-world depths.
+- The mockup dropped displayOrder-controlled ordering entirely in favor of a fixed Parts-first alphabetical sort. The rationale (BOM order is informational, not procedural — that's routing's concern) emerged from real-data interrogation.
+- Remove Component became a parent-scoped multiselect mode rather than a per-row action.
+- The "Used In" indicator was absent from the mockup; the Part Form Sheet's Parent Assemblies section was already serving the parent-assembly navigation use case.
+- Depth limits (soft 6 / hard 8) had been wrestled with during the mockup work and informed by real-data depth distribution (the prior shop's deepest real BOM was depth 5).
+
+The consultant pre-resolved three items so the alignment review would not regenerate work the user had already directed:
+- Cycle detection timing: save-time, not edit-time
+- Search ranking placement: client-side at Rev 1 scale
+- Buildable rollup on the Parts grid: noted for a later phase
+
+The remaining seven decisions surfaced cleanly and resolved through consultant-user discussion before any code touched.
+
+### Resolution
+
+Ten changes landed in spec/bom_editor_spec.md in commit 5da0c20:
+
+1. **Component Tree Display columns** replaced with the operational set (Component, Qty, Stock, Buildable, Cost, Freshness, Location). Design-intent paragraph added explaining the BOM Editor answers operational questions; structural identity lives on the Part Form Sheet.
+
+2. **Operational Rollups subsection** added with full recurrence definitions for Buildable, Cost, and Freshness, documented as client-side computations from per-node API data. Rev 1 scale acknowledged; future-Rev server-computed path mentioned.
+
+3. **Default expand state** corrected to root-level only, with rationale.
+
+4. **Children rendering order** replaced with the Parts-first alphabetical sort rule. The Reorder action removed entirely.
+
+5. **Schema note** rewritten to document the displayOrder column's removal (the schema migration follows in a separate commit).
+
+6. **Add Component form** stripped to Part + Quantity only. The inline-row pattern prescribed; the "small modal" alternative removed.
+
+7. **Remove Component** replaced with the parent-scoped multiselect pattern (⋮ on parent Assembly, checkbox per child row, action bar, confirmation dialog). Per-row remove on child rows gone.
+
+8. **Edit Quantity** clarified to include the qty=0-as-remove behavior the mockup implements.
+
+9. **Depth Limits** new section documenting soft (6) and hard (8) thresholds, the computation rule (parent-ancestry + proposed-child-subtree depth), and the rationale (visual capacity not engineering capacity; real-world max is depth 5).
+
+10. **Viewing Parent Context** section replaced with **Parent Assembly Navigation**, explaining that parent-assembly navigation lives on the Part Form Sheet's Parent Assemblies section. The "Used In" indicator on the BOM Editor surface removed.
+
+11. **Edit-Time Dialog (Definition Change Flag) Phase note** added at the top of the section, clarifying that the flag system is not active in Phase 1D because the WorkOrder layer does not yet exist. Mutation endpoints commit directly without the dialog or flag-creation. The target behavior described in the section remains accurate for the phase that introduces WorkOrders.
+
+(Eleven sub-changes resolving six decisions plus one frontend-only correction. The displayOrder schema migration was a consequence of the sort-rule decision and lands in a separate commit, 74cd90e.)
+
+### Files affected
+
+- spec/bom_editor_spec.md (eleven sub-changes; see resolution above)
+- DEVIATIONS.md (this entry)
+- prisma/schema.prisma (drop displayOrder, separate commit 74cd90e)
+- prisma/seed.ts (update AuditAction description, separate commit 74cd90e)
+- prisma/migrations/20260603023424_drop_bom_display_order/migration.sql (new migration, separate commit 74cd90e)
+
+---
