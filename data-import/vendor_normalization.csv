@@ -1,0 +1,112 @@
+csv_vendor_string,canonical_vendor_name,action,notes
+,,drop,no vendor assigned — Parts import with defaultVendorId null
+Abrasive Diamond,Abrasive Diamond,map_to_existing,
+ABS,ABS,promote,2 parts use this
+Alibaba,Alibaba,promote,6 parts use this
+All Industrial,All Industrial,map_to_existing,
+Allied,Allied,map_to_existing,
+Alpine,Alpine,map_to_existing,
+Amazon,Amazon,map_to_existing,
+AME,AME,map_to_existing,
+American Piezo,American Piezo,promote,1 part uses this
+AMS,AMS,map_to_existing,
+APG,APG,map_to_existing,
+Applied Magnets,Applied Magnets,map_to_existing,
+Arrow,Arrow,promote,1 part uses this
+ASI,ASI,import_only,"in Vendor Master, no Part references"
+atP4,atP4,map_to_existing,
+Automation Direct,Automation Direct,map_to_existing,
+B&B,B&B,map_to_existing,
+Bambu,Bambu,promote,2 parts use this
+Bambu Labs,Bambu Labs,promote,1 part uses this
+beavertools.com,beavertools.com,map_to_existing,
+Bill Smith,Bill Smith,import_only,"in Vendor Master, no Part references"
+Bluestar,BlueStar,map_to_existing,casing fix
+Bokers,Bokers,map_to_existing,
+Bulloch,Bulloch,map_to_existing,
+Burnes Control,Burnes Control,import_only,"in Vendor Master, no Part references"
+Clippard,Clippard,map_to_existing,
+CME Tools,CME Tools,map_to_existing,
+Cooper,Cooper,promote,2 parts use this
+Cooper's,Cooper's,promote,1 part uses this
+Coopers,Coopers,promote,2 parts use this
+CS Unitec,CS Unitec,import_only,"in Vendor Master, no Part references"
+Curbell,Curbell,map_to_existing,
+DFI,DFI,map_to_existing,
+DigiKey,DigiKey,map_to_existing,
+DMM,DMM,map_to_existing,
+DSI,DSI,promote,1 part uses this
+Dynatron,Dynatron,map_to_existing,
+emisupply.com,emisupply.com,promote,1 part uses this
+EMW,EMW,map_to_existing,
+Englewood,Englewood,map_to_existing,
+Evolution,Evolution,promote,1 part uses this
+Fast Signs,Fast Signs,map_to_existing,
+Fastenal,Fastenal,map_to_existing,
+Flusche,Flusche,map_to_existing,
+FrontX,FrontX,map_to_existing,
+FSP,FSP,map_to_existing,
+Genesis,Genesis,promote,22 parts use this
+Graybar,Graybar,map_to_existing,
+Hannibal Carbide,Hannibal Carbide,map_to_existing,
+Hiwin,Hiwin,map_to_existing,
+Home Depot,Home Depot,map_to_existing,
+HUCO,HUCO,map_to_existing,
+imprint,imprint,map_to_existing,
+Industeq,Industeq,import_only,"in Vendor Master, no Part references"
+Industrial Bearing,Industrial Bearing,map_to_existing,
+ITP Styli,ITP Styli,map_to_existing,
+Jeremy Harshman,Jeremy Harshman,map_to_existing,
+Kennametal,Kennametal,map_to_existing,
+Keyence,Keyence,map_to_existing,
+L-com,L-com,map_to_existing,
+MachMotion,MachMotion,promote,2 parts use this
+Maurilio,Maurilio,map_to_existing,
+McMaster,McMaster,map_to_existing,
+McMurray,McMurray,map_to_existing,
+Megadyne,Megadyne,map_to_existing,
+Metals4U,Metals4U,map_to_existing,
+Metals4u,Metals4U,map_to_existing,casing fix
+Mi-Tech Metals,Mi-Tech Metals,map_to_existing,
+Moffatt,Moffatt,map_to_existing,
+Mouser,Mouser,map_to_existing,
+MSC,MSC,map_to_existing,
+MyCableMart,MyCableMart,promote,1 part uses this
+National Aluminum,National Aluminum,map_to_existing,
+Newcomb,Newcomb,promote,1 part uses this
+Newegg,Newegg,map_to_existing,
+Octane Workholding,Octane Workholding,map_to_existing,
+oldwillknotscales,oldwillknotscales,map_to_existing,
+phase2plus,phase2plus,map_to_existing,
+Pioneer,Pioneer,map_to_existing,
+PMD,PMD,map_to_existing,
+Polyspeed,Polyspeed,map_to_existing,
+Ready2Go,Ready2Go,map_to_existing,
+readytogocables,readytogocables,promote,13 parts use this
+Renishaw,Renishaw,map_to_existing,
+Rubber Feet,Rubber Feet,map_to_existing,
+Ryerson,Ryerson,map_to_existing,
+Sandvik,Sandvik,map_to_existing,
+SFS Carbide,SFS Carbide,map_to_existing,
+ShapeMaster,ShapeMaster,map_to_existing,
+SHARS,SHARS,map_to_existing,
+Shars,SHARS,map_to_existing,casing fix
+Shenzhen Sunlite Technology Co.,Shenzhen Sunlite Technology Co.,promote,1 part uses this
+Specialty Pipe,Specialty Pipe,promote,1 part uses this
+SRM Concrete,SRM Concrete,import_only,"in Vendor Master, no Part references"
+Superior Machining,Superior Machining,map_to_existing,
+Techniks,Techniks,map_to_existing,
+Technitool,Technitool,map_to_existing,
+Thinbit,Thinbit,map_to_existing,
+Thomson,Thomson,map_to_existing,
+Toolots,Toolots,promote,2 parts use this
+Troyke,Troyke,map_to_existing,
+US Breaker Inc,US Breaker Inc,map_to_existing,
+US Digital,US Digital,map_to_existing,
+US Shop Tools,US Shop Tools,map_to_existing,
+Vevor,Vevor,promote,1 part uses this
+vevor.com,vevor.com,promote,2 parts use this
+Voss,Voss,map_to_existing,
+Western,Western,map_to_existing,
+Yaskawa,Yaskawa,import_only,"in Vendor Master, no Part references"
+Zoro.com,Zoro.com,map_to_existing,

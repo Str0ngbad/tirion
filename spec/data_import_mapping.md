@@ -128,6 +128,9 @@ emisupply.com,EMI Supply,promote,one-off ad-hoc vendor name
   other metadata fields (`contactInfo`, `location`, `website`, `notes`) are left null and the user
   populates them via the Parts Master UI after import.
 - `drop` — the CSV vendor string maps to no vendor. The Part imports with `defaultVendorId` null.
+- `import_only` — the vendor name exists in the Vendor Master but is not referenced by any Part in
+  the Part Master CSV. The vendor record is created during import; no Part is assigned to it. The
+  user can populate vendor metadata and assign Parts via the Parts Master UI after import.
 
 CSV vendor strings that have no entry in the map are treated as unmapped values. The import script
 logs them in the end-of-run report and imports the affected Parts with `defaultVendorId` null.
