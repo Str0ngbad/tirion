@@ -407,6 +407,36 @@ Phase: Rev 1.5+ — deferred from Rev 1 (Vendor field additions commit
 
 ---
 
+### Routing template synthesis from CSV data for Phase 1E import
+
+Phase 1E (real-data import from the user's prior shop's CSVs) will
+need to derive RoutingTemplateDefinitions from per-part routing data.
+The legacy CSV does not have a template concept — each Part Master
+row has its own Machine/Weld/Blacken/Paint columns directly.
+
+The agreed approach (between consultant and user during Phase 1D
+wrap-up): synthesize templates by clustering Parts on their
+(Machine, Weld, Blacken, Paint) combinations and assigning each
+cluster a synthetic template name. A real shop typically has 5-15
+distinct routing patterns covering most parts, with outliers.
+
+Two additional considerations:
+- Two ProcessTypes in the new Tirion data model do not exist in the
+  legacy CSV. Some manual work will be needed to bring everything
+  forward — Parts that should have these new process types will need
+  manual template assignment post-import.
+- Cluster naming: synthetic template names should be deterministic
+  and readable (e.g., "Mill+Weld+Paint" derived from the constituent
+  process types). The user will rename if the synthesized names are
+  not operationally meaningful.
+
+Discovered: Phase 1D wrap-up, during Phase 1E scoping discussion.
+Suggested timing: Phase 1E — handled in the data mapping spec
+(/spec/data_import_mapping.md, drafted during the Phase 1E
+consultant session).
+
+---
+
 ## Operational Patterns
 
 ### Prisma migrations require manual handling in Claude Code's bash tool
@@ -438,6 +468,44 @@ worth a brief addition to ADR-011 as well, since the ADR currently
 describes a workflow that assumes migrate dev works.
 
 Phase: 1A — observed and operational
+
+---
+
+### Prisma client regeneration is not picked up by the running Next.js dev server
+
+When schema.prisma changes and `npx prisma generate` regenerates the
+typed client, the running Next.js dev server does not pick up the new
+client automatically. The dev server has already imported the prior
+client; Next's hot reload watches the project source tree but not
+node_modules/.prisma/client where the generated client lives.
+
+Symptom: the schema change lands, the migration runs, `npm run type-check`
+passes (tsc reads the regenerated client from node_modules), but write
+operations against the running server return 500 with errors referencing
+the prior schema shape (missing columns, wrong types, etc.).
+
+Discovered: Phase 1D commit 4, when BOM write smoke tests failed against
+a server that had been running since before commit 74cd90e (drop
+displayOrder). The fix was restarting the dev server.
+
+Action: After any prisma migrate command, restart the dev server before
+running smoke tests. The pattern:
+  1. Make the schema change
+  2. Run `npx prisma migrate dev --name ...`
+  3. Run `npx prisma generate` (the migrate command usually does this)
+  4. Stop the dev server (Ctrl+C in the npm run dev terminal)
+  5. Restart `npm run dev`
+  6. Run smoke tests
+
+A more durable mitigation would be a dev script that wraps prisma
+migrate to automatically restart the dev server, or a Next.js plugin
+that watches the Prisma client output. Neither is needed at current
+velocity — the manual restart is a few seconds and a known pattern.
+
+Discovered: Phase 1D, Operational Patterns observation.
+Suggested timing: Document in CLAUDE.md alongside migration guidance.
+Lift to tooling if the manual step gets in the way more than once or
+twice.
 
 ---
 
