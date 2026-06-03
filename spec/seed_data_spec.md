@@ -159,18 +159,18 @@ No seed sub-statuses for these processes.
 
 Per `configuration_management_spec.md`, ProcurementCategory is an
 admin-configurable lookup that replaces the former `ProcurementType` enum.
-Five starting categories from the predecessor system are seeded at
-initialization. Admins can edit, deactivate, or add categories post-install.
+Four operational categories aligned with Phase 1E import taxonomy are seeded
+at initialization. Admins can edit, deactivate, or add categories post-install.
 
 | categoryCode | categoryName | description | displayOrder |
 |--------------|--------------|-------------|--------------|
-| CTL | Cut to Length | Material cut to length by a vendor specifically for this Part | 1 |
-| PO | Part Off | Material cut in-house from stocked material | 2 |
-| P | Purchased | Finished purchased component | 3 |
-| SM | Sheet Metal | Sheet metal stock | 4 |
-| HW | Hardware | Fasteners, fittings, off-the-shelf components | 5 |
+| PO  | Stock Cut   | Cut in-house from raw stock material                             | 1 |
+| CTL | Pre-Cut     | Cut to length by vendor before shipping                          | 2 |
+| P   | Purchased   | Off-the-shelf purchased part, no in-house modification           | 3 |
+| SM  | Sheet Metal | Sheet metal stock cut or formed in-house                         | 4 |
 
-All seeded with `isActive = true`. Upsert key: `categoryCode`.
+Legacy CSV code HW (Hardware) folds into Purchased; the distinction was not
+operationally useful. All seeded with `isActive = true`. Upsert key: `categoryCode`.
 
 ---
 
@@ -427,7 +427,7 @@ After seeding, verify:
 - 16 ProcessTypeSubStatus entries exist (4 + 3 + 5 + 4 across the four
   process types with seed entries)
 - All 70 AuditAction entries exist (67 prior + 3 Views)
-- All 5 ProcurementCategory entries exist
+- All 4 ProcurementCategory entries exist
 - All 5 View entries exist (Views: 5 expected = 5)
 - One admin user with userName = "admin" exists
 

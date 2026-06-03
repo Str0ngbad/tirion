@@ -35,10 +35,10 @@ async function main() {
     const initialList = await listProcurementCategories({ active: "true" });
     const initialCodes = initialList.map((c) => c.categoryCode).join(", ");
     console.log(
-      `a) Initial active category count: ${initialList.length} (expected >= 5). Codes: ${initialCodes}`
+      `a) Initial active category count: ${initialList.length} (expected >= 4). Codes: ${initialCodes}`
     );
-    if (initialList.length < 5) {
-      throw new Error(`Expected at least 5 seeded categories, found ${initialList.length}`);
+    if (initialList.length < 4) {
+      throw new Error(`Expected at least 4 seeded categories, found ${initialList.length}`);
     }
 
     // b) Create test category A.
@@ -99,7 +99,7 @@ async function main() {
     // f) List active categories — count should now be 7 (5 seeded + 2 test).
     const listAfterCreate = await listProcurementCategories({ active: "true" });
     console.log(
-      `f) Active category count after creates: ${listAfterCreate.length} (expected 7)`
+      `f) Active category count after creates: ${listAfterCreate.length} (expected 6)`
     );
     if (listAfterCreate.length !== initialList.length + 2) {
       throw new Error(
@@ -161,7 +161,7 @@ async function main() {
     // l) List active categories — count back to 6 (5 seeded + A).
     const listAfterDeactivate = await listProcurementCategories({ active: "true" });
     console.log(
-      `l) Active category count after deactivating B: ${listAfterDeactivate.length} (expected 6)`
+      `l) Active category count after deactivating B: ${listAfterDeactivate.length} (expected 5)`
     );
     if (listAfterDeactivate.length !== initialList.length + 1) {
       throw new Error(
@@ -171,7 +171,7 @@ async function main() {
 
     // m) List with active=all — count should be 7.
     const listAll = await listProcurementCategories({ active: "all" });
-    console.log(`m) All category count: ${listAll.length} (expected 7)`);
+    console.log(`m) All category count: ${listAll.length} (expected 6)`);
     if (listAll.length !== initialList.length + 2) {
       throw new Error(
         `Expected ${initialList.length + 2} total categories, found ${listAll.length}`

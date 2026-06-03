@@ -4,11 +4,10 @@ import { prisma } from "../lib/db/client";
 
 async function seedProcurementCategories() {
   const procurementCategories = [
-    { categoryCode: "CTL", categoryName: "Cut to Length", description: "Material cut to length by a vendor specifically for this Part", displayOrder: 1, isActive: true },
-    { categoryCode: "PO",  categoryName: "Part Off",      description: "Material cut in-house from stocked material", displayOrder: 2, isActive: true },
-    { categoryCode: "P",   categoryName: "Purchased",     description: "Finished purchased component", displayOrder: 3, isActive: true },
-    { categoryCode: "SM",  categoryName: "Sheet Metal",   description: "Sheet metal stock", displayOrder: 4, isActive: true },
-    { categoryCode: "HW",  categoryName: "Hardware",      description: "Fasteners, fittings, off-the-shelf components", displayOrder: 5, isActive: true },
+    { categoryCode: "PO",  categoryName: "Stock Cut",    description: "Cut in-house from raw stock material",                              displayOrder: 1, isActive: true },
+    { categoryCode: "CTL", categoryName: "Pre-Cut",      description: "Cut to length by vendor before shipping",                           displayOrder: 2, isActive: true },
+    { categoryCode: "P",   categoryName: "Purchased",    description: "Off-the-shelf purchased part, no in-house modification",            displayOrder: 3, isActive: true },
+    { categoryCode: "SM",  categoryName: "Sheet Metal",  description: "Sheet metal stock cut or formed in-house",                          displayOrder: 4, isActive: true },
   ];
 
   for (const cat of procurementCategories) {
@@ -341,7 +340,7 @@ async function verify() {
   console.log(`  ProcessTypes:           ${processTypeCount} (expected = 9)`);
   console.log(`  ProcessTypeSubStatuses: ${subStatusCount} (expected = 16)`);
   console.log(`  AuditActions:           ${auditActionCount} (expected = 86)`);
-  console.log(`  ProcurementCategories:  ${procurementCategoryCount} (expected = 5)`);
+  console.log(`  ProcurementCategories:  ${procurementCategoryCount} (expected = 4)`);
   console.log(`  Views:                  ${viewCount} (expected = 5)`);
   console.log(`  Admin user present:     ${userCount === 1 ? "yes" : "NO — check seed"}`);
 }
