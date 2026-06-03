@@ -133,6 +133,23 @@ traced to residual data again, take the cleanup pattern as part
 of that triage. Until then, the current cost (one manual cleanup
 every few months) is acceptable.
 
+**Inverse failure mode also observed (Phase 1E):** A verify script
+can also fail because it _depended on_ residual data from prior
+runs. verify-grid-endpoint.ts was passing on Phase 1B Unit 3
+because verify-part-service.ts left Part rows behind. When Phase
+1C/1D introduced BOM verify scripts with proper cleanup, the
+residual Parts were eventually cleared and the grid endpoint script
+began failing on the now-empty database. The script never created
+its own fixtures.
+
+Mitigation: every verify script must own its fixtures end-to-end —
+create what it needs at the start, delete what it created in a
+finally block, never depend on residual state. The Phase 1E fix to
+verify-grid-endpoint.ts establishes this pattern explicitly. It also
+adds an idempotent pre-run cleanup block (delete-by-known-name at
+the top of main()) so a prior aborted run does not block the next
+run with a name-collision error.
+
 ---
 
 ### project_tracker.md has no "In Progress" status

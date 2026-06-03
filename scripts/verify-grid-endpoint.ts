@@ -2,14 +2,25 @@
  * Verification script for queryPartsGrid.
  * Run with: npx tsx scripts/verify-grid-endpoint.ts
  *
+ * Creates its own fixture Parts (and one fixture routing template) at the
+ * start and deletes them in a finally block. Relies only on seed Users
+ * and ProcessTypes.
+ *
  * Calls the service layer directly. The route handler is verified separately
  * via the manual smoke commands at the bottom of this file.
  */
 
 import "dotenv/config";
 import { prisma } from "../lib/db/client";
-import { queryPartsGrid } from "../lib/parts/service";
+import {
+  createPart,
+  deactivatePart,
+  updateStockCount,
+  queryPartsGrid,
+} from "../lib/parts/service";
+import { createRoutingTemplate } from "../lib/routing-templates/service";
 import { ViewNotFoundError } from "../lib/errors/index";
+import type { PartRow } from "../lib/parts/types";
 
 let passed = 0;
 let failed = 0;
@@ -45,6 +56,16 @@ async function assertThrows(
 }
 
 async function main() {
+  // ── Seed lookups ─────────────────────────────────────────────────────────────
+
+  const seedUser = await prisma.user.findFirst({ where: { isActive: true } });
+  if (!seedUser) throw new Error("No active User found — run prisma db seed first");
+
+  const seedProcessType = await prisma.processType.findFirst();
+  if (!seedProcessType) throw new Error("No ProcessType found — run prisma db seed first");
+
+  const userId = seedUser.userId;
+
   // Resolve view IDs from names so the script is seed-order-independent.
   const views = await prisma.view.findMany({
     select: { viewId: true, name: true },
@@ -55,124 +76,231 @@ async function main() {
     return v.viewId;
   };
 
-  console.log("\n── viewId-driven queries ────────────────────────────────────────\n");
-
-  // 1. Master View — no filters, default sort (partNumber asc); returns all active parts.
-  const masterRows = await queryPartsGrid({ viewId: viewId("Master View") });
-  assert(masterRows.length > 0, "Master View: returns rows");
-  assert(
-    masterRows.every((r) => r.isActive),
-    "Master View: default activeFilter hides inactive parts"
-  );
-  assert(
-    masterRows.length === 1 || masterRows[0]!.partNumber <= masterRows[1]!.partNumber,
-    "Master View: sorted by partNumber asc (default)"
-  );
-
-  // 2. Inventory Check — isActive=true filter, sort by stockCount asc.
-  const inventoryRows = await queryPartsGrid({ viewId: viewId("Inventory Check") });
-  assert(inventoryRows.every((r) => r.isActive), "Inventory Check: isActive filter applied");
-  if (inventoryRows.length >= 2) {
-    const stockCounts = inventoryRows.map((r) => r.stockCount ?? 0);
-    assert(
-      stockCounts[0]! <= stockCounts[1]!,
-      "Inventory Check: sorted by stockCount asc"
-    );
-  } else {
-    console.log("  ~ Inventory Check: not enough rows to verify sort (skipped)");
-    passed++;
+  // ── Idempotent pre-run cleanup ───────────────────────────────────────────────
+  // Remove any fixture residuals left by a prior aborted run so this run starts
+  // from a known-clean state. Errors here are suppressed — missing records are fine.
+  const staleTemplate = await prisma.routingTemplateDefinition.findFirst({
+    where: { templateName: "__VGRID_TEST_TEMPLATE__" },
+  });
+  if (staleTemplate) {
+    await prisma.routingTemplateStep.deleteMany({
+      where: { routingTemplateDefinitionId: staleTemplate.routingTemplateDefinitionId },
+    });
+    await prisma.routingTemplateDefinition.delete({
+      where: { routingTemplateDefinitionId: staleTemplate.routingTemplateDefinitionId },
+    });
   }
+  await prisma.part.deleteMany({
+    where: { partNumber: { in: ["VGRID-TEST-001", "VGRID-TEST-002", "VGRID-TEST-003", "VGRID-TEST-004"] } },
+  });
 
-  // 3. No Routing Flagged — only parts with no routingTemplateDefinitionId.
-  const noRoutingRows = await queryPartsGrid({ viewId: viewId("No Routing Flagged") });
-  assert(
-    noRoutingRows.every((r) => r.routingTemplateDefinitionId === null),
-    "No Routing Flagged: only parts without routing template"
-  );
+  // ── Fixture setup ─────────────────────────────────────────────────────────────
+  // One routing template + four Parts owned by this script.
+  //   p1: active, with routing template, stockCount=10
+  //   p2: active, no routing template, stockCount=5
+  //   p3: active, with routing template, stockCount=0
+  //   p4: inactive, stockCount=100
+  //
+  // Cleanup order in finally: Parts first (FK dep on template), then template.
 
-  // 4. Material Audit — isActive filter applied.
-  const materialRows = await queryPartsGrid({ viewId: viewId("Material Audit") });
-  assert(materialRows.every((r) => r.isActive), "Material Audit: isActive filter applied");
+  let fixtureTemplateId: number | null = null;
+  const fixtures: PartRow[] = [];
 
-  // 5. Part Identification — no additional filters beyond activeFilter default.
-  const identRows = await queryPartsGrid({ viewId: viewId("Part Identification") });
-  assert(identRows.length > 0, "Part Identification: returns rows");
+  try {
+    const templateResult = await createRoutingTemplate(
+      {
+        templateName: "__VGRID_TEST_TEMPLATE__",
+        steps: [{ stepIndex: 1, processTypeId: seedProcessType.processTypeId }],
+      },
+      userId
+    );
+    fixtureTemplateId = templateResult.template.routingTemplateDefinitionId;
 
-  console.log("\n── Ad-hoc filter and sort queries ──────────────────────────────\n");
+    const p1 = await createPart(
+      {
+        partNumber: "VGRID-TEST-001",
+        partName: "Grid Verify Part 1",
+        partType: "Part",
+        routingTemplateDefinitionId: fixtureTemplateId,
+      },
+      userId
+    );
+    await updateStockCount(p1.partId, { stockCount: 10 }, userId);
+    fixtures.push(p1);
 
-  // 6. Ad-hoc filter: partNumber contains fragment.
-  const allParts = await queryPartsGrid({ filters: [], sort: [], activeFilter: "all" });
-  const firstPart = allParts[0];
-  if (firstPart) {
-    const fragment = firstPart.partNumber.slice(0, 3);
+    const p2 = await createPart(
+      { partNumber: "VGRID-TEST-002", partName: "Grid Verify Part 2", partType: "Part" },
+      userId
+    );
+    await updateStockCount(p2.partId, { stockCount: 5 }, userId);
+    fixtures.push(p2);
+
+    const p3 = await createPart(
+      {
+        partNumber: "VGRID-TEST-003",
+        partName: "Grid Verify Part 3",
+        partType: "Part",
+        routingTemplateDefinitionId: fixtureTemplateId,
+      },
+      userId
+    );
+    await updateStockCount(p3.partId, { stockCount: 0 }, userId);
+    fixtures.push(p3);
+
+    const p4Raw = await createPart(
+      { partNumber: "VGRID-TEST-004", partName: "Grid Verify Part 4 Inactive", partType: "Part" },
+      userId
+    );
+    await updateStockCount(p4Raw.partId, { stockCount: 100 }, userId);
+    await deactivatePart(p4Raw.partId, userId);
+    fixtures.push(p4Raw);
+
+    // ── viewId-driven queries ─────────────────────────────────────────────────
+
+    console.log("\n── viewId-driven queries ────────────────────────────────────────\n");
+
+    // 1. Master View — no filters, default sort (partNumber asc); returns all active parts.
+    const masterRows = await queryPartsGrid({ viewId: viewId("Master View") });
+    assert(masterRows.length >= 3, "Master View: returns at least 3 active fixture rows");
+    assert(
+      masterRows.every((r) => r.isActive),
+      "Master View: default activeFilter hides inactive parts"
+    );
+    assert(
+      masterRows.length < 2 || masterRows[0]!.partNumber <= masterRows[1]!.partNumber,
+      "Master View: sorted by partNumber asc (default)"
+    );
+
+    // 2. Inventory Check — isActive=true filter, sort by stockCount asc.
+    const inventoryRows = await queryPartsGrid({ viewId: viewId("Inventory Check") });
+    assert(inventoryRows.every((r) => r.isActive), "Inventory Check: isActive filter applied");
+    // Fixture stock counts: VGRID-TEST-003=0, VGRID-TEST-002=5, VGRID-TEST-001=10.
+    // Filter to fixture rows only and verify ascending order.
+    const fixtureInventory = inventoryRows.filter((r) =>
+      [p1.partId, p2.partId, p3.partId].includes(r.partId)
+    );
+    assert(
+      fixtureInventory.length === 3 &&
+        (fixtureInventory[0]!.stockCount ?? 0) <= (fixtureInventory[1]!.stockCount ?? 0) &&
+        (fixtureInventory[1]!.stockCount ?? 0) <= (fixtureInventory[2]!.stockCount ?? 0),
+      "Inventory Check: fixture rows sorted by stockCount asc (0, 5, 10)"
+    );
+
+    // 3. No Routing Flagged — parts with null routingTemplateDefinitionId.
+    //    p2 (no template) must be present; p1 and p3 (have template) must be absent.
+    const noRoutingRows = await queryPartsGrid({ viewId: viewId("No Routing Flagged") });
+    assert(
+      noRoutingRows.every((r) => r.routingTemplateDefinitionId === null),
+      "No Routing Flagged: all returned rows have null routing template"
+    );
+    assert(
+      noRoutingRows.some((r) => r.partId === p2.partId) &&
+        !noRoutingRows.some((r) => r.partId === p1.partId) &&
+        !noRoutingRows.some((r) => r.partId === p3.partId),
+      "No Routing Flagged: p2 present, p1 and p3 absent"
+    );
+
+    // 4. Material Audit — isActive filter applied.
+    const materialRows = await queryPartsGrid({ viewId: viewId("Material Audit") });
+    assert(materialRows.every((r) => r.isActive), "Material Audit: isActive filter applied");
+
+    // 5. Part Identification — no additional filters beyond activeFilter default.
+    const identRows = await queryPartsGrid({ viewId: viewId("Part Identification") });
+    assert(identRows.length >= 3, "Part Identification: returns fixture rows");
+
+    console.log("\n── Ad-hoc filter and sort queries ──────────────────────────────\n");
+
+    // 6. Ad-hoc filter: partNumber contains "VGRID-TEST" → exactly 3 active rows
+    //    (the 3 active fixtures; p4 inactive is hidden by default activeFilter=true).
     const filteredRows = await queryPartsGrid({
-      filters: [{ column: "partNumber", operator: "contains", value: fragment }],
+      filters: [{ column: "partNumber", operator: "contains", value: "VGRID-TEST" }],
       sort: [],
     });
     assert(
-      filteredRows.every((r) => r.partNumber.toLowerCase().includes(fragment.toLowerCase())),
-      `Ad-hoc filter: partNumber contains "${fragment}"`
+      filteredRows.length === 3 && filteredRows.every((r) => r.partNumber.includes("VGRID-TEST")),
+      `Ad-hoc filter: partNumber contains "VGRID-TEST" → exactly 3 active rows`
     );
-  } else {
-    console.log("  ~ No seed parts found; skipping ad-hoc filter test");
-    passed++;
+
+    // 7. Ad-hoc multi-column sort: partType asc, partNumber desc.
+    const sortedRows = await queryPartsGrid({
+      filters: [],
+      sort: [
+        { column: "partType", direction: "asc" },
+        { column: "partNumber", direction: "desc" },
+      ],
+    });
+    assert(sortedRows.length >= 3, "Ad-hoc multi-column sort: query executes and returns rows");
+
+    // 8. activeFilter overlay: "all" returns both active and inactive parts.
+    const allActiveFilter = await queryPartsGrid({
+      viewId: viewId("Master View"),
+      activeFilter: "all",
+    });
+    const defaultActiveFilter = await queryPartsGrid({ viewId: viewId("Master View") });
+    assert(
+      allActiveFilter.length >= defaultActiveFilter.length,
+      "activeFilter=all returns >= rows vs default (true)"
+    );
+
+    // 9. activeFilter overlay: "false" returns only inactive parts (includes p4).
+    const inactiveRows = await queryPartsGrid({
+      filters: [],
+      sort: [],
+      activeFilter: "false",
+    });
+    assert(
+      inactiveRows.every((r) => !r.isActive) &&
+        inactiveRows.some((r) => r.partId === p4Raw.partId),
+      "activeFilter=false: only inactive parts; fixture p4 present"
+    );
+
+    // 10. Unknown viewId → ViewNotFoundError.
+    await assertThrows(
+      () => queryPartsGrid({ viewId: 99999 }),
+      ViewNotFoundError,
+      "Unknown viewId → ViewNotFoundError"
+    );
+
+    console.log("\n── Regression: prior verification scripts ──────────────────────\n");
+    console.log("  Run the following to confirm no regressions:");
+    console.log("  npx tsx scripts/verify-sort-builder.ts");
+    console.log("  npx tsx scripts/verify-filter-builder.ts");
+    console.log("  npx tsx scripts/verify-part-service.ts");
+
+    console.log(`\n── Results: ${passed} passed, ${failed} failed ─────────────────────\n`);
+
+    console.log("── Manual smoke (dev server must be running) ───────────────────\n");
+    console.log(`  POST /api/v1/parts/grid  { "viewId": ${viewId("Master View")} }  → 200 PartRow[]`);
+    console.log(`  POST /api/v1/parts/grid  { "viewId": ${viewId("Inventory Check")} }  → 200 sorted by stockCount`);
+    console.log(`  POST /api/v1/parts/grid  { "viewId": 9999 }  → 404 VIEW_NOT_FOUND`);
+    console.log(`  POST /api/v1/parts/grid  {}  → 400 VALIDATION_ERROR`);
+    console.log(`  POST /api/v1/parts/grid  { "filters": [], "sort": [] }  → 200 active parts`);
+
+    if (failed > 0) process.exit(1);
+  } finally {
+    // Delete Parts before template (FK dependency). Log but do not re-throw so
+    // a partial cleanup doesn't mask the original failure.
+    for (const part of [...fixtures].reverse()) {
+      try {
+        await prisma.part.delete({ where: { partId: part.partId } });
+      } catch (err) {
+        console.error(`Failed to clean up fixture ${part.partNumber}:`, err);
+      }
+    }
+    if (fixtureTemplateId !== null) {
+      try {
+        await prisma.routingTemplateStep.deleteMany({
+          where: { routingTemplateDefinitionId: fixtureTemplateId },
+        });
+        await prisma.routingTemplateDefinition.delete({
+          where: { routingTemplateDefinitionId: fixtureTemplateId },
+        });
+      } catch (err) {
+        console.error("Failed to clean up fixture routing template:", err);
+      }
+    }
+    console.log(`\nCleanup: deleted ${fixtures.length} fixture part(s) and routing template`);
   }
-
-  // 7. Ad-hoc multi-column sort: partType asc, partNumber desc.
-  const sortedRows = await queryPartsGrid({
-    filters: [],
-    sort: [
-      { column: "partType", direction: "asc" },
-      { column: "partNumber", direction: "desc" },
-    ],
-  });
-  assert(sortedRows.length >= 0, "Ad-hoc multi-column sort: query executes without error");
-
-  // 8. activeFilter overlay: "all" returns both active and inactive parts.
-  const allActiveFilter = await queryPartsGrid({
-    viewId: viewId("Master View"),
-    activeFilter: "all",
-  });
-  const defaultActiveFilter = await queryPartsGrid({ viewId: viewId("Master View") });
-  assert(
-    allActiveFilter.length >= defaultActiveFilter.length,
-    "activeFilter=all returns >= rows vs default (true)"
-  );
-
-  // 9. activeFilter overlay: "false" returns only inactive parts.
-  const inactiveRows = await queryPartsGrid({
-    filters: [],
-    sort: [],
-    activeFilter: "false",
-  });
-  assert(
-    inactiveRows.every((r) => !r.isActive),
-    "activeFilter=false: only inactive parts returned"
-  );
-
-  // 10. Unknown viewId → ViewNotFoundError.
-  await assertThrows(
-    () => queryPartsGrid({ viewId: 99999 }),
-    ViewNotFoundError,
-    "Unknown viewId → ViewNotFoundError"
-  );
-
-  console.log("\n── Regression: prior verification scripts ──────────────────────\n");
-  console.log("  Run the following to confirm no regressions:");
-  console.log("  npx tsx scripts/verify-sort-builder.ts");
-  console.log("  npx tsx scripts/verify-filter-builder.ts");
-  console.log("  npx tsx scripts/verify-part-service.ts");
-
-  console.log(`\n── Results: ${passed} passed, ${failed} failed ─────────────────────\n`);
-
-  console.log("── Manual smoke (dev server must be running) ───────────────────\n");
-  console.log(`  POST /api/v1/parts/grid  { "viewId": ${viewId("Master View")} }  → 200 PartRow[]`);
-  console.log(`  POST /api/v1/parts/grid  { "viewId": ${viewId("Inventory Check")} }  → 200 sorted by stockCount`);
-  console.log(`  POST /api/v1/parts/grid  { "viewId": 9999 }  → 404 VIEW_NOT_FOUND`);
-  console.log(`  POST /api/v1/parts/grid  {}  → 400 VALIDATION_ERROR`);
-  console.log(`  POST /api/v1/parts/grid  { "filters": [], "sort": [] }  → 200 active parts`);
-
-  if (failed > 0) process.exit(1);
 }
 
 main()
