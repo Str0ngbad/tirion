@@ -556,6 +556,35 @@ twice.
 
 ---
 
+### Multiple verify scripts independently construct routing template fixtures
+
+As of Phase 1E (commit 22f9378), four verify scripts each construct
+their own routing template fixtures during setup:
+
+- verify-vendor-service.ts (likely, via Part creation paths)
+- verify-view-service.ts (similar)
+- verify-routing-template-service.ts (necessarily — it's the system
+  under test)
+- verify-grid-endpoint.ts (just added)
+
+The seed does not include any RoutingTemplateDefinition records. Each
+script either creates a template, references it, then cleans it up,
+or omits routing templates from its fixtures entirely.
+
+This is currently fine — each script has specific fixture needs that
+a shared seed template would not satisfy uniformly, and the per-script
+cleanup is well-isolated. If the count of fixture-creating scripts
+grows substantially (e.g., 7+) the duplication may become a
+maintenance burden worth addressing via a shared fixture helper or a
+seed addition.
+
+Discovered: Phase 1E, during verify-grid-endpoint.ts fix.
+Action: None for now. Revisit if the pattern proliferates beyond
+about 6-7 scripts or if seed coordination across scripts becomes a
+source of bugs.
+
+---
+
 ## Categories Summary
 
 | Category | Count | Notes |
