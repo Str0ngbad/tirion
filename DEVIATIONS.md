@@ -1673,3 +1673,93 @@ Ten changes landed in spec/bom_editor_spec.md in commit 5da0c20:
 - prisma/migrations/20260603023424_drop_bom_display_order/migration.sql (new migration, separate commit 74cd90e)
 
 ---
+
+## 2026-06-03 — ProcurementCategory placeholders (Make/Buy/MakeBuy) replaced with operational taxonomy (Stock Cut, Pre-Cut, Purchased, Sheet Metal) ahead of Phase 1E import
+
+**Phase:** _To be filled in._
+**Spec section:** prisma/seed.ts (ProcurementCategory seed)
+**Discovered by:** _To be filled in._
+**Status:** Captured (rationale TBD)
+**Commit:** 1c3b7fd89e2768dbf1348a39950692e498e0da10
+
+### What was discovered
+
+_To be filled in._
+
+### Resolution
+
+_To be filled in._
+
+### Files affected
+
+_To be filled in._
+
+---
+
+## 2026-06-03 — Drop Part.inventoryLocation @unique constraint; replace DB-enforced uniqueness with UI warn-but-allow per shop reality discovered during Phase 1E import prep
+
+**Phase:** 1E (data import preparation; schema reconciliation discovered during pre-import collision analysis)
+**Spec section:** schema.prisma (Part.inventoryLocation @unique), spec/parts_master_spec.md (Inline Editing)
+**Discovered by:** Code surfaced the collision risk while writing spec/data_import_mapping.md (commit 09b9388). Consultant analyzed the Part Master CSV's Location column and confirmed 41 collisions across 9 location values, including two placeholder-value collisions (Fab, ***) and 5 real bin-label collisions. Consultant-user discussion resolved the question.
+**Status:** Resolved-Schema-Relaxed
+**Commit:** f49e467
+
+### What the spec says
+
+Prior to this change:
+
+- schema.prisma declared Part.inventoryLocation as `String? @unique`, enforcing one-Part-per-location at the database layer.
+- /lib/errors/part.ts defined PartInventoryLocationCollisionError as a 409 DomainError thrown on P2002 collision against inventory_location.
+- /lib/parts/service.ts createPart, updatePart, and updateInventoryLocation operations all branched the P2002 handler to throw the collision error.
+- spec/schema.md documented the @unique constraint on inventoryLocation as one of the Part model's enforced uniqueness rules.
+- spec/parts_master_spec.md Inline Editing section described inline-edit behavior for inventoryLocation without addressing the collision case.
+
+### What was discovered
+
+The Phase 1E data import preparation analyzed the prior shop's Part Master CSV against the Tirion schema. The Location column has 855 non-null values spanning 814 distinct locations, with 41 Parts sharing one of 9 collision-bearing locations:
+
+- "Fab" (20 Parts): clearly a placeholder for "somewhere in the fab area, not a specific bin"
+- "***" (16 Parts): clearly a sentinel for "unknown location"
+- 5 real bin labels (P5-5a, B5-5a, K5-2, A3-4g, A4-4e, J4-4h), each shared by exactly 2 Parts
+
+The collision pattern revealed that the prior tool — whose data validation in Google Sheets is case-insensitive substring match — did not enforce one-Part-per-location, and the user's operational reality is that bins sometimes hold multiple parts when physical inventory infrastructure has not kept up with the demand for new locations.
+
+User's framing during the consultant-user discussion: "Locations SHOULD be unique, but sometimes that has been difficult because physical inventory infrastructure has not been invested in to keep up with the need for new locations. Flag it to the user but allow it is consistent with the posture of the rest of the tool, give the user information and let them decide."
+
+The resolution is consistent with Tirion's broader posture across other surfaces (Definition Change Flag system on routing templates and BOM edits, depth-limit warnings on BOM Editor) that surface impact and let humans decide rather than enforcing at the database layer.
+
+### Resolution
+
+Five changes landed in commit f49e467:
+
+1. **schema.prisma**: Part.inventoryLocation declared without @unique. Trailing comment updated to note "not enforced unique — UI confirms on collision."
+
+2. **Migration**: relax_part_inventory_location_unique drops the Part_inventoryLocation_key unique index. No other schema changes.
+
+3. **spec/schema.md**: documentation of inventoryLocation constraints updated to reflect the relaxation; the warn-but-allow posture documented.
+
+4. **spec/parts_master_spec.md Inline Editing section**: new paragraph documenting the inventory-location collision-handling behavior — UI surfaces a confirmation dialog when the user enters a location already assigned to another active Part; user confirms or cancels. Rationale paragraph included.
+
+5. **/lib/parts/service.ts**: P2002 handlers in createPart and updatePart simplified to handle only partNumber collisions; the inventoryLocation branch removed with explanatory comments pointing at the TESTS_BACKLOG follow-up.
+
+   updateInventoryLocation: try/catch on P2002 removed entirely since the collision branch is gone.
+
+6. **/lib/errors/part.ts**: PartInventoryLocationCollisionError class preserved as code with a comment noting it is currently unused, pending the warning-response API work tracked in TESTS_BACKLOG.md.
+
+7. **scripts/verify-part-service.ts**: the test case that asserted PartInventoryLocationCollisionError on duplicate location was rewritten to assert successful creation with the duplicate location (which now reflects intended behavior). Updated import removes the no-longer-needed error class reference.
+
+8. **TESTS_BACKLOG.md**: new "Inventory Location collision warning behavior on Part create/update endpoints" entry under Follow-up Implementation, scoping the future API change (warning-on-collision response shape, optional location-lookup endpoint) tied to Parts Master UI work. The change is deferred until the frontend confirmation dialog is designed; landing the API change without UI guidance risks rework.
+
+### Files affected
+
+- prisma/schema.prisma (Part.inventoryLocation @unique removed, comment updated)
+- prisma/migrations/20260603202537_relax_part_inventory_location_unique/migration.sql (new migration)
+- spec/schema.md (inventoryLocation constraints documentation updated)
+- spec/parts_master_spec.md (Inline Editing section: new collision-handling paragraph)
+- /lib/parts/service.ts (P2002 handlers simplified)
+- /lib/errors/part.ts (class declaration comment added)
+- scripts/verify-part-service.ts (test case rewritten to assert success on duplicate location)
+- TESTS_BACKLOG.md (new follow-up implementation entry)
+- DEVIATIONS.md (this entry)
+
+---
