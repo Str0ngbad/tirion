@@ -70,7 +70,6 @@ model BOM {
   parentPartId  Int
   childPartId   Int
   quantity      Decimal
-  displayOrder  Int   // display order within parent assembly
 
   // Relations
   parentPart  Part  @relation("ParentPart", fields: [parentPartId], references: [partId])

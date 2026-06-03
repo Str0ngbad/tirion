@@ -163,7 +163,7 @@ async function seedAuditActions() {
     { actionName: "InventoryLocationUpdated", category: "Definition", description: "Part inventoryLocation updated via dedicated inline-edit endpoint" },
     { actionName: "BOMRowAdded", category: "Definition", description: "Component added to an assembly's BOM" },
     { actionName: "BOMRowRemoved", category: "Definition", description: "Component removed from an assembly's BOM" },
-    { actionName: "BOMRowEdited", category: "Definition", description: "BOM quantity or displayOrder edited" },
+    { actionName: "BOMRowEdited", category: "Definition", description: "BOM quantity edited" },
     { actionName: "RoutingTemplateCreated", category: "Definition", description: "New Routing Template Definition created" },
     { actionName: "RoutingTemplateEdited", category: "Definition", description: "Existing template edited (steps added/removed/reordered)" },
     { actionName: "RoutingTemplateRetired", category: "Definition", description: "Template isActive set to false" },
