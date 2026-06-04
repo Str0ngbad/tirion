@@ -15,9 +15,18 @@ export type RoutingTemplateRow = {
   steps: RoutingTemplateStepRow[];
 };
 
+export type PartSummary = {
+  partId: number;
+  partNumber: string;
+  partName: string;
+  stockCount: number;
+};
+
 export type RoutingTemplateDetail = RoutingTemplateRow & {
   // Phase 1C: hardcoded 0 until WorkOrder layer exists
   openWorkOrderCount: number;
+  referencingParts: PartSummary[];
+  affectedStockCount: number;
 };
 
 export type RoutingTemplateStepInput = {

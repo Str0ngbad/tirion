@@ -30,6 +30,7 @@ type Props = {
   sortAsc: boolean;
   onSort: (key: TemplateSortKey) => void;
   condensed: boolean;
+  onRowClick?: (template: RoutingTemplateRow) => void;
   onRetire: (template: RoutingTemplateRow) => void;
   onReactivate: (template: RoutingTemplateRow) => void;
   isLoading?: boolean;
@@ -121,6 +122,7 @@ export default function TemplateLibraryGrid({
   sortAsc,
   onSort,
   condensed,
+  onRowClick,
   onRetire,
   onReactivate,
   isLoading,
@@ -204,8 +206,8 @@ export default function TemplateLibraryGrid({
             templates.map((t) => (
               <TableRow
                 key={t.routingTemplateDefinitionId}
-                // Row click deferred — edit page lands in the next commit
-                className={t.isActive ? "" : "opacity-40 hover:opacity-60"}
+                className={`${t.isActive ? "" : "opacity-40 hover:opacity-60"} ${onRowClick ? "cursor-pointer" : ""}`}
+                onClick={() => onRowClick?.(t)}
               >
                 <TableCell className="min-w-[200px] max-w-[280px] px-3 py-2.5">
                   <TruncatedCell

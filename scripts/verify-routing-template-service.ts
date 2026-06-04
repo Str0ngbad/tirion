@@ -208,6 +208,9 @@ async function main() {
     assert(detail.routingTemplateDefinitionId === templateAId, "11: id match");
     assert(detail.openWorkOrderCount === 0, "11: openWorkOrderCount=0");
     assert(detail.steps.length === 3, "11: steps");
+    assert(Array.isArray(detail.referencingParts), "11: referencingParts is array");
+    assert(typeof detail.affectedStockCount === "number" && detail.affectedStockCount >= 0, "11: affectedStockCount is number >= 0");
+    assert(detail.partsReferencingCount === detail.referencingParts.length, "11: partsReferencingCount matches referencingParts.length");
     console.log("11) getRoutingTemplate detail: PASS");
 
     // ── 12. Update template name only ─────────────────────────────────────────

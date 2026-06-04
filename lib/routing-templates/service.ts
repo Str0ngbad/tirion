@@ -17,6 +17,7 @@ import type {
   RoutingTemplateRow,
   RoutingTemplateDetail,
   RoutingTemplateStepRow,
+  PartSummary,
   SaveResponse,
 } from "@/lib/routing-templates/types";
 
@@ -141,10 +142,34 @@ export async function getRoutingTemplate(
 
   if (!raw) throw new RoutingTemplateNotFoundError(routingTemplateDefinitionId);
 
+  const referencingPartsRaw = await prisma.part.findMany({
+    where: { routingTemplateDefinitionId, isActive: true },
+    select: {
+      partId: true,
+      partNumber: true,
+      partName: true,
+      stockCount: true,
+    },
+    orderBy: { partNumber: "asc" },
+  });
+
+  const referencingParts: PartSummary[] = referencingPartsRaw.map((p) => ({
+    partId: p.partId,
+    partNumber: p.partNumber,
+    partName: p.partName,
+    stockCount: p.stockCount ? Number(p.stockCount) : 0,
+  }));
+
+  const affectedStockCount = referencingParts.reduce((sum, p) => sum + p.stockCount, 0);
+
   return {
     ...toTemplateRow(raw as unknown as TemplateRaw),
     // Phase 1C: hardcoded 0 until WorkOrder + DefinitionChangeFlag layers exist
     openWorkOrderCount: 0,
+    referencingParts,
+    affectedStockCount,
+    // Reconcile: partsReferencingCount now uses active-only filter (matches referencingParts)
+    partsReferencingCount: referencingParts.length,
   };
 }
 

@@ -2,28 +2,42 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   useRoutingTemplates,
+  useRoutingTemplate,
   useDeactivateRoutingTemplate,
   useReactivateRoutingTemplate,
 } from "@/lib/api/routing-templates";
 import { type RoutingTemplateRow } from "@/lib/routing-templates/types";
 import TemplateLibraryGrid, { type TemplateSortKey } from "./_components/template-library-grid";
 import ProcessTypeLegend from "./_components/process-type-legend";
+import { EditTimeDialog } from "./_components/edit-time-dialog";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { CondenseToggle } from "@/components/condense-toggle";
 
+type DialogState = {
+  mode: "edit" | "retire";
+  templateId: number;
+} | null;
+
 export default function RoutingTemplatesPage() {
+  const router = useRouter();
   const [showInactive, setShowInactive] = useState(false);
   const [sortKey, setSortKey] = useState<TemplateSortKey>("templateName");
   const [sortAsc, setSortAsc] = useState(true);
   const [condensed, setCondensed] = useState(false);
+  const [dialogState, setDialogState] = useState<DialogState>(null);
 
   const { data, isLoading, error, refetch } = useRoutingTemplates({ active: showInactive ? "all" : "true" });
   const deactivate = useDeactivateRoutingTemplate();
   const reactivate = useReactivateRoutingTemplate();
+
+  const detailQuery = useRoutingTemplate(dialogState?.templateId ?? 0, {
+    enabled: dialogState !== null,
+  });
 
   const templates = data ?? [];
 
@@ -52,18 +66,38 @@ export default function RoutingTemplatesPage() {
     }
   }
 
+  function handleRowClick(template: RoutingTemplateRow) {
+    if (template.partsReferencingCount === 0) {
+      router.push(`/routing-templates/${template.routingTemplateDefinitionId}`);
+      return;
+    }
+    setDialogState({ mode: "edit", templateId: template.routingTemplateDefinitionId });
+  }
+
   function handleRetire(template: RoutingTemplateRow) {
-    // EditTimeDialog (impact review) deferred to next commit — fires immediately for now
-    deactivate.mutate(template.routingTemplateDefinitionId);
+    if (template.partsReferencingCount === 0) {
+      deactivate.mutate(template.routingTemplateDefinitionId);
+      return;
+    }
+    setDialogState({ mode: "retire", templateId: template.routingTemplateDefinitionId });
   }
 
   function handleReactivate(template: RoutingTemplateRow) {
     reactivate.mutate(template.routingTemplateDefinitionId);
   }
 
+  function handleDialogConfirm() {
+    if (!dialogState) return;
+    if (dialogState.mode === "edit") {
+      router.push(`/routing-templates/${dialogState.templateId}`);
+    } else {
+      deactivate.mutate(dialogState.templateId);
+    }
+    setDialogState(null);
+  }
+
   const activeCount = templates.filter((t) => t.isActive).length;
   const inactiveCount = templates.filter((t) => !t.isActive).length;
-
   const errorMessage = error?.message ?? null;
 
   return (
@@ -125,6 +159,7 @@ export default function RoutingTemplatesPage() {
           sortAsc={sortAsc}
           onSort={handleSort}
           condensed={condensed}
+          onRowClick={handleRowClick}
           onRetire={handleRetire}
           onReactivate={handleReactivate}
           isLoading={isLoading}
@@ -132,6 +167,17 @@ export default function RoutingTemplatesPage() {
           onRetryError={refetch}
         />
       </div>
+
+      {/* EditTimeDialog */}
+      {dialogState !== null && detailQuery.data && (
+        <EditTimeDialog
+          open={true}
+          onOpenChange={(open) => { if (!open) setDialogState(null); }}
+          mode={dialogState.mode}
+          template={detailQuery.data}
+          onConfirm={handleDialogConfirm}
+        />
+      )}
     </div>
   );
 }
