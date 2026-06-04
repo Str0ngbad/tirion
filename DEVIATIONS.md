@@ -1804,3 +1804,67 @@ No other instances of "drag" appeared in the file (verified by full-file search 
 - DEVIATIONS.md (this entry)
 
 ---
+
+## 2026-06-04 — Parts Master Grid column inventory revised: modelLink/drawingLink/binMin/binMax removed; buildableCount added
+
+**Phase:** 2 (Parts Master Grid implementation, Commit 1 of 7 — backend foundation)
+**Spec section:** spec/parts_master_grid_spec.md (column inventory section)
+**Discovered by:** Consultant during Parts Master prompt drafting, reconciling the original spec's column inventory (modelLink, drawingLink, binMin, binMax included) against Phase 1E user decisions (modelLink/drawingLink excluded for IP protection; binMin/binMax dropped during data import as stale fields not worth bringing forward). Additionally, the buildableCount column was added based on user request during Parts Master scope discussion — the feature surfaced from BOM Editor design work where the rollup computation became operationally salient, and was carried over into the Parts Master Grid as a filter/sort dimension with full Rev 1 treatment.
+**Status:** Resolved-Spec-Updated
+**Commit:** bc3c092
+
+### What the spec says
+
+Prior to this change, spec/parts_master_grid_spec.md (column inventory section) included:
+
+- modelLink (linked URL field)
+- drawingLink (linked URL field)
+- binMin (numeric, minimum reorder threshold)
+- binMax (numeric, maximum stocked count)
+
+And did not include:
+
+- buildableCount (the recursive BOM rollup field)
+
+### What was discovered
+
+Three distinct findings drove this reconciliation:
+
+1. **modelLink and drawingLink columns are excluded by user policy for IP protection.** During Phase 1E source CSV preparation, the user explicitly withheld the Part Model Location and Part Drawing Location columns. The mapping spec (spec/data_import_mapping.md Section 4) documents these as intentionally dropped. The Parts Master spec listing them as grid columns contradicted the import decision. The grid frontend will render placeholder values ("—") for any columns that reference these fields until the user policy changes.
+
+2. **binMin and binMax columns are dropped per user data-quality decision.** Phase 1E mapping decision (spec/data_import_mapping.md Section 4): "Stale data not worth bringing forward." These fields are also not present in the imported data. The grid column inventory listing them would surface always-null values, which is not operationally useful.
+
+3. **buildableCount column added based on operational need surfaced during BOM Editor work and Parts Master scope discussion.** The field represents the recursive rollup of available production capacity ("how many of this Assembly could I build right now from current inventory") and was identified as a high-leverage filter dimension for shop-floor workflows. The computation lives at /lib/bom/buildable-helpers.ts as a single edges-then-DFS approach (the originally-drafted recursive CTE had subtle PostgreSQL semantics issues with multi-level mixed-depth trees; the DFS-with-memoization pattern is correct at all depths and fast at Rev 1 data scale, measured at well under a second for the imported dataset).
+
+### Resolution
+
+Three changes landed in commit bc3c092:
+
+1. **spec/parts_master_grid_spec.md column inventory updated:**
+   - Removed modelLink, drawingLink, binMin, binMax
+   - Added buildableCount with full semantics (computation, null for non-Assemblies, sort/filter behavior, default visibility on Master View and Inventory Check)
+
+2. **spec/parts_master_grid_spec.md new section "Buildable Count Computation"** documenting:
+   - Definition (minimum buildable units from current on-hand inventory)
+   - Recursive semantics (sub-Assemblies factor in)
+   - Inactive child handling (treated as zero stock)
+   - Refresh behavior (computed per grid query, not cached)
+   - Implementation note (DFS with memoization, not a recursive CTE)
+
+3. **prisma/seed.ts Views updated:** Master View and Inventory Check now include buildableCount in their visibleColumns. Other Views do not include it by default; users can add via custom Views.
+
+### Files affected
+
+- spec/parts_master_grid_spec.md (column inventory revisions; new Computation section)
+- lib/bom/buildable-helpers.ts (new file with the computation)
+- lib/parts/schemas.ts (PartRowSchema gains buildableCount)
+- lib/parts/service.ts (queryPartsGrid integrates buildable map)
+- lib/grids/sort-builder.ts (comment annotation)
+- prisma/seed.ts (Views with buildableCount in visibleColumns)
+- scripts/verify-buildable-helpers.ts (new)
+- scripts/verify-grid-endpoint.ts (test cases 11–15)
+- DEVIATIONS.md (this entry)
+
+(No schema changes — buildableCount is computed, not stored.)
+
+---
