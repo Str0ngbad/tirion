@@ -71,7 +71,7 @@ Triggered by "Add Template" button. Opens the Template Form in create mode.
 **Steps section:**
 - Add steps via ProcessType dropdown (searchable)
 - Steps display in order with step number and process type pill
-- Reorder via drag or up/down controls
+- Reorder via up/down controls on each step row
 - Remove step via delete control
 
 **Validation:**
