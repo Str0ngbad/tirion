@@ -55,18 +55,35 @@ type PartRaw = {
   partCost: Prisma.Decimal | null;
   partCostUpdatedAt: Date | null;
   defaultVendor: { vendorName: string } | null;
-  materialSpec: { materialName: string } | null;
+  materialSpec: { materialName: string; form: string } | null;
   procurementCategory: { categoryName: string } | null;
-  routingTemplate: { templateName: string } | null;
+  routingTemplate: {
+    templateName: string;
+    steps: Array<{ processType: { processName: string } }>;
+  } | null;
+  _count: { bomChild: number };
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const PART_INCLUDE = {
   defaultVendor: { select: { vendorName: true } },
-  materialSpec: { select: { materialName: true } },
+  materialSpec: { select: { materialName: true, form: true } },
   procurementCategory: { select: { categoryName: true } },
-  routingTemplate: { select: { templateName: true } },
+  routingTemplate: {
+    select: {
+      templateName: true,
+      steps: {
+        select: { processType: { select: { processName: true } } },
+        orderBy: { stepIndex: "asc" as const },
+      },
+    },
+  },
+  _count: {
+    select: {
+      bomChild: { where: { parentPart: { isActive: true } } },
+    },
+  },
 } as const;
 
 function toPartRow(raw: PartRaw): PartRow {
@@ -100,6 +117,9 @@ function toPartRow(raw: PartRaw): PartRow {
     partCost: raw.partCost !== null ? raw.partCost.toNumber() : null,
     partCostUpdatedAt: raw.partCostUpdatedAt,
     buildableCount: null,
+    materialForm: raw.materialSpec?.form ?? null,
+    assembliesUsedInCount: raw._count.bomChild,
+    processTypes: raw.routingTemplate?.steps.map((s) => s.processType.processName) ?? [],
   };
 }
 

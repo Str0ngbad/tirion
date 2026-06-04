@@ -90,6 +90,9 @@ export const PartRowSchema = z.object({
   partCost: z.number().nullable(),
   partCostUpdatedAt: z.date().nullable(),
   buildableCount: z.number().int().nullable(),
+  materialForm: z.string().nullable(),
+  assembliesUsedInCount: z.number().int().min(0),
+  processTypes: z.array(z.string()),
 });
 
 export const PartDetailSchema = PartRowSchema.extend({

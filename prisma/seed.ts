@@ -216,33 +216,29 @@ async function seedAuditActions() {
 // ─── Views ────────────────────────────────────────────────────────────────────
 
 async function seedViews() {
-  // Column IDs match spec/parts_master_grid_spec.md "Column Inventory".
-  // Display names shown in comments for traceability.
+  // Column IDs match production ColumnId type in app/parts/_lib/columns.ts.
+  // bc3c092 excluded modelLink, drawingLink, binMin, binMax from the column set.
   const masterColumns = [
-    "partNumber",       // Part Number
-    "partName",         // Part Name
-    "partType",         // Type
-    "procurementCategory", // Proc
-    "isActive",         // Active
-    "materialName",     // Material
-    "materialForm",     // Form
-    "stockSize",        // Stock Size
-    "blankLength",      // Length
-    "defaultVendorName", // Vendor
-    "vendorPartNumber", // Vendor Part#
-    "processTypes",     // Routing
-    "machineCycleTime", // Cycle Time
-    "numberOfSetups",   // Setups
-    "stockCount",       // Stock
-    "inventoryLocation", // Location
-    "binMin",           // Bin Min
-    "binMax",           // Bin Max
-    "modelLink",        // Model
-    "drawingLink",      // Drawing
-    "partCost",         // Cost
-    "partCostUpdatedAt", // Cost Updated
-    "usedInCount",      // Used In
-    "buildableCount",   // Buildable
+    "partNumber",           // Part Number
+    "partName",             // Part Name
+    "partType",             // Type
+    "procurementCategory",  // Proc
+    "isActive",             // Active
+    "material",             // Material
+    "materialForm",         // Form
+    "stockSize",            // Stock Size
+    "blankLength",          // Blank Length
+    "vendor",               // Vendor
+    "vendorPartNumber",     // Vendor Part#
+    "routing",              // Routing
+    "machineCycleTime",     // Cycle Time
+    "numberOfSetups",       // Setups
+    "stockCount",           // Stock
+    "inventoryLocation",    // Location
+    "partCost",             // Cost
+    "partCostUpdatedAt",    // Cost Updated
+    "assembliesUsedInCount", // Used In
+    "buildableCount",       // Buildable
   ];
 
   const views = [
@@ -258,15 +254,15 @@ async function seedViews() {
       name: "Material Audit",
       isDefault: false,
       isLocked: false,
-      visibleColumns: ["partNumber", "partName", "materialName", "materialForm", "stockSize", "blankLength", "defaultVendorName"],
-      defaultSort: [{ column: "materialName", direction: "asc" }],
+      visibleColumns: ["partNumber", "partName", "material", "materialForm", "stockSize", "blankLength", "vendor"],
+      defaultSort: [{ column: "material", direction: "asc" }],
       filters: [{ column: "isActive", operator: "is_true" }],
     },
     {
       name: "Inventory Check",
       isDefault: false,
       isLocked: false,
-      visibleColumns: ["partNumber", "partName", "stockCount", "inventoryLocation", "binMin", "binMax", "buildableCount"],
+      visibleColumns: ["partNumber", "partName", "stockCount", "inventoryLocation", "buildableCount"],
       defaultSort: [{ column: "stockCount", direction: "asc" }],
       filters: [{ column: "isActive", operator: "is_true" }],
     },
@@ -274,22 +270,19 @@ async function seedViews() {
       name: "No Routing Flagged",
       isDefault: false,
       isLocked: false,
-      visibleColumns: ["partNumber", "partName", "partType", "procurementCategory", "materialName", "defaultVendorName", "processTypes"],
+      visibleColumns: ["partNumber", "partName", "partType", "procurementCategory", "material", "vendor", "routing"],
       defaultSort: [{ column: "partNumber", direction: "asc" }],
-      // Note: processTypes is the routing column; is_empty means no routing steps assigned.
-      // The routing filter matrix operator (routing_matrix) handles include/exclude;
-      // is_empty is a simpler existence check used here for seed purposes.
-      filters: [{ column: "processTypes", operator: "is_empty" }],
+      // routing column with is_empty: Parts that have no routing template assigned.
+      filters: [{ column: "routing", operator: "is_empty" }],
     },
     {
       name: "Part Identification",
       isDefault: false,
       isLocked: false,
       visibleColumns: [
-        "partNumber", "partName", "procurementCategory", "materialName",
-        "materialForm", "stockSize", "blankLength", "defaultVendorName",
-        "processTypes", "stockCount", "inventoryLocation",
-        "modelLink", "drawingLink", "isActive",
+        "partNumber", "partName", "procurementCategory", "material",
+        "materialForm", "stockSize", "blankLength", "vendor",
+        "routing", "stockCount", "inventoryLocation", "isActive",
       ],
       defaultSort: [{ column: "partNumber", direction: "asc" }],
       filters: [],
@@ -299,7 +292,13 @@ async function seedViews() {
   for (const view of views) {
     await prisma.view.upsert({
       where: { name: view.name },
-      update: {},
+      // Re-seed overwrites visibleColumns and defaultSort so the seed stays
+      // authoritative against the spec. Filters are also rewritten.
+      update: {
+        visibleColumns: view.visibleColumns,
+        defaultSort: view.defaultSort,
+        filters: view.filters as import("@prisma/client").Prisma.InputJsonValue,
+      },
       create: view,
     });
   }

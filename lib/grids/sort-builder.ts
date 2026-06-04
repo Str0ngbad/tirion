@@ -40,13 +40,15 @@ function buildRelationOrderBy(
   direction: "asc" | "desc"
 ): RelationOrderBy | null {
   switch (column) {
+    // Production IDs (material, vendor) and legacy IDs (materialName, defaultVendorName) both accepted.
+    case "material":
     case "materialName":
       return { materialSpec: { materialName: direction } };
     case "materialForm":
       return { materialSpec: { form: direction } };
+    case "vendor":
     case "defaultVendorName":
       return { defaultVendor: { vendorName: direction } };
-    // Both column IDs in use: seed views use "procurementCategory"; PartRow uses "procurementCategoryName".
     case "procurementCategory":
     case "procurementCategoryName":
       return { procurementCategory: { categoryName: direction } };
@@ -76,9 +78,9 @@ export function buildPartSortOrder(
       return relation as Prisma.PartOrderByWithRelationInput;
     }
 
-    // processTypes, usedInCount, and buildableCount are not DB-sortable columns.
-    // buildableCount is computed post-query in service.ts; processTypes and usedInCount
-    // are display-only. Any of these reaching this builder indicates a programming error.
+    // routing/processTypes and assembliesUsedInCount/_count columns are not DB-sortable.
+    // buildableCount is computed post-query in service.ts.
+    // Any of these reaching this builder indicates a programming error.
     throw new Error(
       `buildPartSortOrder: unknown or unsortable column "${column}". ` +
         `Add it to SCALAR_COLUMNS or buildRelationOrderBy if sortable.`

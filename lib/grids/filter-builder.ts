@@ -12,19 +12,22 @@ type ColumnPath =
 function resolveColumnPath(column: string): ColumnPath | null {
   switch (column) {
     // Relation-backed display columns
+    // Production IDs (material, vendor) and legacy IDs (materialName, defaultVendorName) both accepted.
+    case "material":
     case "materialName":
       return { kind: "relation", relation: "materialSpec", field: "materialName" };
     case "materialForm":
       return { kind: "relation", relation: "materialSpec", field: "form" };
+    case "vendor":
     case "defaultVendorName":
       return { kind: "relation", relation: "defaultVendor", field: "vendorName" };
-    // Both column IDs in use: seed views use "procurementCategory"; PartRow uses "procurementCategoryName".
     case "procurementCategory":
     case "procurementCategoryName":
       return { kind: "relation", relation: "procurementCategory", field: "categoryName" };
     case "routingTemplateName":
       return { kind: "relation", relation: "routingTemplate", field: "templateName" };
     // Custom-handled columns — caller must handle these before calling resolveColumnPath.
+    case "routing":
     case "processTypes":
       return null;
     // All other columns are scalar fields on Part.
@@ -137,9 +140,8 @@ export function buildPartWhereClause(
 
       // ── Null checks (string) ────────────────────────────────────────────── //
       case "is_empty": {
-        // Special case: is_empty on processTypes means "no routing template assigned".
-        // This is a null check on routingTemplateDefinitionId, not on processTypes itself.
-        if (filter.column === "processTypes") {
+        // Special case: is_empty on routing/processTypes means "no routing template assigned".
+        if (filter.column === "routing" || filter.column === "processTypes") {
           clauses.push({ routingTemplateDefinitionId: null });
         } else {
           const path = resolveColumnPath(filter.column);
@@ -149,7 +151,7 @@ export function buildPartWhereClause(
         break;
       }
       case "is_not_empty": {
-        if (filter.column === "processTypes") {
+        if (filter.column === "routing" || filter.column === "processTypes") {
           clauses.push({ routingTemplateDefinitionId: { not: null } });
         } else {
           const path = resolveColumnPath(filter.column);

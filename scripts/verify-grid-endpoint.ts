@@ -311,6 +311,58 @@ async function main() {
       "15. Sort by buildableCount desc executes without error"
     );
 
+    console.log("\n── materialForm and assembliesUsedInCount fields ───────────────\n");
+
+    // 16. Every PartRow has a materialForm field (string | null)
+    const allForNewFields = await queryPartsGrid({ filters: [], sort: [] });
+    assert(
+      allForNewFields.every((r) => "materialForm" in r),
+      "16. Every PartRow has materialForm field"
+    );
+
+    // 17. Part fixtures (no materialSpec) have materialForm = null
+    const partFixturesForForm = allForNewFields.filter((r) =>
+      [p1.partId, p2.partId, p3.partId].includes(r.partId)
+    );
+    assert(
+      partFixturesForForm.every((r) => r.materialForm === null),
+      "17. Fixture rows with no materialSpec have materialForm = null"
+    );
+
+    // 18. Every PartRow has an assembliesUsedInCount field (number >= 0)
+    assert(
+      allForNewFields.every((r) => "assembliesUsedInCount" in r && typeof r.assembliesUsedInCount === "number" && r.assembliesUsedInCount >= 0),
+      "18. Every PartRow has assembliesUsedInCount (number >= 0)"
+    );
+
+    // 19. Fixture Parts not used in any BOM have assembliesUsedInCount = 0
+    assert(
+      partFixturesForForm.every((r) => r.assembliesUsedInCount === 0),
+      "19. Fixture Parts with no parent BOM edges have assembliesUsedInCount = 0"
+    );
+
+    // 20. Every PartRow has a processTypes field (string[])
+    assert(
+      allForNewFields.every((r) => "processTypes" in r && Array.isArray(r.processTypes)),
+      "20. Every PartRow has processTypes field (string[])"
+    );
+
+    // 21. Part fixtures with routing template have processTypes.length >= 1
+    const fixturesWithRouting = allForNewFields.filter((r) =>
+      [p1.partId, p3.partId].includes(r.partId)
+    );
+    assert(
+      fixturesWithRouting.every((r) => r.processTypes.length >= 1),
+      "21. Fixture rows with routing template have processTypes.length >= 1"
+    );
+
+    // 22. Part fixture with no routing template has processTypes = []
+    const fixtureWithoutRouting = allForNewFields.find((r) => r.partId === p2.partId);
+    assert(
+      fixtureWithoutRouting?.processTypes.length === 0,
+      "22. Fixture row with no routing template has processTypes = []"
+    );
+
     console.log("\n── Regression: prior verification scripts ──────────────────────\n");
     console.log("  Run the following to confirm no regressions:");
     console.log("  npx tsx scripts/verify-sort-builder.ts");
