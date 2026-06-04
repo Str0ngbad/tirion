@@ -1,0 +1,89 @@
+PHASE 1E ROUTING TEMPLATE SYNTHESIS SUMMARY
+Generated: 2026-06-04T02:00:31.304Z
+
+OVERALL
+- Source rows processed: 1850 Parts, 371 Assemblies
+- Source rows skipped: 43 Parts (blank rows), 63 Assemblies (childless)
+- Synthesized templates: 22
+  - Containing Parts only: 13
+  - Containing Assemblies only: 9
+  - Containing both: 0  (correct — no mixed templates)
+- Total Parts assigned: 1850 across 13 templates
+- Total Assemblies assigned: 371 across 9 templates
+
+HEURISTIC FINDINGS
+
+3D Print Conflict
+The following Parts have Category=3D but also have additional process
+flags set. Synthesis ignores the additional flags and routes them as
+3D Print only. Review whether these are misclassifications:
+
+  58-12-4-02 (Perpendicular Filterboard Cover): flags set: Machine=Y
+  83-01-2-11 (PB-H WAD Encoder Ring Pulley): flags set: Machine=Y
+
+Single-Part Templates
+The following synthesized templates have only 1 Part or 1 Assembly
+assigned. Candidates for review — possibly misclassified rows or
+genuinely unique routings:
+
+  Template: Weld + Blacken
+    Part: 52-10-1-01 (Clamp Bracket)
+  Template: Assemble + Paint
+    Assembly: 55-10-0-00 (PB-M Wrap Around Drive Assembly (standard height columns))
+
+Welded Assemblies
+49 Assemblies use Weld and have it as the first step (replacing
+Assemble per the synthesis rule). User noted that exceptions may
+exist — Assemblies that should have both Weld and Assemble steps.
+These are not enumerated here due to volume; the user reviews from
+operational memory post-import.
+
+Naming Collisions (ACTION REQUIRED)
+The following template names are shared by both a Part template and an
+Assembly template. At import, templates are looked up by name — these pairs
+would incorrectly merge into a single template. Use user_rename in the CSV
+to give each a distinct name before the import script runs.
+
+  Name: "Weld"
+    Parts: Purchase + Receive + Weld + Distribution
+    Suggested rename: "Weld (Parts)"
+    Assemblies: Weld + Distribution
+    Suggested rename: "Weld (Assemblies)"
+  Name: "Weld + Paint"
+    Parts: Purchase + Receive + Weld + Paint + Distribution
+    Suggested rename: "Weld + Paint (Parts)"
+    Assemblies: Weld + Paint + Distribution
+    Suggested rename: "Weld + Paint (Assemblies)"
+  Name: "Weld + Blacken"
+    Parts: Purchase + Receive + Weld + Blacken + Distribution
+    Suggested rename: "Weld + Blacken (Parts)"
+    Assemblies: Weld + Blacken + Distribution
+    Suggested rename: "Weld + Blacken (Assemblies)"
+
+Plain Assemblies
+316 Assemblies use just Assemble + Distribution (no middle
+steps). For context.
+
+TEMPLATE INVENTORY
+Purchase Only: 776 Parts, 0 Assemblies
+Machine: 478 Parts, 0 Assemblies
+Machine + Blacken: 450 Parts, 0 Assemblies
+Assemble: 0 Parts, 316 Assemblies
+Paint: 33 Parts, 0 Assemblies
+3D Print: 26 Parts, 0 Assemblies
+Weld + Paint: 0 Parts, 22 Assemblies
+Machine + Paint: 17 Parts, 0 Assemblies
+Machine + Weld: 17 Parts, 0 Assemblies
+Blacken: 16 Parts, 0 Assemblies
+Weld: 15 Parts, 0 Assemblies
+Weld: 0 Parts, 12 Assemblies
+Machine + Weld + Paint: 9 Parts, 0 Assemblies
+Weld + Blacken: 0 Parts, 9 Assemblies
+Weld + Paint: 9 Parts, 0 Assemblies
+Weld + Machine + Paint: 0 Parts, 4 Assemblies
+Assemble + Machine: 0 Parts, 3 Assemblies
+Machine + Weld + Blacken: 3 Parts, 0 Assemblies
+Assemble + Machine + Blacken: 0 Parts, 2 Assemblies
+Weld + Machine: 0 Parts, 2 Assemblies
+Assemble + Paint: 0 Parts, 1 Assemblies
+Weld + Blacken: 1 Parts, 0 Assemblies
