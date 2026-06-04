@@ -89,6 +89,7 @@ export const PartRowSchema = z.object({
   notes: z.string().nullable(),
   partCost: z.number().nullable(),
   partCostUpdatedAt: z.date().nullable(),
+  buildableCount: z.number().int().nullable(),
 });
 
 export const PartDetailSchema = PartRowSchema.extend({

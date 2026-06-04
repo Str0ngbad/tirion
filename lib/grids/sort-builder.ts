@@ -76,7 +76,9 @@ export function buildPartSortOrder(
       return relation as Prisma.PartOrderByWithRelationInput;
     }
 
-    // processTypes and usedInCount are display-only columns; no Prisma sort path exists.
+    // processTypes, usedInCount, and buildableCount are not DB-sortable columns.
+    // buildableCount is computed post-query in service.ts; processTypes and usedInCount
+    // are display-only. Any of these reaching this builder indicates a programming error.
     throw new Error(
       `buildPartSortOrder: unknown or unsortable column "${column}". ` +
         `Add it to SCALAR_COLUMNS or buildRelationOrderBy if sortable.`

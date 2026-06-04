@@ -1,5 +1,6 @@
 import { Prisma, PartType } from "@prisma/client";
 import { prisma } from "@/lib/db/client";
+import { buildableCountForAllAssemblies } from "@/lib/bom/buildable-helpers";
 import { isP2002OnField } from "@/lib/db/p2002";
 import { mutateWithAudit } from "@/lib/audit/mutateWithAudit";
 import { getView } from "@/lib/views/service";
@@ -98,6 +99,7 @@ function toPartRow(raw: PartRaw): PartRow {
     notes: raw.notes,
     partCost: raw.partCost !== null ? raw.partCost.toNumber() : null,
     partCostUpdatedAt: raw.partCostUpdatedAt,
+    buildableCount: null,
   };
 }
 
@@ -452,6 +454,47 @@ export async function reactivatePart(partId: number, userId: number): Promise<Pa
   });
 }
 
+function applyBuildableFilters(
+  buildableCount: number | null,
+  filters: import("@/lib/views/types").FilterObject[]
+): boolean {
+  for (const filter of filters) {
+    switch (filter.operator) {
+      case "num_equals":
+        if (buildableCount !== filter.value) return false;
+        break;
+      case "num_not_equals":
+        if (buildableCount === filter.value) return false;
+        break;
+      case "greater_than":
+        if (buildableCount === null || buildableCount <= filter.value) return false;
+        break;
+      case "greater_than_or_eq":
+        if (buildableCount === null || buildableCount < filter.value) return false;
+        break;
+      case "less_than":
+        if (buildableCount === null || buildableCount >= filter.value) return false;
+        break;
+      case "less_than_or_eq":
+        if (buildableCount === null || buildableCount > filter.value) return false;
+        break;
+      case "between":
+        if (buildableCount === null || buildableCount < filter.value.from || buildableCount > filter.value.to) return false;
+        break;
+      case "num_is_empty":
+        if (buildableCount !== null) return false;
+        break;
+      case "num_is_not_empty":
+        if (buildableCount === null) return false;
+        break;
+      default:
+        // Non-numeric operators are not valid for buildableCount; skip
+        break;
+    }
+  }
+  return true;
+}
+
 export async function queryPartsGrid(input: GridQueryBody): Promise<PartRow[]> {
   let filters: import("@/lib/views/types").FilterObject[];
   let sort: import("@/lib/views/types").SortSpec[];
@@ -465,11 +508,17 @@ export async function queryPartsGrid(input: GridQueryBody): Promise<PartRow[]> {
     sort = input.sort;
   }
 
-  const baseWhere = buildPartWhereClause(filters);
-  const orderBy = buildPartSortOrder(sort);
+  // Extract buildableCount filters and sorts — handled post-query since
+  // buildableCount is computed, not a DB column.
+  const buildableFilters = filters.filter((f) => f.column === "buildableCount");
+  const dbFilters = filters.filter((f) => f.column !== "buildableCount");
+  const buildableSortSpecs = sort.filter((s) => s.column === "buildableCount");
+  const dbSort = sort.filter((s) => s.column !== "buildableCount");
 
-  // Overlay the activeFilter on top of the base where clause.
-  // Default is "true" — the grid hides inactive Parts unless explicitly requested.
+  const baseWhere = buildPartWhereClause(dbFilters);
+  const orderBy = buildPartSortOrder(dbSort);
+
+  // Default activeFilter is "true" — grid hides inactive Parts unless overridden.
   const activeFilterValue = input.activeFilter ?? "true";
   let where: Prisma.PartWhereInput;
   if (activeFilterValue === "all") {
@@ -479,6 +528,33 @@ export async function queryPartsGrid(input: GridQueryBody): Promise<PartRow[]> {
     where = { AND: [{ isActive }, baseWhere] };
   }
 
-  const rows = await prisma.part.findMany({ where, orderBy, include: PART_INCLUDE });
-  return rows.map((r) => toPartRow(r as PartRaw));
+  const [rawRows, buildableMap] = await Promise.all([
+    prisma.part.findMany({ where, orderBy, include: PART_INCLUDE }),
+    buildableCountForAllAssemblies(),
+  ]);
+
+  let rows: PartRow[] = rawRows.map((r) => {
+    const base = toPartRow(r as PartRaw);
+    return {
+      ...base,
+      buildableCount: base.partType === "Assembly" ? (buildableMap.get(base.partId) ?? 0) : null,
+    };
+  });
+
+  // Apply buildableCount filters in TypeScript
+  if (buildableFilters.length > 0) {
+    rows = rows.filter((row) => applyBuildableFilters(row.buildableCount, buildableFilters));
+  }
+
+  // Apply buildableCount sort in TypeScript (last, after DB sort)
+  if (buildableSortSpecs.length > 0) {
+    const spec = buildableSortSpecs[0]!;
+    rows = rows.sort((a, b) => {
+      const av = a.buildableCount ?? -1;
+      const bv = b.buildableCount ?? -1;
+      return spec.direction === "asc" ? av - bv : bv - av;
+    });
+  }
+
+  return rows;
 }

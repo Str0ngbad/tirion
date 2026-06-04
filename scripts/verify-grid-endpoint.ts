@@ -261,6 +261,56 @@ async function main() {
       "Unknown viewId → ViewNotFoundError"
     );
 
+    console.log("\n── buildableCount field tests ──────────────────────────────────\n");
+
+    // 11. Every PartRow has a buildableCount field (number | null)
+    const allForBuildable = await queryPartsGrid({ filters: [], sort: [] });
+    assert(
+      allForBuildable.every((r) => "buildableCount" in r),
+      "11. Every PartRow has buildableCount field"
+    );
+
+    // 12. Part fixture rows have buildableCount = null (Parts, not Assemblies)
+    const partFixtureRows = allForBuildable.filter((r) =>
+      [p1.partId, p2.partId, p3.partId].includes(r.partId)
+    );
+    assert(
+      partFixtureRows.length === 3 && partFixtureRows.every((r) => r.buildableCount === null),
+      "12. Part-type fixture rows have buildableCount = null"
+    );
+
+    // 13. Filter buildableCount num_is_empty returns only Part-type rows (not Assemblies)
+    // (Parts have null buildableCount; filtering num_is_empty should exclude Assemblies)
+    const emptyBuildableRows = await queryPartsGrid({
+      filters: [{ column: "buildableCount", operator: "num_is_empty" }],
+      sort: [],
+    });
+    assert(
+      emptyBuildableRows.every((r) => r.buildableCount === null),
+      "13. buildableCount num_is_empty returns only rows with null buildableCount"
+    );
+
+    // 14. Filter buildableCount num_is_not_empty returns only Assembly rows
+    const nonEmptyBuildableRows = await queryPartsGrid({
+      filters: [{ column: "buildableCount", operator: "num_is_not_empty" }],
+      sort: [],
+    });
+    assert(
+      nonEmptyBuildableRows.every((r) => r.buildableCount !== null),
+      "14. buildableCount num_is_not_empty returns only rows with numeric buildableCount"
+    );
+
+    // 15. Sort by buildableCount desc: Assemblies sort before Parts (Parts have null → -1 in sort)
+    // This test only checks that the sort doesn't error; correctness verified in verify-buildable-helpers.ts
+    const sortedByBuildable = await queryPartsGrid({
+      filters: [],
+      sort: [{ column: "buildableCount", direction: "desc" }],
+    });
+    assert(
+      Array.isArray(sortedByBuildable) && sortedByBuildable.length > 0,
+      "15. Sort by buildableCount desc executes without error"
+    );
+
     console.log("\n── Regression: prior verification scripts ──────────────────────\n");
     console.log("  Run the following to confirm no regressions:");
     console.log("  npx tsx scripts/verify-sort-builder.ts");

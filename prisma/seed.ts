@@ -242,6 +242,7 @@ async function seedViews() {
     "partCost",         // Cost
     "partCostUpdatedAt", // Cost Updated
     "usedInCount",      // Used In
+    "buildableCount",   // Buildable
   ];
 
   const views = [
@@ -265,7 +266,7 @@ async function seedViews() {
       name: "Inventory Check",
       isDefault: false,
       isLocked: false,
-      visibleColumns: ["partNumber", "partName", "stockCount", "inventoryLocation", "binMin", "binMax"],
+      visibleColumns: ["partNumber", "partName", "stockCount", "inventoryLocation", "binMin", "binMax", "buildableCount"],
       defaultSort: [{ column: "stockCount", direction: "asc" }],
       filters: [{ column: "isActive", operator: "is_true" }],
     },

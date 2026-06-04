@@ -147,6 +147,11 @@ and sourced from a specific Part field or a derived computation.
 | Column ID | Display Name | Source | Type | Notes |
 |-----------|--------------|--------|------|-------|
 | usedInCount | Used In | Derived: count of BOM records where this Part is a child | int | Read-only; surfaces the count of parent assemblies that reference this Part as a child. Useful for identifying parts considered for deactivation. |
+| buildableCount | Buildable | Derived: minimum complete units buildable from current on-hand inventory across all descendant Parts | int | Assembly rows only; null for Part-type rows. Computed post-query via memoized DFS — not a DB column. See "Buildable Count Computation" section below. |
+
+**Excluded columns:**
+
+The following Part fields are present in the schema and Part Form but are intentionally omitted from the grid column inventory: `modelLink`, `drawingLink`, `binMin`, `binMax`. These fields exist on the Part record and are editable via the Part Form, but are not surfaced as filterable/sortable grid columns in Rev 1. They may be added in a future revision if operational demand warrants it.
 
 The grid renders columns in the order specified by the active View's
 visible_columns array. Users can reorder columns via the Columns
@@ -156,6 +161,44 @@ enums to support future schema additions (Rev 2 columns) without
 breaking existing saved Views — a View referencing a column
 identifier that doesn't yet exist would be silently omitted from
 the rendered grid until that column is added.
+
+#### Buildable Count Computation
+
+The `buildableCount` column is a derived, read-only integer available only
+for Assembly-type rows. It answers: "how many complete units of this assembly
+could be built right now from current on-hand inventory across all descendants?"
+
+**Algorithm:** bottom-up memoized DFS over the BOM tree.
+
+For a leaf Part: buildable = `stockCount` (null treated as 0).
+
+For an Assembly: buildable = `MIN over all active child edges of floor(child.buildable / edge.quantity)`.
+
+Inactive child Parts are treated as stockCount = 0. An Assembly with no active
+children has buildableCount = 0. Part-type rows have buildableCount = null
+(the column is not meaningful for non-Assembly Parts).
+
+**Implementation notes:**
+
+- Computed in the service layer (`lib/bom/buildable-helpers.ts`) via a
+  single-pass query of all active Parts and all BOM edges, then a memoized
+  DFS pass. This runs concurrently with the main Part query via `Promise.all`.
+- `buildableCount` is not a database column and cannot be filtered or sorted
+  at the Prisma layer. Filtering and sorting on this column are applied
+  post-query in TypeScript (see `lib/parts/service.ts`).
+- A recursive SQL CTE approach was considered and rejected: CTEs have subtle
+  correctness issues for mixed-depth trees where the same sub-assembly appears
+  at multiple depths. The application-level DFS is unambiguously correct.
+
+**Filter operators supported:** all numeric operators (`equals`, `does not equal`,
+`greater than`, `greater than or equal`, `less than`, `less than or equal`,
+`between`, `is empty`, `is not empty`). `is empty` returns only Part-type rows
+(null buildableCount); `is not empty` returns only Assembly rows.
+
+**Known gap:** the `is_none_of` operator is not implemented for this column
+(nor for any numeric column in Rev 1). This is not a practical gap for
+buildableCount since the column is numeric; categorical `is_none_of` semantics
+do not apply.
 
 #### Stock Count Type Note
 
