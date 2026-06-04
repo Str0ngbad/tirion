@@ -993,3 +993,42 @@ These are things explored in the mockup that are NOT recommended for the impleme
 - **Categorical filter exclude operator not implemented:** categorical filter popovers (e.g., Material filter with a list of material values) support "is any of" (include) but do not yet support "is none of" (exclude). This asymmetry was noted as a known limitation — the Routing filter has exclude semantics but general categorical filters do not. Documenting here so this is not re-explored from scratch; if the implementation track adds it, the Routing filter's include/exclude matrix is a good interaction pattern reference.
 
 - **Light mode aesthetic:** the current mockup state is functional but visually unpolished. The user has noted interest in revisiting the visual design post-Rev 1 with specific design intent (typography, color system, spacing rhythm) rather than as a parity exercise against the current mockup. The mockup's visual state is not a target for the implementation; it is a functional skeleton.
+
+---
+
+## Cross-Surface Decisions
+
+Design and implementation decisions that apply across multiple surfaces and are tracked here rather than inside a single session entry.
+
+### Condense toggle as cross-surface viewing affordance
+
+The Condense toggle (a shadcn Switch labeled "Condense") appears in
+multiple mockup surfaces: the execution lens views (where it
+originated), the Routing Template Library, and is planned for the
+Parts Grid. The toggle controls whether ProcessTypeChip instances
+render in compact mode (color swatch only) or normal mode (color
+stripe with label).
+
+Intent: surfaces that show routing step sequences in dense tabular
+contexts benefit from a viewing-density control. Labeled chips are
+more readable; compact chips fit more sequence detail in less
+horizontal space. The toggle lets users choose per-surface based on
+their current task.
+
+Implementation choices made for Rev 1:
+- The toggle is implemented as a shared component
+  (/components/condense-toggle.tsx) for reuse across surfaces.
+- Condense state is per-surface (each surface holds its own
+  useState). Not currently a user-wide preference. Different
+  surfaces declare different defaults: the Routing Template Library
+  defaults to non-condensed (labeled chips); the Parts Grid will
+  default to condensed (density at scale matters more there).
+- If a global preference layer is wanted later, the per-surface
+  useState can migrate to a shared hook without changing the
+  component's API.
+- Only the Sequence column (or equivalent) responds to condense.
+  Other surface elements (legend bars, form fields, individual step
+  cards in form UIs) always render at full label fidelity.
+
+Discovered: Phase 2 Routing Template Library UI implementation.
+First implementation: this commit. Next planned use: Parts Grid.

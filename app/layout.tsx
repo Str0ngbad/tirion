@@ -4,6 +4,7 @@ import "./globals.css";
 import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { QueryProvider } from "@/components/query-provider";
 
 const inter = Inter({subsets:['latin'],variable:'--font-sans'});
 
@@ -40,10 +41,12 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <div className="fixed top-4 right-4 z-50">
-            <ThemeToggle />
-          </div>
-          {children}
+          <QueryProvider>
+            <div className="fixed top-4 right-4 z-50">
+              <ThemeToggle />
+            </div>
+            {children}
+          </QueryProvider>
         </ThemeProvider>
       </body>
     </html>
