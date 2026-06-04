@@ -253,7 +253,11 @@ def main() -> None:
                 "stock_size": stock,
                 "length": length,
                 "suggested_form": suggested_form,
-                "user_resolved_form": "",
+                # Pre-fill user_resolved_form when the heuristic is confident.
+                # Equal-dim → Square Bar and two-dim → Flat are reliable per user
+                # confirmation; D-suffix, OD/ID patterns similarly unambiguous.
+                # Blank suggested_form stays blank — user resolves manually.
+                "user_resolved_form": suggested_form,
                 "heuristic_match": heuristic_name,
                 "notes": "",
             })
