@@ -4,20 +4,20 @@ Machine,Purchase + Receive + Machine + Distribution,478,0,,keep,
 Machine + Blacken,Purchase + Receive + Machine + Blacken + Distribution,450,0,,keep,
 Assemble,Assemble + Distribution,0,316,,keep,
 Paint,Purchase + Receive + Paint + Distribution,33,0,,keep,
-3D Print,Purchase + Receive + 3D Print + Distribution,26,0,,review,2 of 26 Parts have additional flags set (3D Print conflict)
-Weld + Paint,Weld + Paint + Distribution,0,22,,review,"22 Assemblies use Weld; user noted exceptions may exist; NAME COLLISION: another template shares this name — rename one (e.g. ""Weld + Paint (Assemblies)"")"
+3D Print,Purchase + Receive + 3D Print + Distribution,26,0,,keep,2 of 26 Parts have additional flags set (3D Print conflict) — user reviewed and accepted
+Weld + Paint,Weld + Paint + Distribution,0,22,,keep,22 Assemblies use Weld; user noted exceptions may exist
 Machine + Paint,Purchase + Receive + Machine + Paint + Distribution,17,0,,keep,
-Machine + Weld,Purchase + Receive + Machine + Weld + Distribution,17,0,,keep,
+Machine + Weld,Purchase + Receive + Machine + Weld + Distribution,17,0,Machine,merge,"Weld flag on these Parts reflects parent-assembly process not a Part step — correct routing is Machine only; merge into: Machine"
 Blacken,Purchase + Receive + Blacken + Distribution,16,0,,keep,
-Weld,Purchase + Receive + Weld + Distribution,15,0,,review,"NAME COLLISION: another template shares this name — rename one (e.g. ""Weld (Parts)"")"
-Weld,Weld + Distribution,0,12,,review,"12 Assemblies use Weld; user noted exceptions may exist; NAME COLLISION: another template shares this name — rename one (e.g. ""Weld (Assemblies)"")"
-Machine + Weld + Paint,Purchase + Receive + Machine + Weld + Paint + Distribution,9,0,,keep,
-Weld + Blacken,Weld + Blacken + Distribution,0,9,,review,"9 Assemblies use Weld; user noted exceptions may exist; NAME COLLISION: another template shares this name — rename one (e.g. ""Weld + Blacken (Assemblies)"")"
-Weld + Paint,Purchase + Receive + Weld + Paint + Distribution,9,0,,review,"NAME COLLISION: another template shares this name — rename one (e.g. ""Weld + Paint (Parts)"")"
+Weld,Purchase + Receive + Weld + Distribution,15,0,Purchase Only,merge,"Weld flag on these Parts reflects parent-assembly process not a Part step — correct routing is Purchase Only; merge into: Purchase Only"
+Weld,Weld + Distribution,0,12,,keep,12 Assemblies use Weld; user noted exceptions may exist
+Machine + Weld + Paint,Purchase + Receive + Machine + Weld + Paint + Distribution,9,0,Machine,merge,"Weld and Paint flags reflect parent-assembly processes not Part steps — correct routing is Machine only; merge into: Machine"
+Weld + Blacken,Weld + Blacken + Distribution,0,9,,keep,9 Assemblies use Weld; user noted exceptions may exist
+Weld + Paint,Purchase + Receive + Weld + Paint + Distribution,9,0,Purchase Only,merge,"Weld and Paint flags reflect parent-assembly processes not a Part step — correct routing is Purchase Only; merge into: Purchase Only"
 Weld + Machine + Paint,Weld + Machine + Paint + Distribution,0,4,,review,4 Assemblies use Weld; user noted exceptions may exist
 Assemble + Machine,Assemble + Machine + Distribution,0,3,,keep,
-Machine + Weld + Blacken,Purchase + Receive + Machine + Weld + Blacken + Distribution,3,0,,keep,
+Machine + Weld + Blacken,Purchase + Receive + Machine + Weld + Blacken + Distribution,3,0,Machine,merge,"Weld and Blacken flags reflect parent-assembly processes not Part steps — correct routing is Machine only; merge into: Machine"
 Assemble + Machine + Blacken,Assemble + Machine + Blacken + Distribution,0,2,,keep,
-Weld + Machine,Weld + Machine + Distribution,0,2,,review,2 Assemblies use Weld; user noted exceptions may exist
-Assemble + Paint,Assemble + Paint + Distribution,0,1,,review,single-Assembly candidate: 55-10-0-00
-Weld + Blacken,Purchase + Receive + Weld + Blacken + Distribution,1,0,,review,"single-Part candidate: 52-10-1-01; NAME COLLISION: another template shares this name — rename one (e.g. ""Weld + Blacken (Parts)"")"
+Weld + Machine,Weld + Machine + Distribution,0,2,,keep,2 Assemblies use Weld; user noted exceptions may exist
+Assemble + Paint,Assemble + Paint + Distribution,0,1,Assemble,merge,Paint flag is a data error — correct routing is Assemble only; merge into: Assemble
+Weld + Blacken,Purchase + Receive + Weld + Blacken + Distribution,1,0,Purchase Only,merge,"Weld and Blacken flags reflect parent-assembly processes not a Part step — correct routing is Purchase Only; merge into: Purchase Only"
