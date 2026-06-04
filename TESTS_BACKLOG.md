@@ -484,6 +484,71 @@ the Part Master CSV demonstrated the constraint did not match shop reality.
 
 ---
 
+### Precision Ground Steel Parts imported with null materialSpec
+
+The Phase 1E import (commit 12ad34b) left 8 Parts with materialSpecId
+null because their Material value ("Precision Ground Steel") was not
+in /data-import/material_normalization.csv. The consultant-user
+discussion during Phase 1E mapping settled on A36 / Precision Ground
+Flat as the canonical mapping for the most common case, but the value
+ranges across multiple forms in the source data (not all are Flat).
+
+The user routed this through material_mixed_form_resolution.csv during
+the mapping pass to handle the multi-form case, but the import script
+either did not match the csv_material_value spelling in the resolution
+file, or did not consult the resolution file for these specific Parts.
+Root cause not investigated at the time; the 8 affected Parts are a
+small enough set to fix manually post-import via the Parts Master UI.
+
+Action when convenient: when the Parts Master UI is functional, list
+the 8 affected Parts (query: Part where Material in raw source =
+"Precision Ground Steel") and assign the correct MaterialSpec per
+Part based on Stock Size:
+- Flat stock sizes → A36 / Precision Ground Flat
+- Round stock sizes → likely O1 / Precision Ground Round or similar
+  (consult per Part)
+- Other forms → consult per Part
+
+Discovered: Phase 1E import-report findings, commit 12ad34b.
+Suggested timing: during initial Parts Master UI use.
+
+---
+
+### Bundle Assemblies will eventually use Distribution-only routing
+
+Phase 1E imported all real-shop Assemblies through the synthesized
+routing templates. The Assembly routing synthesis pairs an
+Assemble or Weld step with Distribution (and any middle steps from
+CSV flags).
+
+Some Assemblies in the imported data are "bundle" Assemblies — they
+represent a shipping unit that aggregates Parts and sub-Assemblies
+without itself requiring any assembly work. The synthesis assigned
+these to the standard "Assemble" template, which is functionally
+fine (an empty Assemble step on a bundle is a no-op operationally)
+but not semantically accurate.
+
+The right long-term model is a "Distribution-only" routing template
+(just the Distribution ProcessType, no Assemble, no Machine, etc.)
+for bundle Assemblies. This template doesn't currently exist in the
+imported data because the synthesis algorithm always pairs
+Distribution with at least one work step.
+
+Action when convenient: when the Routing Template Editor UI is
+functional, create a "Distribution" template (single step:
+Distribution ProcessType only) and reassign the bundle Assemblies
+to use it. The bundle Assemblies are identifiable by user knowledge;
+no programmatic identifier marks them.
+
+Not urgent. The current Assemble assignment produces correct
+behavior for now.
+
+Discovered: Phase 1E wrap-up discussion.
+Suggested timing: during initial Routing Template Editor UI use, or
+later as bundle Assemblies are reviewed operationally.
+
+---
+
 ## Operational Patterns
 
 ### Prisma migrations require manual handling in Claude Code's bash tool
@@ -582,6 +647,43 @@ Discovered: Phase 1E, during verify-grid-endpoint.ts fix.
 Action: None for now. Revisit if the pattern proliferates beyond
 about 6-7 scripts or if seed coordination across scripts becomes a
 source of bugs.
+
+---
+
+### Import script runtime characteristics
+
+The Phase 1E import script (scripts/import-prior-shop-data.ts, commit
+12ad34b) took ~65 minutes for ~1850 Parts + ~370 Assemblies + ~2330
+BOM edges against Neon. The consultant predicted 3-5 minutes; actual
+was ~9x that.
+
+Cause: each createPart service call performs 4-5 sequential DB queries
+for FK pre-validation (defaultVendor active check, materialSpec active
+check, procurementCategory active check, routingTemplate active check)
+plus the transaction itself (Part insert + audit log write). At Neon's
+network latency (~200ms per round-trip including TLS), per-Part cost
+runs ~1-2 seconds. Multiplied across 1850 Parts plus BOM edges and
+Assemblies, ~65 minutes is the actual cost.
+
+The data outcomes are correct — idempotency was verified by re-running
+in commit mode and observing zero new entities created. The import
+worked; it was just slow.
+
+Optimizations available if re-import is needed at higher frequency:
+- Pre-cache FK lookups (Vendor, MaterialSpec, ProcurementCategory,
+  RoutingTemplate) in memory at script start, eliminating per-Part FK
+  queries
+- Batch Part inserts inside larger transactions (cost: coarser error
+  reporting per row)
+- Run against a local Postgres instance instead of Neon (eliminates
+  network latency)
+
+Not worth doing for the one-off import. Logged so future runtime
+estimates are calibrated and so the optimization path is documented
+if a frequent-import scenario emerges (e.g., a customer with similar
+prior-tool data wanting to migrate).
+
+Discovered: Phase 1E import, commit 12ad34b.
 
 ---
 
