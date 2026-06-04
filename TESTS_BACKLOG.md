@@ -177,6 +177,30 @@ Phase: 1A — observed but deferred
 
 ---
 
+### Pre-existing TypeScript errors in scripts/import-prior-shop-data.ts
+
+The Phase 1E import script (scripts/import-prior-shop-data.ts,
+commit 12ad34b) has pre-existing TypeScript errors that have
+persisted through subsequent UI work (commits 65d45ff and e88672d).
+Each new commit has confirmed the errors are isolated to the
+import script and don't affect production code.
+
+The script ran successfully and produced correct data outcomes
+(the imported data is valid and complete). The TypeScript errors
+are at compile-time only — likely implicit `any` types or non-null
+assertions that work at runtime but don't satisfy strict mode.
+
+Action when convenient: read the script, identify the specific
+errors, fix them. Likely a 30-60 minute task. Worth doing before
+the next major data import (if any) so the script doesn't accrue
+more debt.
+
+Discovered: ongoing observation across Phase 2 UI commits.
+Suggested timing: during a quiet maintenance pass, or as a warmup
+task before another large implementation.
+
+---
+
 ## Spec Consistency
 
 ### UI surface naming not locked in terminology_lock
@@ -317,6 +341,46 @@ both spec/seed_data_spec.md and prisma/seed.ts; backfill any AuditLog
 entries already written under the old action names.
 
 Suggested timing: Phase 10 spec reconciliation pass.
+
+---
+
+### partsReferencingCount consistency between list and detail endpoints
+
+The Routing Template service has two paths that produce
+`partsReferencingCount`:
+
+- `toTemplateRow` (used by listRoutingTemplates): derives the count
+  from Prisma's `_count.parts` on the relation.
+- `getRoutingTemplate` (used by detail fetch): explicitly filters to
+  active-only parts (see commit e88672d).
+
+Code's reasoning for the detail-endpoint override: the
+EditTimeDialog needs active-only semantics — inactive Parts
+referencing a template don't represent operational impact for
+edit-time review.
+
+Open question: does the list endpoint's `_count.parts` also filter
+to active-only, or does it count all parts regardless of isActive?
+If the former, the two endpoints produce identical counts and
+the override is a redundant safeguard. If the latter, the Library's
+impact-check (uses the list shape) and the dialog (uses the detail
+shape) may show different counts for the same template — a quiet
+correctness issue.
+
+Action when convenient:
+1. Read /lib/routing-templates/service.ts and verify whether
+   listRoutingTemplates includes a `where: { isActive: true }` filter
+   on the parts relation in its `_count` definition.
+2. If yes: no further work; document the consistency in a code
+   comment.
+3. If no: align the list endpoint to match the detail endpoint
+   (filter to active-only).
+
+Either outcome is small. The right time to address is either
+during a Routing Template backend pass or once the Parts Master UI
+makes any inconsistency visible.
+
+Discovered: Phase 2 form implementation review, commit e88672d.
 
 ---
 
@@ -684,6 +748,71 @@ if a frequent-import scenario emerges (e.g., a customer with similar
 prior-tool data wanting to migrate).
 
 Discovered: Phase 1E import, commit 12ad34b.
+
+---
+
+### Smoke test residue in dev database
+
+The form implementation's smoke testing created a "Smoke Test
+Template" row, verified the create flow, then retired the template
+via the API. The retired record remains in the database as an
+inactive RoutingTemplateDefinition.
+
+This is authentic operational behavior — retired templates persist;
+the system is designed for soft-delete semantics. The residue does
+not represent a bug.
+
+Note for future work:
+- Verify scripts that assume specific template counts should use
+  active=true filters or expect the residue
+- The Show Inactive toggle on the Library page surfaces this
+  template
+- If a fully clean dev DB is wanted for any reason (demo, fresh
+  baseline), the retired template can be hard-deleted via direct
+  prisma query: `prisma.routingTemplateDefinition.delete({ where: {
+  templateName: "Smoke Test Template" } })` (also deletes the
+  associated RoutingTemplateStep records via cascade).
+
+Discovered: Phase 2 form implementation, commit e88672d.
+Action: None required. Logged for awareness.
+
+---
+
+### processTypeName → ProcessTypeKey boundary assumption
+
+The frontend's ProcessTypeKey type (from /lib/process-types.ts) is
+a string-literal union matching the canonical names of seeded
+ProcessTypes. The backend's API returns `processTypeName` as a
+string from the database's ProcessType.processName field.
+
+The Routing Template UI assumes these strings match — direct casts
+from the API's `processTypeName` to `ProcessTypeKey` are used
+throughout (e.g., the form's StepDraft initialization, the
+EditTimeDialog's step rendering). The cast is currently safe
+because both layers reference the seeded canonical names as
+authority.
+
+This assumption is fragile to a future change where:
+- A new ProcessType is added to the DB schema/seed but not to
+  ProcessTypeKey
+- A ProcessType is renamed in the seed but ProcessTypeKey isn't
+  updated
+- The backend's `processTypeName` field starts returning a different
+  value (e.g., lowercase, or includes additional formatting)
+
+Mitigation options:
+- Add a defensive runtime check at the boundary that maps API
+  strings to ProcessTypeKey with a fallback for unknown values
+- Generate ProcessTypeKey from the DB schema directly (e.g., via a
+  build step that reads the seed)
+- Add a verify-script assertion that confirms all seeded
+  ProcessType.processName values match ProcessTypeKey members
+
+Action when convenient: add the verify-script assertion (lowest
+cost, highest leverage). Defer the boundary-cast hardening until
+the assumption actually breaks.
+
+Discovered: Phase 2 form implementation, commit e88672d.
 
 ---
 
