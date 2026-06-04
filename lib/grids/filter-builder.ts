@@ -229,11 +229,20 @@ export function buildPartWhereClause(
         break;
       }
 
-      // ── Categorical operator ─────────────────────────────────────────────── //
+      // ── Categorical operators ────────────────────────────────────────────── //
       case "is_any_of": {
         const path = resolveColumnPath(filter.column);
         if (path === null) throw new Error(`Operator "is_any_of" is not supported on column "${filter.column}"`);
         clauses.push(applyColumnPath(path, { in: filter.value }));
+        break;
+      }
+      case "is_none_of": {
+        // Prisma's `notIn` excludes null rows by default, so no separate null clause
+        // is needed. Null values (e.g., no vendor assigned) are never returned.
+        // Use isEmpty to find null-value rows explicitly.
+        const path = resolveColumnPath(filter.column);
+        if (path === null) throw new Error(`Operator "is_none_of" is not supported on column "${filter.column}"`);
+        clauses.push(applyColumnPath(path, { notIn: filter.value }));
         break;
       }
 

@@ -27,8 +27,9 @@ type FilterNumericIsNotEmp = { column: string; operator: "num_is_not_empty" };
 type FilterIsTrue  = { column: string; operator: "is_true" };
 type FilterIsFalse = { column: string; operator: "is_false" };
 
-// Categorical (enum / chips) operator
-type FilterIsAnyOf = { column: string; operator: "is_any_of"; value: string[] };
+// Categorical (enum / chips) operators
+type FilterIsAnyOf  = { column: string; operator: "is_any_of";  value: string[] };
+type FilterIsNoneOf = { column: string; operator: "is_none_of"; value: string[] };
 
 // Datetime operators
 type FilterDateEquals    = { column: string; operator: "date_equals";    value: string };
@@ -69,6 +70,7 @@ export type FilterObject =
   | FilterIsTrue
   | FilterIsFalse
   | FilterIsAnyOf
+  | FilterIsNoneOf
   | FilterDateEquals
   | FilterBefore
   | FilterAfter

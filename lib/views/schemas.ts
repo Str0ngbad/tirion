@@ -36,6 +36,7 @@ export const FilterSchema = z.discriminatedUnion("operator", [
 
   // Categorical
   z.object({ column: z.string(), operator: z.literal("is_any_of"),          value: z.array(z.string()) }),
+  z.object({ column: z.string(), operator: z.literal("is_none_of"),         value: z.array(z.string()) }),
 
   // Datetime
   z.object({ column: z.string(), operator: z.literal("date_equals"),        value: z.string() }),

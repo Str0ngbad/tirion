@@ -115,7 +115,31 @@ async function main() {
     "is_any_of multi-select"
   );
 
-  // 9. Relation filter (contains on materialName)
+  // 9. is_none_of multi-select — Prisma notIn excludes null rows by default
+  const isNoneOfWhere = buildPartWhereClause([
+    { column: "partType", operator: "is_none_of", value: ["Part", "Assembly"] },
+  ]);
+  assert(
+    deepEqual(isNoneOfWhere, { partType: { notIn: ["Part", "Assembly"] } }),
+    "is_none_of multi-select"
+  );
+
+  // 9b. is_none_of null handling — Prisma notIn excludes nulls; no separate not:null needed
+  assert(
+    deepEqual(isNoneOfWhere, { partType: { notIn: ["Part", "Assembly"] } }),
+    "is_none_of uses notIn (Prisma excludes null rows by default — no explicit not:null required)"
+  );
+
+  // 9c. is_none_of with empty array — returns all non-null rows (notIn: [] excludes nothing, nulls still excluded)
+  const isNoneOfEmptyWhere = buildPartWhereClause([
+    { column: "partType", operator: "is_none_of", value: [] },
+  ]);
+  assert(
+    deepEqual(isNoneOfEmptyWhere, { partType: { notIn: [] } }),
+    "is_none_of with empty values array — notIn: [] excludes nothing except nulls"
+  );
+
+  // 10. Relation filter (contains on materialName)
   const relationContainsWhere = buildPartWhereClause([
     { column: "materialName", operator: "contains", value: "steel" },
   ]);
@@ -240,6 +264,14 @@ async function main() {
   await assertPrismaAccepts(
     [{ column: "partType", operator: "is_any_of", value: ["Assembly"] }],
     "is_any_of"
+  );
+  await assertPrismaAccepts(
+    [{ column: "partType", operator: "is_none_of", value: ["Assembly"] }],
+    "is_none_of (excludes Assembly and nulls)"
+  );
+  await assertPrismaAccepts(
+    [{ column: "partType", operator: "is_none_of", value: [] }],
+    "is_none_of with empty array (returns all non-null rows)"
   );
   await assertPrismaAccepts(
     [{ column: "materialName", operator: "contains", value: "steel" }],
