@@ -1763,3 +1763,44 @@ Five changes landed in commit f49e467:
 - DEVIATIONS.md (this entry)
 
 ---
+
+## 2026-06-04 — Reorder language updated to up/down controls only; matches Phase 1C mockup decision deferred from the original alignment review (commit 5bdbf13)
+
+**Phase:** 2 (UI work begins; pre-implementation reconciliation of a residual UI-only item from the Phase 1C alignment review)
+**Spec section:** spec/routing_template_editor_spec.md (Steps section under Creating a New Template)
+**Discovered by:** Consultant during Phase 2 kickoff orientation, while verifying that spec/routing_template_editor_spec.md reflected the Phase 1C reconciliation decisions before drafting the first UI implementation prompt.
+**Status:** Resolved-Spec-Updated
+**Commit:** 490ba62
+
+### What was discovered
+
+Prior to this change, spec/routing_template_editor_spec.md (Steps section under "Creating a New Template") read:
+
+> Reorder via drag or up/down controls
+
+This language predated the Phase 1C mockup. The original draft anticipated offering both drag-and-drop and up/down chevron controls as alternative interaction mechanisms.
+
+The Phase 1C mockup implemented step reordering via up/down chevron controls only — no drag-and-drop affordance was built. The Phase 1C alignment review (resolved in commit 5bdbf13) identified this as a UI-only gap (Gap 3 in the review report) and noted it was not backend-relevant. Per the consultant-user practice at the time, only backend-relevant items were included in the spec reconciliation commit; UI-only items were observed but deferred.
+
+The drag-vs-up/down decision had no backend implication — the API receives the final ordered step array regardless of how the user arranged it on the client — so deferring the spec patch was a defensible call at the time.
+
+Phase 2 UI work changes the calculus. The Routing Template Editor is the first UI surface to build. The mockup is the authoritative design source for the build. A spec that says "drag or up/down" while the mockup implements only up/down creates implementation ambiguity at the moment the build hits this line. The cost of the spec patch is trivially small (one line); the cost of leaving the ambiguity in place is a real risk that the build hours interpret it differently than intended.
+
+### Resolution
+
+spec/routing_template_editor_spec.md line 74 updated from:
+
+> Reorder via drag or up/down controls
+
+To:
+
+> Reorder via up/down controls on each step row
+
+No other instances of "drag" appeared in the file (verified by full-file search before commit). The "What Can Be Edited" subsection's generic "Steps (add, remove, reorder)" language was retained as-is since "reorder" is mechanism-neutral and not ambiguous.
+
+### Files affected
+
+- spec/routing_template_editor_spec.md (one-line Steps section update)
+- DEVIATIONS.md (this entry)
+
+---
