@@ -298,7 +298,12 @@ export default function PartsGrid({
 
   return (
     <CondensedContext.Provider value={condensed}>
-    <table className="w-max caption-bottom text-sm">
+    <table className="caption-bottom text-sm" style={{ tableLayout: "fixed", width: `${columns.reduce((sum, c) => sum + c.width, 0)}px` }}>
+        <colgroup>
+          {columns.map((col) => (
+            <col key={col.id} style={{ width: `${col.width}px` }} />
+          ))}
+        </colgroup>
         <TableHeader className="sticky top-0 z-10 bg-background">
           <TableRow className="hover:bg-transparent">
             {columns.map((col) => {

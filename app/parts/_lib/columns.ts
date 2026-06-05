@@ -39,29 +39,31 @@ export type ColumnMeta = {
   filterable: boolean;
   align: "left" | "right" | "center";
   defaultWidth: string;
+  /** Fixed pixel width used by table-layout: fixed colgroup */
+  width: number;
 };
 
 export const ALL_COLUMNS: ColumnMeta[] = [
-  { id: "partNumber",            label: "Part Number",   dataType: "text",        sortable: true,  filterable: true,  align: "left",   defaultWidth: "min-w-[110px] max-w-[160px]" },
-  { id: "partName",              label: "Part Name",     dataType: "text",        sortable: true,  filterable: true,  align: "left",   defaultWidth: "min-w-[200px] max-w-[280px]" },
-  { id: "partType",              label: "Type",          dataType: "categorical", sortable: true,  filterable: true,  align: "left",   defaultWidth: "w-20" },
-  { id: "procurementCategory",   label: "Proc",          dataType: "categorical", sortable: true,  filterable: true,  align: "left",   defaultWidth: "w-32" },
-  { id: "material",              label: "Material",      dataType: "categorical", sortable: true,  filterable: true,  align: "left",   defaultWidth: "min-w-[120px] max-w-[180px]" },
-  { id: "materialForm",          label: "Form",          dataType: "categorical", sortable: true,  filterable: true,  align: "left",   defaultWidth: "min-w-[100px] max-w-[140px]" },
-  { id: "vendor",                label: "Vendor",        dataType: "categorical", sortable: true,  filterable: true,  align: "left",   defaultWidth: "min-w-[120px] max-w-[160px]" },
-  { id: "vendorPartNumber",      label: "Vendor Part #", dataType: "text",        sortable: true,  filterable: true,  align: "left",   defaultWidth: "min-w-[120px] max-w-[150px]" },
-  { id: "routing",               label: "Routing",       dataType: "routing",     sortable: false, filterable: true,  align: "left",   defaultWidth: "" },
-  { id: "buildableCount",        label: "Buildable",     dataType: "numeric",     sortable: true,  filterable: true,  align: "right",  defaultWidth: "w-24" },
-  { id: "stockCount",            label: "Stock",         dataType: "numeric",     sortable: true,  filterable: true,  align: "right",  defaultWidth: "w-20" },
-  { id: "inventoryLocation",     label: "Location",      dataType: "text",        sortable: true,  filterable: true,  align: "left",   defaultWidth: "min-w-[100px] max-w-[160px]" },
-  { id: "stockSize",             label: "Stock Size",    dataType: "text",        sortable: true,  filterable: true,  align: "left",   defaultWidth: "min-w-[100px] max-w-[140px]" },
-  { id: "blankLength",           label: "Length",        dataType: "numeric",     sortable: true,  filterable: true,  align: "right",  defaultWidth: "w-24" },
-  { id: "partCost",              label: "Cost",          dataType: "currency",    sortable: true,  filterable: true,  align: "right",  defaultWidth: "w-24" },
-  { id: "partCostUpdatedAt",     label: "Cost Updated",  dataType: "date",        sortable: true,  filterable: true,  align: "left",   defaultWidth: "w-28" },
-  { id: "assembliesUsedInCount", label: "Used In",       dataType: "numeric",     sortable: false, filterable: true,  align: "right",  defaultWidth: "w-20" },
-  { id: "machineCycleTime",      label: "Cycle Time",    dataType: "numeric",     sortable: true,  filterable: true,  align: "right",  defaultWidth: "w-24" },
-  { id: "numberOfSetups",        label: "Setups",        dataType: "numeric",     sortable: true,  filterable: true,  align: "right",  defaultWidth: "w-16" },
-  { id: "isActive",              label: "Active",        dataType: "boolean",     sortable: true,  filterable: true,  align: "center", defaultWidth: "w-16" },
+  { id: "partNumber",            label: "Part Number",   dataType: "text",        sortable: true,  filterable: true,  align: "left",   defaultWidth: "min-w-[110px] max-w-[160px]", width: 140 },
+  { id: "partName",              label: "Part Name",     dataType: "text",        sortable: true,  filterable: true,  align: "left",   defaultWidth: "min-w-[200px] max-w-[280px]", width: 240 },
+  { id: "partType",              label: "Type",          dataType: "categorical", sortable: true,  filterable: true,  align: "left",   defaultWidth: "w-20",                        width: 80  },
+  { id: "procurementCategory",   label: "Proc",          dataType: "categorical", sortable: true,  filterable: true,  align: "left",   defaultWidth: "w-32",                        width: 128 },
+  { id: "material",              label: "Material",      dataType: "categorical", sortable: true,  filterable: true,  align: "left",   defaultWidth: "min-w-[120px] max-w-[180px]", width: 150 },
+  { id: "materialForm",          label: "Form",          dataType: "categorical", sortable: true,  filterable: true,  align: "left",   defaultWidth: "min-w-[100px] max-w-[140px]", width: 120 },
+  { id: "vendor",                label: "Vendor",        dataType: "categorical", sortable: true,  filterable: true,  align: "left",   defaultWidth: "min-w-[120px] max-w-[160px]", width: 140 },
+  { id: "vendorPartNumber",      label: "Vendor Part #", dataType: "text",        sortable: true,  filterable: true,  align: "left",   defaultWidth: "min-w-[120px] max-w-[150px]", width: 130 },
+  { id: "routing",               label: "Routing",       dataType: "routing",     sortable: false, filterable: true,  align: "left",   defaultWidth: "",                             width: 160 },
+  { id: "buildableCount",        label: "Buildable",     dataType: "numeric",     sortable: true,  filterable: true,  align: "right",  defaultWidth: "w-24",                        width: 96  },
+  { id: "stockCount",            label: "Stock",         dataType: "numeric",     sortable: true,  filterable: true,  align: "right",  defaultWidth: "w-20",                        width: 80  },
+  { id: "inventoryLocation",     label: "Location",      dataType: "text",        sortable: true,  filterable: true,  align: "left",   defaultWidth: "min-w-[100px] max-w-[160px]", width: 130 },
+  { id: "stockSize",             label: "Stock Size",    dataType: "text",        sortable: true,  filterable: true,  align: "left",   defaultWidth: "min-w-[100px] max-w-[140px]", width: 120 },
+  { id: "blankLength",           label: "Length",        dataType: "numeric",     sortable: true,  filterable: true,  align: "right",  defaultWidth: "w-24",                        width: 96  },
+  { id: "partCost",              label: "Cost",          dataType: "currency",    sortable: true,  filterable: true,  align: "right",  defaultWidth: "w-24",                        width: 96  },
+  { id: "partCostUpdatedAt",     label: "Cost Updated",  dataType: "date",        sortable: true,  filterable: true,  align: "left",   defaultWidth: "w-28",                        width: 112 },
+  { id: "assembliesUsedInCount", label: "Used In",       dataType: "numeric",     sortable: false, filterable: true,  align: "right",  defaultWidth: "w-20",                        width: 80  },
+  { id: "machineCycleTime",      label: "Cycle Time",    dataType: "numeric",     sortable: true,  filterable: true,  align: "right",  defaultWidth: "w-24",                        width: 96  },
+  { id: "numberOfSetups",        label: "Setups",        dataType: "numeric",     sortable: true,  filterable: true,  align: "right",  defaultWidth: "w-16",                        width: 64  },
+  { id: "isActive",              label: "Active",        dataType: "boolean",     sortable: true,  filterable: true,  align: "center", defaultWidth: "w-16",                        width: 64  },
 ];
 
 export const COLUMN_BY_ID = new Map<ColumnId, ColumnMeta>(
