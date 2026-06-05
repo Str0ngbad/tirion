@@ -20,12 +20,13 @@ import ViewSwitcher from "./_components/view-switcher";
 import ViewManagementModal from "./_components/view-management-modal";
 import ColumnsButton from "./_components/columns-button";
 import ActiveFiltersChrome from "./_components/active-filters-chrome";
+import ActiveSortsChrome from "./_components/active-sorts-chrome";
 import {
-  applyClientSort,
+  applyClientSorts,
   type ColumnId,
 } from "./_lib/columns";
 import type { PartRowClient } from "@/lib/api/parts";
-import type { FilterObject } from "@/lib/views/types";
+import type { FilterObject, SortSpec } from "@/lib/views/types";
 import type { ViewRow } from "@/lib/api/views";
 
 // ─── Debounce hook ────────────────────────────────────────────────────────────
@@ -37,19 +38,6 @@ function useDebounce<T>(value: T, delay: number): T {
     return () => clearTimeout(id);
   }, [value, delay]);
   return debounced;
-}
-
-// ─── Sort toggle ──────────────────────────────────────────────────────────────
-
-type SortState = { columnId: ColumnId; direction: "asc" | "desc" } | null;
-
-function toggleSort(current: SortState, columnId: ColumnId): SortState {
-  if (current?.columnId === columnId) {
-    return current.direction === "asc"
-      ? { columnId, direction: "desc" }
-      : { columnId, direction: "desc" };
-  }
-  return { columnId, direction: "asc" };
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -71,11 +59,11 @@ export default function PartsPage() {
   const activeView = views.find((v) => v.viewId === activeViewId) ?? null;
 
   // Draft overrides (null = no override, use view's saved state).
-  const [draftSort, setDraftSort] = useState<SortState>(null);
+  const [draftSorts, setDraftSorts] = useState<SortSpec[] | null>(null);
   const [draftVisibleColumns, setDraftVisibleColumns] = useState<string[] | null>(null);
   const [draftFilters, setDraftFilters] = useState<FilterObject[] | null>(null);
 
-  const isDirty = draftSort !== null || draftVisibleColumns !== null || draftFilters !== null;
+  const isDirty = draftSorts !== null || draftVisibleColumns !== null || draftFilters !== null;
 
   const effectiveVisibleColumns: string[] =
     draftVisibleColumns ?? activeView?.visibleColumns ?? [];
@@ -83,9 +71,8 @@ export default function PartsPage() {
   const effectiveFilters: FilterObject[] =
     draftFilters ?? activeView?.filters ?? [];
 
-  const effectiveSort = draftSort
-    ? [{ column: draftSort.columnId, direction: draftSort.direction }]
-    : (activeView?.defaultSort ?? []);
+  const effectiveSorts: SortSpec[] =
+    draftSorts ?? activeView?.defaultSort ?? [];
 
   // ── Search ─────────────────────────────────────────────────────────────────
   const [searchRaw, setSearchRaw] = useState("");
@@ -100,11 +87,11 @@ export default function PartsPage() {
   const [saveAsName, setSaveAsName] = useState("");
 
   // ── Grid data ──────────────────────────────────────────────────────────────
-  // When draftFilters is set, use explicit mode so filters take effect server-side.
+  // Explicit mode when draft overrides are present so changes take effect server-side.
   const gridQuery = usePartsGrid(
-    activeViewId !== null && draftFilters === null
+    activeViewId !== null && draftFilters === null && draftSorts === null
       ? { viewId: activeViewId }
-      : { filters: effectiveFilters, sort: effectiveSort }
+      : { filters: effectiveFilters, sort: effectiveSorts }
   );
 
   const displayRows = (() => {
@@ -120,8 +107,11 @@ export default function PartsPage() {
     }
 
     // Client-side sort only when in viewId mode (explicit mode sorts server-side)
-    if (draftSort && draftFilters === null) {
-      rows = applyClientSort(rows, draftSort.columnId, draftSort.direction);
+    if (draftSorts !== null && draftFilters === null && draftSorts.length > 0) {
+      rows = applyClientSorts(
+        rows,
+        draftSorts.map((s) => ({ columnId: s.column as ColumnId, direction: s.direction }))
+      );
     }
 
     return rows;
@@ -134,7 +124,7 @@ export default function PartsPage() {
 
   function handleSelectView(viewId: number) {
     setActiveViewId(viewId);
-    setDraftSort(null);
+    setDraftSorts(null);
     setDraftVisibleColumns(null);
     setDraftFilters(null);
     setSaveAsMode(false);
@@ -144,14 +134,14 @@ export default function PartsPage() {
   function handleSave() {
     if (!activeView || activeView.isLocked || !activeViewId) return;
     const update: Parameters<typeof updateView.mutate>[0]["input"] = {};
-    if (draftSort !== null) update.defaultSort = [{ column: draftSort.columnId, direction: draftSort.direction }];
+    if (draftSorts !== null) update.defaultSort = draftSorts;
     if (draftVisibleColumns !== null) update.visibleColumns = draftVisibleColumns;
     if (draftFilters !== null) update.filters = draftFilters;
     updateView.mutate(
       { id: activeViewId, input: update },
       {
         onSuccess: () => {
-          setDraftSort(null);
+          setDraftSorts(null);
           setDraftVisibleColumns(null);
           setDraftFilters(null);
           toast.success("View saved");
@@ -169,13 +159,13 @@ export default function PartsPage() {
       {
         name,
         visibleColumns: effectiveVisibleColumns.length > 0 ? effectiveVisibleColumns : activeView.visibleColumns,
-        defaultSort: draftSort ? [{ column: draftSort.columnId, direction: draftSort.direction }] : activeView.defaultSort,
+        defaultSort: draftSorts ?? activeView.defaultSort,
         filters: effectiveFilters,
       },
       {
         onSuccess: (newView) => {
           setActiveViewId(newView.viewId);
-          setDraftSort(null);
+          setDraftSorts(null);
           setDraftVisibleColumns(null);
           setDraftFilters(null);
           setSaveAsMode(false);
@@ -188,23 +178,81 @@ export default function PartsPage() {
   }
 
   function handleRevert() {
-    setDraftSort(null);
+    setDraftSorts(null);
     setDraftVisibleColumns(null);
     setDraftFilters(null);
     setSaveAsMode(false);
     setSaveAsName("");
   }
 
-  function handleSortToggle(columnId: ColumnId) {
-    setDraftSort((current) => toggleSort(current, columnId));
+  function handleSortToggle(columnId: ColumnId, addToStack: boolean) {
+    if (addToStack) {
+      // Shift-click: add to stack or toggle direction if already present.
+      setDraftSorts((current) => {
+        const base = current ?? effectiveSorts;
+        const existing = base.find((s) => s.column === columnId);
+        if (existing) {
+          return base.map((s) =>
+            s.column === columnId
+              ? { ...s, direction: s.direction === "asc" ? "desc" : "asc" }
+              : s
+          );
+        }
+        return [...base, { column: columnId, direction: "asc" }];
+      });
+    } else {
+      // Plain click: replace stack (or toggle direction if already the only sort).
+      setDraftSorts((current) => {
+        const base = current ?? effectiveSorts;
+        const existing = base.find((s) => s.column === columnId);
+        if (existing && base.length === 1) {
+          return [{ column: columnId, direction: existing.direction === "asc" ? "desc" : "asc" }];
+        }
+        return [{ column: columnId, direction: "asc" }];
+      });
+    }
   }
 
   function handleSortSet(columnId: ColumnId, direction: "asc" | "desc") {
-    setDraftSort({ columnId, direction });
+    setDraftSorts([{ column: columnId, direction }]);
   }
 
-  function handleClearSort() {
-    setDraftSort(null);
+  function handleAddToSort(columnId: ColumnId) {
+    setDraftSorts((current) => {
+      const base = current ?? effectiveSorts;
+      const existing = base.find((s) => s.column === columnId);
+      if (existing) {
+        return base.map((s) =>
+          s.column === columnId
+            ? { ...s, direction: s.direction === "asc" ? "desc" : "asc" }
+            : s
+        );
+      }
+      return [...base, { column: columnId, direction: "asc" }];
+    });
+  }
+
+  function handleClearThisSort(columnId: ColumnId) {
+    setDraftSorts((current) => {
+      const base = current ?? effectiveSorts;
+      const next = base.filter((s) => s.column !== columnId);
+      return next;
+    });
+  }
+
+  function handleReorderSorts(sorts: SortSpec[]) {
+    setDraftSorts(sorts);
+  }
+
+  function handleToggleSortDirection(column: string) {
+    setDraftSorts((current) => {
+      const base = current ?? effectiveSorts;
+      return base.map((s) =>
+        s.column === column
+          ? { ...s, direction: s.direction === "asc" ? "desc" : "asc" }
+          : s
+      );
+    });
   }
 
   function handleHideColumn(columnId: ColumnId) {
@@ -387,7 +435,14 @@ export default function PartsPage() {
             </div>
           )}
 
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto flex items-center gap-3 flex-wrap">
+            <ActiveSortsChrome
+              sorts={effectiveSorts}
+              viewSorts={activeView?.defaultSort ?? []}
+              onReorderSorts={handleReorderSorts}
+              onToggleDirection={handleToggleSortDirection}
+              onRemoveSort={(column) => handleClearThisSort(column as ColumnId)}
+            />
             <ActiveFiltersChrome
               filters={effectiveFilters}
               viewFilters={activeView?.filters ?? []}
@@ -443,14 +498,15 @@ export default function PartsPage() {
               <PartsGrid
                 rows={displayRows}
                 visibleColumns={effectiveVisibleColumns}
-                sortState={draftSort}
+                sorts={effectiveSorts}
                 condensed={condensed}
                 selectedPartId={selectedPartId}
                 filters={effectiveFilters}
                 onSelectPart={setSelectedPartId}
                 onSortToggle={handleSortToggle}
                 onSortSet={handleSortSet}
-                onClearSort={handleClearSort}
+                onAddToSort={handleAddToSort}
+                onClearThisSort={handleClearThisSort}
                 onHideColumn={handleHideColumn}
                 onApplyFilter={handleApplyFilter}
                 onRemoveFilter={handleRemoveFilter}

@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowUpIcon, ArrowDownIcon } from "lucide-react";
+import type { SortSpec } from "@/lib/views/types";
 import {
   Table,
   TableBody,
@@ -181,19 +182,18 @@ function renderCell(
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
-type SortState = { columnId: ColumnId; direction: "asc" | "desc" } | null;
-
 type Props = {
   rows: PartRowClient[];
   visibleColumns: string[];
-  sortState: SortState;
+  sorts: SortSpec[];
   condensed: boolean;
   selectedPartId: number | null;
   filters: FilterObject[];
   onSelectPart: (partId: number) => void;
-  onSortToggle: (columnId: ColumnId) => void;
+  onSortToggle: (columnId: ColumnId, addToStack: boolean) => void;
   onSortSet: (columnId: ColumnId, direction: "asc" | "desc") => void;
-  onClearSort: () => void;
+  onAddToSort: (columnId: ColumnId) => void;
+  onClearThisSort: (columnId: ColumnId) => void;
   onHideColumn: (columnId: ColumnId) => void;
   onApplyFilter: (filter: FilterObject) => void;
   onRemoveFilter: (column: string) => void;
@@ -204,14 +204,15 @@ type Props = {
 export default function PartsGrid({
   rows,
   visibleColumns,
-  sortState,
+  sorts,
   condensed,
   selectedPartId,
   filters,
   onSelectPart,
   onSortToggle,
   onSortSet,
-  onClearSort,
+  onAddToSort,
+  onClearThisSort,
   onHideColumn,
   onApplyFilter,
   onRemoveFilter,
@@ -219,6 +220,7 @@ export default function PartsGrid({
   const visibleSet = new Set(visibleColumns);
   const columns = ALL_COLUMNS.filter((c) => visibleSet.has(c.id));
   const filterByColumn = new Map(filters.map((f) => [f.column, f]));
+  const showPriority = sorts.length > 1;
 
   return (
     <div className="overflow-x-auto">
@@ -226,8 +228,8 @@ export default function PartsGrid({
         <TableHeader>
           <TableRow className="hover:bg-transparent">
             {columns.map((col) => {
-              const isSorted = sortState?.columnId === col.id;
-              const direction = isSorted ? sortState!.direction : null;
+              const sortEntry = sorts.find((s) => s.column === col.id);
+              const sortIndex = sortEntry ? sorts.indexOf(sortEntry) : -1;
 
               return (
                 <TableHead
@@ -249,18 +251,24 @@ export default function PartsGrid({
                     <button
                       className={cn(
                         "leading-none hover:text-foreground transition-colors",
-                        isSorted ? "text-foreground" : "text-muted-foreground"
+                        sortEntry ? "text-foreground" : "text-muted-foreground"
                       )}
-                      onClick={() => col.sortable && onSortToggle(col.id)}
+                      onClick={(e) => col.sortable && onSortToggle(col.id, e.shiftKey)}
                       disabled={!col.sortable}
                     >
                       {col.label}
                     </button>
-                    {isSorted && direction === "asc" && (
-                      <ArrowUpIcon className="h-3 w-3 shrink-0 text-primary" />
-                    )}
-                    {isSorted && direction === "desc" && (
-                      <ArrowDownIcon className="h-3 w-3 shrink-0 text-primary" />
+                    {sortEntry && (
+                      <span className="inline-flex items-center gap-0.5 text-primary">
+                        {sortEntry.direction === "asc"
+                          ? <ArrowUpIcon className="h-3 w-3 shrink-0" />
+                          : <ArrowDownIcon className="h-3 w-3 shrink-0" />}
+                        {showPriority && (
+                          <span className="text-[10px] font-medium leading-none tabular-nums">
+                            {sortIndex + 1}
+                          </span>
+                        )}
+                      </span>
                     )}
                     <ColumnHeaderMenu
                       columnId={col.id}
@@ -268,12 +276,12 @@ export default function PartsGrid({
                       sortable={col.sortable}
                       filterable={col.filterable}
                       columnDataType={col.dataType}
-                      currentSortColumn={sortState?.columnId ?? null}
-                      currentSortDirection={sortState?.direction ?? null}
+                      sorts={sorts}
                       existingFilter={filterByColumn.get(col.id) ?? null}
                       onSortAsc={() => onSortSet(col.id, "asc")}
                       onSortDesc={() => onSortSet(col.id, "desc")}
-                      onClearSort={onClearSort}
+                      onAddToSort={() => onAddToSort(col.id)}
+                      onClearThisSort={() => onClearThisSort(col.id)}
                       onHideColumn={() => onHideColumn(col.id)}
                       onApplyFilter={onApplyFilter}
                       onRemoveFilter={() => onRemoveFilter(col.id)}

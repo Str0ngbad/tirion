@@ -16,7 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import type { FilterObject } from "@/lib/views/types";
+import type { FilterObject, SortSpec } from "@/lib/views/types";
 import type { ColumnDataType } from "@/app/parts/_lib/columns";
 import ColumnFilterPopover from "./column-filter-popover";
 import HideColumnFilterDialog from "./hide-column-filter-dialog";
@@ -27,12 +27,12 @@ type Props = {
   sortable: boolean;
   filterable: boolean;
   columnDataType: ColumnDataType;
-  currentSortColumn: string | null;
-  currentSortDirection: "asc" | "desc" | null;
+  sorts: SortSpec[];
   existingFilter: FilterObject | null;
   onSortAsc: () => void;
   onSortDesc: () => void;
-  onClearSort: () => void;
+  onAddToSort: () => void;
+  onClearThisSort: () => void;
   onHideColumn: () => void;
   onApplyFilter: (filter: FilterObject) => void;
   onRemoveFilter: () => void;
@@ -44,19 +44,20 @@ export default function ColumnHeaderMenu({
   sortable,
   filterable,
   columnDataType,
-  currentSortColumn,
-  currentSortDirection,
+  sorts,
   existingFilter,
   onSortAsc,
   onSortDesc,
-  onClearSort,
+  onAddToSort,
+  onClearThisSort,
   onHideColumn,
   onApplyFilter,
   onRemoveFilter,
 }: Props) {
-  const isCurrentColumn = currentSortColumn === columnId;
-  const isSortedAsc = isCurrentColumn && currentSortDirection === "asc";
-  const isSortedDesc = isCurrentColumn && currentSortDirection === "desc";
+  const sortEntry = sorts.find((s) => s.column === columnId);
+  const isInStack = !!sortEntry;
+  const isSortedAsc = sortEntry?.direction === "asc";
+  const isSortedDesc = sortEntry?.direction === "desc";
 
   const [filterOpen, setFilterOpen] = useState(false);
   const [hideDialogOpen, setHideDialogOpen] = useState(false);
@@ -84,7 +85,7 @@ export default function ColumnHeaderMenu({
                 className={cn(
                   "ml-0.5 inline-flex h-4 w-4 items-center justify-center rounded transition-opacity",
                   "opacity-40 hover:!opacity-100 focus:opacity-100 focus:outline-none",
-                  isCurrentColumn && "opacity-60",
+                  isInStack && "opacity-60",
                   hasActiveFilter && "text-amber-600 dark:text-amber-400 opacity-80"
                 )}
                 onClick={(e) => e.stopPropagation()}
@@ -97,16 +98,20 @@ export default function ColumnHeaderMenu({
               {sortable && (
                 <>
                   <DropdownMenuItem onClick={onSortAsc} className="gap-2 text-sm">
-                    <span className="w-3 text-center">{isSortedAsc ? "✓" : ""}</span>
+                    <span className="w-3 text-center">{isSortedAsc && sorts.length === 1 ? "✓" : ""}</span>
                     Sort ascending
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={onSortDesc} className="gap-2 text-sm">
-                    <span className="w-3 text-center">{isSortedDesc ? "✓" : ""}</span>
+                    <span className="w-3 text-center">{isSortedDesc && sorts.length === 1 ? "✓" : ""}</span>
                     Sort descending
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={onAddToSort} className="gap-2 text-sm">
+                    <span className="w-3 text-center">{isInStack && sorts.length > 1 ? "✓" : ""}</span>
+                    Add to sort
+                  </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={onClearSort}
-                    disabled={!isCurrentColumn}
+                    onClick={onClearThisSort}
+                    disabled={!isInStack}
                     className="gap-2 text-sm"
                   >
                     <span className="w-3 text-center" />

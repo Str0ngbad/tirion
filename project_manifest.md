@@ -7,18 +7,268 @@
 
 ## app/
 
+- app/_lib/use-truncated-title.ts — exports: useTruncatedTitle
+- app/api/v1/assemblies/[id]/bom-tree/route.ts — route handlers: GET
+- app/api/v1/bom-edges/[id]/route.ts — route handlers: DELETE,PATCH
+- app/api/v1/bom-edges/bulk-delete/route.ts — route handlers: POST
+- app/api/v1/bom-edges/route.ts — route handlers: POST
 - app/api/v1/health/route.ts — route handlers: GET
+- app/api/v1/material-specs/[id]/deactivate/route.ts — route handlers: POST
+- app/api/v1/material-specs/[id]/reactivate/route.ts — route handlers: POST
+- app/api/v1/material-specs/[id]/route.ts — route handlers: GET,PATCH
+- app/api/v1/material-specs/route.ts — route handlers: GET,POST
+- app/api/v1/parts/[id]/deactivate/route.ts — route handlers: POST
+- app/api/v1/parts/[id]/inventory-location/route.ts — route handlers: PATCH
+- app/api/v1/parts/[id]/reactivate/route.ts — route handlers: POST
+- app/api/v1/parts/[id]/route.ts — route handlers: GET,PATCH
+- app/api/v1/parts/[id]/stock-count/route.ts — route handlers: PATCH
+- app/api/v1/parts/distinct-values/route.ts — route handlers: GET
+- app/api/v1/parts/grid/route.ts — route handlers: POST
+- app/api/v1/parts/route.ts — route handlers: GET,POST
+- app/api/v1/process-type-sub-statuses/[id]/deactivate/route.ts — route handlers: POST
+- app/api/v1/process-type-sub-statuses/[id]/reactivate/route.ts — route handlers: POST
+- app/api/v1/process-type-sub-statuses/[id]/route.ts — route handlers: GET,PATCH
+- app/api/v1/process-type-sub-statuses/route.ts — route handlers: GET,POST
+- app/api/v1/process-types/route.ts — route handlers: GET
+- app/api/v1/procurement-categories/[id]/deactivate/route.ts — route handlers: POST
+- app/api/v1/procurement-categories/[id]/reactivate/route.ts — route handlers: POST
+- app/api/v1/procurement-categories/[id]/route.ts — route handlers: GET,PATCH
+- app/api/v1/procurement-categories/route.ts — route handlers: GET,POST
+- app/api/v1/routing-templates/[id]/deactivate/route.ts — route handlers: POST
+- app/api/v1/routing-templates/[id]/reactivate/route.ts — route handlers: POST
+- app/api/v1/routing-templates/[id]/route.ts — route handlers: GET,PATCH
+- app/api/v1/routing-templates/route.ts — route handlers: GET,POST
+- app/api/v1/users/[id]/deactivate/route.ts — route handlers: POST
+- app/api/v1/users/[id]/reactivate/route.ts — route handlers: POST
+- app/api/v1/users/[id]/route.ts — route handlers: GET,PATCH
+- app/api/v1/users/route.ts — route handlers: GET,POST
+- app/api/v1/vendors/[id]/deactivate/route.ts — route handlers: POST
+- app/api/v1/vendors/[id]/reactivate/route.ts — route handlers: POST
+- app/api/v1/vendors/[id]/route.ts — route handlers: GET,PATCH
+- app/api/v1/vendors/route.ts — route handlers: GET,POST
+- app/api/v1/views/[id]/route.ts — route handlers: DELETE,GET,PATCH
+- app/api/v1/views/route.ts — route handlers: GET,POST
 - app/globals.css — global stylesheet
 - app/layout.tsx — exports: metadata; default export
+- app/mockups/bom-editor/[assemblyId]/page.tsx — default export
+- app/mockups/bom-editor/_components/add-child-input-row.tsx — default export
+- app/mockups/bom-editor/_components/bom-editor-chrome.tsx — default export
+- app/mockups/bom-editor/_components/bom-tree-row.tsx — default export
+- app/mockups/bom-editor/_components/cycle-error-dialog.tsx — default export
+- app/mockups/bom-editor/_components/depth-block-dialog.tsx — default export
+- app/mockups/bom-editor/_components/depth-warning-dialog.tsx — default export
+- app/mockups/bom-editor/_components/remove-children-confirm-dialog.tsx — default export
+- app/mockups/bom-editor/_lib/bom-utils.ts — exports: buildBomTree,collectAssemblies,computeBuildable,computeCostRollup,subtreeCostFreshness
+- app/mockups/bom-editor/_lib/sort.ts — exports: sortBomChildren
+- app/mockups/bom-editor/_lib/types.ts
+- app/mockups/bom-editor/_lib/validation.ts — exports: DEPTH_HARD,DEPTH_SOFT,computeAddDepth,findCycleChain,partMatchesQuery,rankPartMatch,wouldCreateCycle
+- app/mockups/bom-editor/page.tsx — default export
+- app/mockups/material-specs/_components/material-spec-audit-log-section.tsx — default export
+- app/mockups/material-specs/_components/material-spec-cascade-modal.tsx — default export
+- app/mockups/material-specs/_components/material-spec-deactivate-modal.tsx — default export
+- app/mockups/material-specs/_components/material-spec-detail-modal.tsx — default export
+- app/mockups/material-specs/_components/material-spec-grid.tsx — default export
+- app/mockups/material-specs/_components/material-spec-reference-list.tsx — default export
+- app/mockups/material-specs/_data.ts — exports: MOCK_MATERIAL_SPECS
+- app/mockups/material-specs/_lib/edit-distance.ts — exports: levenshtein
+- app/mockups/material-specs/page.tsx — default export
+- app/mockups/parts/_components/add-material-spec-modal.tsx — default export
+- app/mockups/parts/_components/add-vendor-modal.tsx — default export
+- app/mockups/parts/_components/column-filter-boolean.tsx — default export
+- app/mockups/parts/_components/column-filter-categorical.tsx — default export
+- app/mockups/parts/_components/column-filter-date.tsx — default export
+- app/mockups/parts/_components/column-filter-link.tsx — default export
+- app/mockups/parts/_components/column-filter-numeric.tsx — default export
+- app/mockups/parts/_components/column-filter-popover.tsx — default export
+- app/mockups/parts/_components/column-filter-routing.tsx — default export
+- app/mockups/parts/_components/column-filter-text.tsx — default export
+- app/mockups/parts/_components/column-header-menu.tsx — default export
+- app/mockups/parts/_components/columns-button.tsx — default export
+- app/mockups/parts/_components/definition-change-flag-dialog.tsx — default export
+- app/mockups/parts/_components/definition-change-flag-parents-view.tsx — default export
+- app/mockups/parts/_components/definition-change-flag-stock-view.tsx — default export
+- app/mockups/parts/_components/definition-change-flag-wos-view.tsx — default export
+- app/mockups/parts/_components/material-spec-combobox.tsx — default export
+- app/mockups/parts/_components/part-audit-log-section.tsx — default export
+- app/mockups/parts/_components/part-form-child-parts-section.tsx — default export
+- app/mockups/parts/_components/part-form-inventory-section.tsx — default export
+- app/mockups/parts/_components/part-form-material-vendor-section.tsx — default export
+- app/mockups/parts/_components/part-form-parent-assemblies-section.tsx — default export
+- app/mockups/parts/_components/part-form-routing-section.tsx — default export
+- app/mockups/parts/_components/part-form-sheet.tsx — exports: SECTION_IDS; default export
+- app/mockups/parts/_components/parts-grid.tsx — default export
+- app/mockups/parts/_components/vendor-combobox.tsx — default export
+- app/mockups/parts/_components/view-management-modal.tsx — default export
+- app/mockups/parts/_components/view-save-as-input.tsx — default export
+- app/mockups/parts/_components/view-save-confirmation.tsx — default export
+- app/mockups/parts/_components/view-switcher.tsx — default export
+- app/mockups/parts/_data.ts — exports: MOCK_MATERIAL_SPECS,MOCK_PARTS,MOCK_ROUTING_TEMPLATES,MOCK_VENDORS
+- app/mockups/parts/_data/generate.js
+- app/mockups/parts/_data/parts-data.json
+- app/mockups/parts/_lib/columns.ts — exports: ALL_COLUMNS,CENTER_COLUMNS,COLUMN_BY_ID,RIGHT_ALIGNED_COLUMNS,SORTABLE_COLUMNS
+- app/mockups/parts/_lib/edit-distance.ts — exports: levenshtein
+- app/mockups/parts/_lib/filter-engine.ts — exports: applyFilters,filterTooltip
+- app/mockups/parts/_lib/view-diff.ts — exports: isViewDirty
+- app/mockups/parts/_lib/views.ts — exports: SEEDED_VIEWS,deleteViewById,duplicateView,nextViewId,setDefaultView,updateView
+- app/mockups/parts/page.tsx — default export
+- app/mockups/process-substatus/_components/sub-status-audit-log-section.tsx — default export
+- app/mockups/process-substatus/_components/sub-status-create-edit-modal.tsx — default export
+- app/mockups/process-substatus/_components/sub-status-detail-modal.tsx — default export
+- app/mockups/process-substatus/_components/sub-status-row.tsx — default export
+- app/mockups/process-substatus/_components/sub-status-section.tsx — default export
+- app/mockups/process-substatus/_data.ts — exports: MOCK_SUB_STATUSES
+- app/mockups/process-substatus/page.tsx — default export
+- app/mockups/routing-templates/[id]/page.tsx — default export
+- app/mockups/routing-templates/_components/add-step-dialog.tsx — default export
+- app/mockups/routing-templates/_components/edit-time-dialog.tsx — default export
+- app/mockups/routing-templates/_components/edit-time-parts-view.tsx — default export
+- app/mockups/routing-templates/_components/edit-time-stock-view.tsx — default export
+- app/mockups/routing-templates/_components/edit-time-wos-view.tsx — default export
+- app/mockups/routing-templates/_components/process-type-legend.tsx — default export
+- app/mockups/routing-templates/_components/step-row.tsx — default export
+- app/mockups/routing-templates/_components/template-editor-form.tsx — default export
+- app/mockups/routing-templates/_components/template-library-grid.tsx — default export
+- app/mockups/routing-templates/_data.ts — exports: MOCK_TEMPLATES
+- app/mockups/routing-templates/new/page.tsx — default export
+- app/mockups/routing-templates/page.tsx — default export
+- app/mockups/users/_components/process-type-chip.tsx — default export
+- app/mockups/users/_components/process-type-multi-select.tsx — default export
+- app/mockups/users/_components/user-audit-log-section.tsx — default export
+- app/mockups/users/_components/user-deactivate-modal.tsx — default export
+- app/mockups/users/_components/user-detail-modal.tsx — default export
+- app/mockups/users/_components/user-edit-modal.tsx — default export
+- app/mockups/users/_components/user-grid.tsx — default export
+- app/mockups/users/_data.ts — exports: ALL_PROCESS_TYPES,MOCK_USERS,PROCESS_TYPE_META
+- app/mockups/users/page.tsx — default export
+- app/mockups/vendors/_components/audit-log-section.tsx — default export
+- app/mockups/vendors/_components/reference-list.tsx — default export
+- app/mockups/vendors/_components/vendor-create-modal.tsx — default export
+- app/mockups/vendors/_components/vendor-deactivate-modal.tsx — default export
+- app/mockups/vendors/_components/vendor-detail-modal.tsx — default export
+- app/mockups/vendors/_components/vendor-grid.tsx — default export
+- app/mockups/vendors/_data.ts — exports: MOCK_VENDORS
+- app/mockups/vendors/page.tsx — default export
 - app/page.tsx — default export
+- app/parts/_components/active-filters-chrome.tsx — default export
+- app/parts/_components/column-filter-boolean.tsx — default export
+- app/parts/_components/column-filter-categorical.tsx — default export
+- app/parts/_components/column-filter-date.tsx — default export
+- app/parts/_components/column-filter-numeric.tsx — default export
+- app/parts/_components/column-filter-popover.tsx — default export
+- app/parts/_components/column-filter-routing.tsx — default export
+- app/parts/_components/column-filter-text.tsx — default export
+- app/parts/_components/column-header-menu.tsx — default export
+- app/parts/_components/columns-button.tsx — default export
+- app/parts/_components/hide-column-filter-dialog.tsx — default export
+- app/parts/_components/parts-grid.tsx — default export
+- app/parts/_components/view-management-modal.tsx — default export
+- app/parts/_components/view-switcher.tsx — default export
+- app/parts/_lib/columns.ts — exports: ALL_COLUMNS,ALL_COLUMN_IDS,COLUMN_BY_ID,applyClientSort,getSortValue
+- app/parts/_lib/filter-utils.ts — exports: filterTooltip
+- app/parts/page.tsx — default export
+- app/routing-templates/[id]/page.tsx — default export
+- app/routing-templates/_components/add-step-dialog.tsx — exports: AddStepDialog
+- app/routing-templates/_components/edit-time-dialog.tsx — exports: EditTimeDialog
+- app/routing-templates/_components/process-type-legend.tsx — default export
+- app/routing-templates/_components/step-row.tsx — exports: StepRow
+- app/routing-templates/_components/template-editor-form.tsx — exports: TemplateEditorForm
+- app/routing-templates/_components/template-library-grid.tsx — default export
+- app/routing-templates/new/page.tsx — default export
+- app/routing-templates/page.tsx — default export
 
 ## lib/
 
+- lib/api/auth.ts — exports: requireUser
+- lib/api/client-error.ts
+- lib/api/client.ts — exports: apiFetch
+- lib/api/errors.ts — exports: handleApiError
+- lib/api/parts.ts — exports: useDistinctValues,usePartsGrid,useProcessTypes
+- lib/api/query-client.ts — exports: makeQueryClient
+- lib/api/routing-templates.ts — exports: useCreateRoutingTemplate,useDeactivateRoutingTemplate,useProcessTypes,useReactivateRoutingTemplate,useRoutingTemplate,useRoutingTemplates,useUpdateRoutingTemplate
+- lib/api/views.ts — exports: useCreateView,useDeleteView,useUpdateView,useViews
+- lib/audit/mutateWithAudit.ts — exports: mutateWithAudit
+- lib/bom/buildable-helpers.ts — exports: buildableCountForAllAssemblies
+- lib/bom/cte-helpers.ts — exports: detectCycle,getMaxAncestorDepth,getMaxDescendantDepth
+- lib/bom/schemas.ts — exports: BulkDeleteSchema,CreateBomEdgeSchema,UpdateBomEdgeSchema
+- lib/bom/service.ts — exports: bulkDeleteBomEdges,createBomEdge,deleteBomEdge,getBomTree,updateBomEdge
+- lib/bom/types.ts
+- lib/bom/validate.ts — exports: BOM_DEPTH_HARD_LIMIT,validateDepthLimit,validateNoCycle
 - lib/db/client.ts — exports: prisma
+- lib/db/p2002.ts — exports: isP2002OnComposite,isP2002OnField
+- lib/errors/auth.ts
+- lib/errors/base.ts
+- lib/errors/bom.ts
+- lib/errors/index.ts
+- lib/errors/material-spec.ts
+- lib/errors/part.ts
+- lib/errors/process-type-sub-status.ts
+- lib/errors/process-type.ts
+- lib/errors/procurement-category.ts
+- lib/errors/routing-template.ts
+- lib/errors/user.ts
+- lib/errors/vendor.ts
+- lib/errors/view.ts
+- lib/grids/filter-builder.ts — exports: buildPartWhereClause
+- lib/grids/schemas.ts — exports: GridQueryBodySchema
+- lib/grids/sort-builder.ts — exports: buildPartSortOrder
+- lib/hooks/use-truncated-title.ts
 - lib/logger.ts — exports: logger
+- lib/material-specs/schemas.ts — exports: CreateMaterialSpecSchema,ListMaterialSpecsQuerySchema,MaterialSpecWithCountsSchema,MaterialSpecWithPartsSchema,UpdateMaterialSpecSchema
+- lib/material-specs/service.ts — exports: createMaterialSpec,deactivateMaterialSpec,getMaterialSpec,listMaterialSpecs,reactivateMaterialSpec,updateMaterialSpec
+- lib/material-specs/types.ts
+- lib/parts/schemas.ts — exports: CreatePartSchema,ListPartsQuerySchema,PartDetailSchema,PartRowSchema,UpdateInventoryLocationSchema,UpdatePartSchema,UpdateStockCountSchema
+- lib/parts/service.ts — exports: createPart,deactivatePart,getPart,listParts,queryPartsGrid,reactivatePart,updateInventoryLocation,updatePart,updateStockCount
+- lib/parts/types.ts
+- lib/process-type-sub-statuses/schemas.ts — exports: CreateProcessTypeSubStatusSchema,ListProcessTypeSubStatusesQuerySchema,ProcessTypeSubStatusSchema,UpdateProcessTypeSubStatusSchema
+- lib/process-type-sub-statuses/service.ts — exports: createProcessTypeSubStatus,deactivateProcessTypeSubStatus,getProcessTypeSubStatus,listProcessTypeSubStatuses,reactivateProcessTypeSubStatus,updateProcessTypeSubStatus
+- lib/process-type-sub-statuses/types.ts
+- lib/process-types.ts — exports: ALL_PROCESS_TYPES,PROCESS_TYPE_META
+- lib/procurement-categories/schemas.ts — exports: CreateProcurementCategorySchema,ListProcurementCategoriesQuerySchema,ProcurementCategoryWithCountsSchema,UpdateProcurementCategorySchema
+- lib/procurement-categories/service.ts — exports: createProcurementCategory,deactivateProcurementCategory,getProcurementCategory,listProcurementCategories,reactivateProcurementCategory,updateProcurementCategory
+- lib/procurement-categories/types.ts
+- lib/routing-templates/schemas.ts — exports: CreateRoutingTemplateSchema,ListRoutingTemplatesQuerySchema,RoutingTemplateStepInputSchema,UpdateRoutingTemplateSchema
+- lib/routing-templates/service.ts — exports: createRoutingTemplate,deactivateRoutingTemplate,getRoutingTemplate,listRoutingTemplates,reactivateRoutingTemplate,updateRoutingTemplate
+- lib/routing-templates/types.ts
+- lib/users/schemas.ts — exports: CreateUserSchema,ListUsersQuerySchema,RoleSchema,UpdateUserSchema,UserWithProcessTypesSchema
+- lib/users/service.ts — exports: createUser,deactivateUser,getUser,listUsers,reactivateUser,updateUser
+- lib/users/types.ts
+- lib/utils.ts — exports: cn
+- lib/vendors/schemas.ts — exports: CreateVendorSchema,ListVendorsQuerySchema,UpdateVendorSchema,VendorWithCountsSchema
+- lib/vendors/service.ts — exports: createVendor,deactivateVendor,getVendor,listVendors,reactivateVendor,updateVendor
+- lib/vendors/types.ts
+- lib/views/schemas.ts — exports: CreateViewSchema,FilterSchema,SortSpecSchema,UpdateViewSchema
+- lib/views/service.ts — exports: createView,deleteView,getView,listViews,updateView
+- lib/views/types.ts
 
 ## components/
 
+- components/condense-toggle.tsx — exports: CondenseToggle
+- components/process-type-chip.tsx — default export
+- components/query-provider.tsx — exports: QueryProvider
+- components/theme-provider.tsx — exports: ThemeProvider
+- components/theme-toggle.tsx — exports: ThemeToggle
+- components/ui/badge.tsx
+- components/ui/button.tsx
+- components/ui/card.tsx
+- components/ui/checkbox.tsx
+- components/ui/command.tsx
+- components/ui/dialog.tsx
+- components/ui/dropdown-menu.tsx
+- components/ui/input-group.tsx
+- components/ui/input.tsx
+- components/ui/label.tsx
+- components/ui/popover.tsx
+- components/ui/scroll-area.tsx
+- components/ui/select.tsx
+- components/ui/separator.tsx
+- components/ui/sheet.tsx
+- components/ui/skeleton.tsx
+- components/ui/sonner.tsx
+- components/ui/switch.tsx
+- components/ui/table.tsx
+- components/ui/textarea.tsx
+- components/ui/tooltip.tsx
+- components/unsaved-changes-dialog.tsx — exports: UnsavedChangesDialog
 
 ## tests/
 
@@ -26,9 +276,18 @@
 
 ## prisma/
 
-- prisma/schema.prisma — Prisma schema: 21 model(s), 13 enum(s)
+- prisma/schema.prisma — Prisma schema: 23 model(s), 12 enum(s)
 - prisma/migrations/20260510022221_init/migration.sql — migration SQL
+- prisma/migrations/20260521175345_add_vendor_lead_time_and_unique_name/migration.sql — migration SQL
+- prisma/migrations/20260521180000_material_spec_reconciliation/migration.sql — migration SQL
+- prisma/migrations/20260528143003_vendor_location_website/migration.sql — migration SQL
+- prisma/migrations/20260531125555_part_field_additions/migration.sql — migration SQL
+- prisma/migrations/20260531145717_introduce_procurement_category/migration.sql — migration SQL
+- prisma/migrations/20260601205153_add_view_model/migration.sql — migration SQL
+- prisma/migrations/20260603023424_drop_bom_display_order/migration.sql — migration SQL
+- prisma/migrations/20260603202537_relax_part_inventory_location_unique/migration.sql — migration SQL
 - prisma/migrations/migration_lock.toml
+- prisma/seed.ts
 
 ## spec/
 
@@ -38,11 +297,13 @@
 - spec/blocker_spec.md — Tirion — Blocker Spec (Creation and Resolution)
 - spec/bom_editor_spec.md — Tirion — BOM Editor Spec
 - spec/configuration_management_spec.md — Tirion — Configuration Management Spec
+- spec/data_import_mapping.md — Data Import Mapping Spec — Phase 1E
 - spec/definition_change_flag_spec.md — Tirion — Definition Change Flag Spec
 - spec/detail_panel_spec.md — Tirion — Detail Panel Spec (Side Panel)
 - spec/distribution_lens_spec.md — Tirion — Distribution Lens Spec
 - spec/machining_lens_spec.md — Tirion — Machining Lens Spec
 - spec/operations_lens_spec.md — Tirion — Operations Lens Spec (Foreman View)
+- spec/parts_master_grid_spec.md — Parts Master Grid
 - spec/parts_master_spec.md — Tirion — Parts Master Spec
 - spec/project_creation_view_spec.md — Tirion — Project Creation View Spec
 - spec/project_view_spec.md — Tirion — Project View Spec

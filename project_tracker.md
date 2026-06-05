@@ -26,7 +26,10 @@
 **Status:** Not Started
 
 ## Phase 1B — Parts Master
-**Status:** Not Started
+**Status:** Done
+- Part CRUD with all fields ✓
+- Parts Master grid with sort, filter, search ✓
+- Stock count inline editing with audit trail ✓
 
 ## Phase 1C — Routing Template Editor
 **Status:** Not Started
@@ -68,5 +71,8 @@
 
 ## Open DEVIATIONS stubs
 
-_None._
+- `0cc28d3fb7fc0fa87cea66b0b925e4037815d034` (2026-05-28) — rationale TBD
+- `0dc56e640db251df69ad65662b5958ccb658ec15` (2026-05-28) — rationale TBD
+- `0784aca85333dcd9dbfbd8665b1ae658528f1d5e` (2026-05-29) — rationale TBD
+- `1c3b7fd89e2768dbf1348a39950692e498e0da10` (2026-06-03) — rationale TBD
 

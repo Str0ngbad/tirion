@@ -101,20 +101,33 @@ export function applyClientSort(
   columnId: ColumnId,
   direction: "asc" | "desc"
 ): PartRowClient[] {
-  const factor = direction === "asc" ? 1 : -1;
+  return applyClientSorts(rows, [{ columnId, direction }]);
+}
+
+export function applyClientSorts(
+  rows: PartRowClient[],
+  sorts: Array<{ columnId: ColumnId; direction: "asc" | "desc" }>
+): PartRowClient[] {
+  if (sorts.length === 0) return rows;
   return [...rows].sort((a, b) => {
-    const av = getSortValue(a, columnId);
-    const bv = getSortValue(b, columnId);
-    // Nulls sort last regardless of direction.
-    if (av === null && bv === null) return 0;
-    if (av === null) return 1;
-    if (bv === null) return -1;
-    if (typeof av === "string" && typeof bv === "string") {
-      return factor * av.localeCompare(bv);
+    for (const { columnId, direction } of sorts) {
+      const factor = direction === "asc" ? 1 : -1;
+      const av = getSortValue(a, columnId);
+      const bv = getSortValue(b, columnId);
+      // Nulls sort last regardless of direction.
+      if (av === null && bv === null) continue;
+      if (av === null) return 1;
+      if (bv === null) return -1;
+      let cmp: number;
+      if (typeof av === "string" && typeof bv === "string") {
+        cmp = av.localeCompare(bv);
+      } else if (typeof av === "number" && typeof bv === "number") {
+        cmp = av - bv;
+      } else {
+        cmp = String(av).localeCompare(String(bv));
+      }
+      if (cmp !== 0) return factor * cmp;
     }
-    if (typeof av === "number" && typeof bv === "number") {
-      return factor * (av - bv);
-    }
-    return factor * String(av).localeCompare(String(bv));
+    return 0;
   });
 }
