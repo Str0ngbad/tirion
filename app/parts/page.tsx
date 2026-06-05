@@ -557,7 +557,7 @@ export default function PartsPage() {
 
       {/* Grid area — scrolls internally; everything above is anchored */}
       <div className="relative flex flex-1 overflow-hidden">
-        <div ref={scrollContainerRef} className="flex-1 overflow-auto px-8 py-4">
+        <div ref={scrollContainerRef} className="flex-1 overflow-auto px-8 pb-4">
           <div className="mx-auto max-w-7xl">
             {isLoading ? (
               <div className="space-y-2 pt-2">
