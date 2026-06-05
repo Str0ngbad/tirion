@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { PlusIcon, SearchIcon, AlertCircleIcon } from "lucide-react";
+import { PlusIcon, SearchIcon, AlertCircleIcon, XIcon } from "lucide-react";
 import { toast } from "sonner";
 import { usePartsGrid } from "@/lib/api/parts";
 import {
@@ -19,11 +19,13 @@ import PartsGrid from "./_components/parts-grid";
 import ViewSwitcher from "./_components/view-switcher";
 import ViewManagementModal from "./_components/view-management-modal";
 import ColumnsButton from "./_components/columns-button";
+import ActiveFiltersChrome from "./_components/active-filters-chrome";
 import {
   applyClientSort,
   type ColumnId,
 } from "./_lib/columns";
 import type { PartRowClient } from "@/lib/api/parts";
+import type { FilterObject } from "@/lib/views/types";
 import type { ViewRow } from "@/lib/api/views";
 
 // ─── Debounce hook ────────────────────────────────────────────────────────────
@@ -43,7 +45,6 @@ type SortState = { columnId: ColumnId; direction: "asc" | "desc" } | null;
 
 function toggleSort(current: SortState, columnId: ColumnId): SortState {
   if (current?.columnId === columnId) {
-    // asc → desc; desc stays desc (no clear via click)
     return current.direction === "asc"
       ? { columnId, direction: "desc" }
       : { columnId, direction: "desc" };
@@ -57,7 +58,6 @@ export default function PartsPage() {
   const viewsQuery = useViews();
   const views: ViewRow[] = viewsQuery.data ?? [];
 
-  // Track active view ID — initialised when views first load.
   const [activeViewId, setActiveViewId] = useState<number | null>(null);
   const initialised = useRef(false);
   useEffect(() => {
@@ -73,11 +73,19 @@ export default function PartsPage() {
   // Draft overrides (null = no override, use view's saved state).
   const [draftSort, setDraftSort] = useState<SortState>(null);
   const [draftVisibleColumns, setDraftVisibleColumns] = useState<string[] | null>(null);
+  const [draftFilters, setDraftFilters] = useState<FilterObject[] | null>(null);
 
-  const isDirty = draftSort !== null || draftVisibleColumns !== null;
+  const isDirty = draftSort !== null || draftVisibleColumns !== null || draftFilters !== null;
 
   const effectiveVisibleColumns: string[] =
     draftVisibleColumns ?? activeView?.visibleColumns ?? [];
+
+  const effectiveFilters: FilterObject[] =
+    draftFilters ?? activeView?.filters ?? [];
+
+  const effectiveSort = draftSort
+    ? [{ column: draftSort.columnId, direction: draftSort.direction }]
+    : (activeView?.defaultSort ?? []);
 
   // ── Search ─────────────────────────────────────────────────────────────────
   const [searchRaw, setSearchRaw] = useState("");
@@ -88,18 +96,17 @@ export default function PartsPage() {
   const [selectedPartId, setSelectedPartId] = useState<number | null>(null);
   const [viewManagementOpen, setViewManagementOpen] = useState(false);
 
-  // Save as new input state
   const [saveAsMode, setSaveAsMode] = useState(false);
   const [saveAsName, setSaveAsName] = useState("");
 
   // ── Grid data ──────────────────────────────────────────────────────────────
+  // When draftFilters is set, use explicit mode so filters take effect server-side.
   const gridQuery = usePartsGrid(
-    activeViewId !== null
+    activeViewId !== null && draftFilters === null
       ? { viewId: activeViewId }
-      : { filters: [], sort: [] }
+      : { filters: effectiveFilters, sort: effectiveSort }
   );
 
-  // Apply client-side search filter and draft sort.
   const displayRows = (() => {
     let rows: PartRowClient[] = gridQuery.data ?? [];
 
@@ -112,7 +119,8 @@ export default function PartsPage() {
       );
     }
 
-    if (draftSort) {
+    // Client-side sort only when in viewId mode (explicit mode sorts server-side)
+    if (draftSort && draftFilters === null) {
       rows = applyClientSort(rows, draftSort.columnId, draftSort.direction);
     }
 
@@ -128,6 +136,7 @@ export default function PartsPage() {
     setActiveViewId(viewId);
     setDraftSort(null);
     setDraftVisibleColumns(null);
+    setDraftFilters(null);
     setSaveAsMode(false);
     setSaveAsName("");
   }
@@ -137,12 +146,14 @@ export default function PartsPage() {
     const update: Parameters<typeof updateView.mutate>[0]["input"] = {};
     if (draftSort !== null) update.defaultSort = [{ column: draftSort.columnId, direction: draftSort.direction }];
     if (draftVisibleColumns !== null) update.visibleColumns = draftVisibleColumns;
+    if (draftFilters !== null) update.filters = draftFilters;
     updateView.mutate(
       { id: activeViewId, input: update },
       {
         onSuccess: () => {
           setDraftSort(null);
           setDraftVisibleColumns(null);
+          setDraftFilters(null);
           toast.success("View saved");
         },
         onError: (err) => toast.error(err.message),
@@ -157,15 +168,16 @@ export default function PartsPage() {
     createView.mutate(
       {
         name,
-        visibleColumns: effectiveVisibleColumns.length > 0 ? effectiveVisibleColumns : (activeView.visibleColumns),
+        visibleColumns: effectiveVisibleColumns.length > 0 ? effectiveVisibleColumns : activeView.visibleColumns,
         defaultSort: draftSort ? [{ column: draftSort.columnId, direction: draftSort.direction }] : activeView.defaultSort,
-        filters: activeView.filters,
+        filters: effectiveFilters,
       },
       {
         onSuccess: (newView) => {
           setActiveViewId(newView.viewId);
           setDraftSort(null);
           setDraftVisibleColumns(null);
+          setDraftFilters(null);
           setSaveAsMode(false);
           setSaveAsName("");
           toast.success(`View "${newView.name}" created`);
@@ -178,6 +190,7 @@ export default function PartsPage() {
   function handleRevert() {
     setDraftSort(null);
     setDraftVisibleColumns(null);
+    setDraftFilters(null);
     setSaveAsMode(false);
     setSaveAsName("");
   }
@@ -202,13 +215,26 @@ export default function PartsPage() {
   function handleColumnToggle(columnId: ColumnId, visible: boolean) {
     const base = effectiveVisibleColumns;
     if (visible) {
-      // Insert at its natural ALL_COLUMNS order position.
       const allIds = ["partNumber","partName","partType","procurementCategory","material","materialForm","vendor","vendorPartNumber","routing","buildableCount","stockCount","inventoryLocation","stockSize","blankLength","partCost","partCostUpdatedAt","assembliesUsedInCount","machineCycleTime","numberOfSetups","isActive"];
       const next = allIds.filter((id) => id === columnId || base.includes(id));
       setDraftVisibleColumns(next);
     } else {
       setDraftVisibleColumns(base.filter((id) => id !== columnId));
     }
+  }
+
+  function handleApplyFilter(filter: FilterObject) {
+    const base = effectiveFilters;
+    const idx = base.findIndex((f) => f.column === filter.column);
+    const next = idx >= 0
+      ? base.map((f, i) => (i === idx ? filter : f))
+      : [...base, filter];
+    setDraftFilters(next);
+  }
+
+  function handleRemoveFilter(column: string) {
+    const next = effectiveFilters.filter((f) => f.column !== column);
+    setDraftFilters(next);
   }
 
   function handleRenameView(viewId: number, newName: string) {
@@ -258,8 +284,18 @@ export default function PartsPage() {
                   placeholder="Search parts…"
                   value={searchRaw}
                   onChange={(e) => setSearchRaw(e.target.value)}
-                  className="h-8 pl-8 text-sm w-56"
+                  className="h-8 pl-8 pr-7 text-sm w-56"
                 />
+                {searchRaw.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchRaw("")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    aria-label="Clear search"
+                  >
+                    <XIcon className="h-3 w-3" />
+                  </button>
+                )}
               </div>
               <Button size="sm" disabled className="gap-1.5 text-sm">
                 <PlusIcon className="h-3.5 w-3.5" />
@@ -352,9 +388,15 @@ export default function PartsPage() {
           )}
 
           <div className="ml-auto flex items-center gap-3">
+            <ActiveFiltersChrome
+              filters={effectiveFilters}
+              viewFilters={activeView?.filters ?? []}
+              onRemoveFilter={handleRemoveFilter}
+            />
             <CondenseToggle checked={condensed} onCheckedChange={setCondensed} />
             <ColumnsButton
               visibleColumns={effectiveVisibleColumns}
+              activeFilters={effectiveFilters}
               onChange={handleColumnToggle}
             />
           </div>
@@ -404,11 +446,14 @@ export default function PartsPage() {
                 sortState={draftSort}
                 condensed={condensed}
                 selectedPartId={selectedPartId}
+                filters={effectiveFilters}
                 onSelectPart={setSelectedPartId}
                 onSortToggle={handleSortToggle}
                 onSortSet={handleSortSet}
                 onClearSort={handleClearSort}
                 onHideColumn={handleHideColumn}
+                onApplyFilter={handleApplyFilter}
+                onRemoveFilter={handleRemoveFilter}
               />
             )}
           </div>

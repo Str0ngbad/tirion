@@ -18,6 +18,7 @@ import {
 } from "@/app/parts/_lib/columns";
 import ProcessTypeChip from "@/components/process-type-chip";
 import type { ProcessTypeKey } from "@/lib/process-types";
+import type { FilterObject } from "@/lib/views/types";
 import ColumnHeaderMenu from "./column-header-menu";
 import { useTruncatedTitle } from "@/lib/hooks/use-truncated-title";
 
@@ -188,13 +189,14 @@ type Props = {
   sortState: SortState;
   condensed: boolean;
   selectedPartId: number | null;
+  filters: FilterObject[];
   onSelectPart: (partId: number) => void;
-  // Called on column label click — toggles asc/desc for that column.
   onSortToggle: (columnId: ColumnId) => void;
-  // Called from column menu for explicit direction or clear.
   onSortSet: (columnId: ColumnId, direction: "asc" | "desc") => void;
   onClearSort: () => void;
   onHideColumn: (columnId: ColumnId) => void;
+  onApplyFilter: (filter: FilterObject) => void;
+  onRemoveFilter: (column: string) => void;
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -205,14 +207,18 @@ export default function PartsGrid({
   sortState,
   condensed,
   selectedPartId,
+  filters,
   onSelectPart,
   onSortToggle,
   onSortSet,
   onClearSort,
   onHideColumn,
+  onApplyFilter,
+  onRemoveFilter,
 }: Props) {
   const visibleSet = new Set(visibleColumns);
   const columns = ALL_COLUMNS.filter((c) => visibleSet.has(c.id));
+  const filterByColumn = new Map(filters.map((f) => [f.column, f]));
 
   return (
     <div className="overflow-x-auto">
@@ -260,12 +266,17 @@ export default function PartsGrid({
                       columnId={col.id}
                       label={col.label}
                       sortable={col.sortable}
+                      filterable={col.filterable}
+                      columnDataType={col.dataType}
                       currentSortColumn={sortState?.columnId ?? null}
                       currentSortDirection={sortState?.direction ?? null}
+                      existingFilter={filterByColumn.get(col.id) ?? null}
                       onSortAsc={() => onSortSet(col.id, "asc")}
                       onSortDesc={() => onSortSet(col.id, "desc")}
                       onClearSort={onClearSort}
                       onHideColumn={() => onHideColumn(col.id)}
+                      onApplyFilter={onApplyFilter}
+                      onRemoveFilter={() => onRemoveFilter(col.id)}
                     />
                   </div>
                 </TableHead>

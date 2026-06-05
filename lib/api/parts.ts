@@ -5,6 +5,12 @@ import { apiFetch } from "./client";
 import { ApiError } from "./client-error";
 import type { SortSpec, FilterObject } from "@/lib/views/types";
 
+export type ProcessTypeRow = {
+  processTypeId: number;
+  processName: string;
+  processCode: string;
+};
+
 // Frontend representation of PartRow — dates are ISO strings after JSON serialization.
 export type PartRowClient = {
   partId: number;
@@ -44,6 +50,25 @@ export type PartRowClient = {
 export type PartsGridQuery =
   | { viewId: number; activeFilter?: "true" | "false" | "all" }
   | { filters: FilterObject[]; sort: SortSpec[]; activeFilter?: "true" | "false" | "all" };
+
+export function useDistinctValues(columnId: string | null): UseQueryResult<{ values: string[] }, ApiError> {
+  return useQuery({
+    queryKey: ["parts", "distinct-values", columnId],
+    queryFn: () =>
+      apiFetch<{ values: string[] }>(`/api/v1/parts/distinct-values?column=${columnId}`),
+    enabled: columnId !== null,
+    staleTime: 30_000,
+  });
+}
+
+export function useProcessTypes(): UseQueryResult<ProcessTypeRow[], ApiError> {
+  return useQuery({
+    queryKey: ["process-types"],
+    queryFn: () =>
+      apiFetch<{ data: ProcessTypeRow[] }>("/api/v1/process-types").then((r) => r.data),
+    staleTime: 300_000,
+  });
+}
 
 export function usePartsGrid(
   query: PartsGridQuery
