@@ -15,6 +15,7 @@ import type { ProcessTypeKey } from "@/lib/process-types";
 import type { FilterObject } from "@/lib/views/types";
 import ColumnHeaderMenu from "./column-header-menu";
 import { useTruncatedTitle } from "@/lib/hooks/use-truncated-title";
+import InlineEditCell from "./inline-edit-cell";
 
 // ─── Condensed context ────────────────────────────────────────────────────────
 // Keeps `condensed` out of row props so toggling it only re-renders routing
@@ -72,9 +73,15 @@ function RoutingCellContent({ processTypes }: { processTypes: string[] }) {
 
 // ─── Cell renderer ────────────────────────────────────────────────────────────
 
+type CellCallbacks = {
+  onStockCountChange: (partId: number, value: number) => void;
+  onInventoryLocationChange: (partId: number, value: string | null) => void | Promise<void>;
+};
+
 function renderCell(
   row: PartRowClient,
-  columnId: ColumnId
+  columnId: ColumnId,
+  callbacks?: CellCallbacks
 ): React.ReactNode {
   switch (columnId) {
     case "partNumber":
@@ -120,16 +127,21 @@ function renderCell(
         <Dash />
       );
     case "stockCount":
-      return row.stockCount !== null ? (
-        <span className="tabular-nums">{row.stockCount}</span>
-      ) : (
-        <Dash />
+      return (
+        <InlineEditCell
+          value={row.stockCount}
+          type="number"
+          align="right"
+          onCommit={(v) => callbacks?.onStockCountChange(row.partId, v as number)}
+        />
       );
     case "inventoryLocation":
-      return row.inventoryLocation ? (
-        <TruncatedCell text={row.inventoryLocation} />
-      ) : (
-        <Dash />
+      return (
+        <InlineEditCell
+          value={row.inventoryLocation}
+          type="text"
+          onCommit={(v) => callbacks?.onInventoryLocationChange(row.partId, v as string | null)}
+        />
       );
     case "stockSize":
       return row.stockSize ? <TruncatedCell text={row.stockSize} /> : <Dash />;
@@ -186,11 +198,14 @@ function renderCell(
 
 type Column = (typeof ALL_COLUMNS)[number];
 
+const INLINE_EDIT_COLS = new Set<ColumnId>(["stockCount", "inventoryLocation"]);
+
 interface PartRowProps {
   row: PartRowClient;
   isSelected: boolean;
   columns: Column[];
   onSelectPart: (partId: number) => void;
+  callbacks: CellCallbacks;
   style?: React.CSSProperties;
 }
 
@@ -199,6 +214,7 @@ const PartRowComponent = React.memo(function PartRowComponent({
   isSelected,
   columns,
   onSelectPart,
+  callbacks,
   style,
 }: PartRowProps) {
   return (
@@ -222,10 +238,12 @@ const PartRowComponent = React.memo(function PartRowComponent({
             "overflow-hidden px-3 py-1.5 text-sm",
             col.align === "right" && "text-right",
             col.align === "center" && "text-center",
-            col.id === "routing" && "whitespace-nowrap"
+            col.id === "routing" && "whitespace-nowrap",
+            INLINE_EDIT_COLS.has(col.id) && "cursor-default"
           )}
+          onClick={INLINE_EDIT_COLS.has(col.id) ? (e) => e.stopPropagation() : undefined}
         >
-          {renderCell(row, col.id)}
+          {renderCell(row, col.id, callbacks)}
         </div>
       ))}
     </div>
@@ -243,6 +261,8 @@ type Props = {
   filters: FilterObject[];
   scrollContainerRef: React.RefObject<HTMLDivElement | null>;
   onSelectPart: (partId: number) => void;
+  onStockCountChange: (partId: number, value: number) => void;
+  onInventoryLocationChange: (partId: number, value: string | null) => void | Promise<void>;
   onSortToggle: (columnId: ColumnId, addToStack: boolean) => void;
   onSortSet: (columnId: ColumnId, direction: "asc" | "desc") => void;
   onAddToSort: (columnId: ColumnId) => void;
@@ -263,6 +283,8 @@ export default function PartsGrid({
   filters,
   scrollContainerRef,
   onSelectPart,
+  onStockCountChange,
+  onInventoryLocationChange,
   onSortToggle,
   onSortSet,
   onAddToSort,
@@ -287,6 +309,11 @@ export default function PartsGrid({
   );
 
   const showPriority = sorts.length > 1;
+
+  const cellCallbacks = useMemo<CellCallbacks>(
+    () => ({ onStockCountChange, onInventoryLocationChange }),
+    [onStockCountChange, onInventoryLocationChange]
+  );
 
   const virtualizer = useVirtualizer({
     count: rows.length,
@@ -390,6 +417,7 @@ export default function PartsGrid({
                 isSelected={row.partId === selectedPartId}
                 columns={columns}
                 onSelectPart={onSelectPart}
+                callbacks={cellCallbacks}
                 style={{
                   position: "absolute",
                   top: 0,

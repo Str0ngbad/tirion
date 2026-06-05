@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery, type UseQueryResult } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, type UseQueryResult, type UseMutationResult } from "@tanstack/react-query";
 import { apiFetch } from "./client";
 import { ApiError } from "./client-error";
 import type { SortSpec, FilterObject } from "@/lib/views/types";
@@ -81,5 +81,66 @@ export function usePartsGrid(
         body: JSON.stringify(query),
       }).then((r) => r.data),
     staleTime: 30_000,
+  });
+}
+
+type UpdateStockCountVars = { partId: number; stockCount: number };
+type UpdateInventoryLocationVars = { partId: number; inventoryLocation: string | null };
+
+export function useUpdateStockCount(): UseMutationResult<PartRowClient, ApiError, UpdateStockCountVars> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ partId, stockCount }: UpdateStockCountVars) =>
+      apiFetch<PartRowClient>(`/api/v1/parts/${partId}/stock-count`, {
+        method: "PATCH",
+        body: JSON.stringify({ stockCount }),
+      }),
+    onMutate: async ({ partId, stockCount }) => {
+      await queryClient.cancelQueries({ queryKey: ["parts", "grid"] });
+      const snapshots = queryClient.getQueriesData<PartRowClient[]>({ queryKey: ["parts", "grid"] });
+      queryClient.setQueriesData<PartRowClient[]>(
+        { queryKey: ["parts", "grid"] },
+        (old) => old?.map((r) => r.partId === partId ? { ...r, stockCount } : r)
+      );
+      return { snapshots };
+    },
+    onError: (_err, _vars, ctx) => {
+      const context = ctx as { snapshots: [unknown, PartRowClient[] | undefined][] } | undefined;
+      context?.snapshots.forEach(([key, data]) => {
+        queryClient.setQueryData(key as Parameters<typeof queryClient.setQueryData>[0], data);
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["parts", "grid"] });
+    },
+  });
+}
+
+export function useUpdateInventoryLocation(): UseMutationResult<PartRowClient, ApiError, UpdateInventoryLocationVars> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ partId, inventoryLocation }: UpdateInventoryLocationVars) =>
+      apiFetch<PartRowClient>(`/api/v1/parts/${partId}/inventory-location`, {
+        method: "PATCH",
+        body: JSON.stringify({ inventoryLocation }),
+      }),
+    onMutate: async ({ partId, inventoryLocation }) => {
+      await queryClient.cancelQueries({ queryKey: ["parts", "grid"] });
+      const snapshots = queryClient.getQueriesData<PartRowClient[]>({ queryKey: ["parts", "grid"] });
+      queryClient.setQueriesData<PartRowClient[]>(
+        { queryKey: ["parts", "grid"] },
+        (old) => old?.map((r) => r.partId === partId ? { ...r, inventoryLocation } : r)
+      );
+      return { snapshots };
+    },
+    onError: (_err, _vars, ctx) => {
+      const context = ctx as { snapshots: [unknown, PartRowClient[] | undefined][] } | undefined;
+      context?.snapshots.forEach(([key, data]) => {
+        queryClient.setQueryData(key as Parameters<typeof queryClient.setQueryData>[0], data);
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["parts", "grid"] });
+    },
   });
 }

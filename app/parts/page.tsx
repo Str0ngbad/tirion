@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { PlusIcon, SearchIcon, AlertCircleIcon, XIcon } from "lucide-react";
 import { toast } from "sonner";
-import { usePartsGrid } from "@/lib/api/parts";
+import { usePartsGrid, useUpdateStockCount, useUpdateInventoryLocation } from "@/lib/api/parts";
 import {
   useViews,
   useCreateView,
@@ -13,6 +13,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import type { PartRowClient } from "@/lib/api/parts";
 import { CondenseToggle } from "@/components/condense-toggle";
 import ProcessTypeLegend from "@/app/routing-templates/_components/process-type-legend";
 import PartsGrid from "./_components/parts-grid";
@@ -25,7 +34,6 @@ import {
   applyClientSorts,
   type ColumnId,
 } from "./_lib/columns";
-import type { PartRowClient } from "@/lib/api/parts";
 import type { FilterObject, SortSpec } from "@/lib/views/types";
 import type { ViewRow } from "@/lib/api/views";
 
@@ -125,6 +133,15 @@ export default function PartsPage() {
   const [saveAsMode, setSaveAsMode] = useState(false);
   const [saveAsName, setSaveAsName] = useState("");
 
+  // ── Collision dialog state ─────────────────────────────────────────────────
+  type CollisionDialog = {
+    location: string;
+    collidingPart: PartRowClient;
+    onConfirm: () => void;
+    onCancel: () => void;
+  };
+  const [locationCollisionDialog, setLocationCollisionDialog] = useState<CollisionDialog | null>(null);
+
   // ── Grid data ──────────────────────────────────────────────────────────────
   // Explicit mode when draft overrides are present so changes take effect server-side.
   const gridQuery = usePartsGrid(
@@ -155,6 +172,45 @@ export default function PartsPage() {
 
     return rows;
   }, [gridQuery.data, search, draftSorts, draftFilters]);
+
+  // ── Inline edit mutations ──────────────────────────────────────────────────
+  const updateStockCount = useUpdateStockCount();
+  const updateInventoryLocation = useUpdateInventoryLocation();
+
+  const handleStockCountChange = useCallback((partId: number, value: number) => {
+    updateStockCount.mutate({ partId, stockCount: value }, {
+      onError: () => toast.error("Failed to update stock count."),
+    });
+  }, [updateStockCount]);
+
+  const handleInventoryLocationChange = useCallback(async (partId: number, location: string | null) => {
+    if (location !== null && location.length > 0) {
+      const allParts = gridQuery.data;
+      const collision = allParts?.find(
+        (r) => r.partId !== partId && r.inventoryLocation === location && r.isActive
+      );
+      if (collision) {
+        const confirmed = await new Promise<boolean>((resolve) => {
+          setLocationCollisionDialog({
+            location,
+            collidingPart: collision,
+            onConfirm: () => {
+              setLocationCollisionDialog(null);
+              resolve(true);
+            },
+            onCancel: () => {
+              setLocationCollisionDialog(null);
+              resolve(false);
+            },
+          });
+        });
+        if (!confirmed) return;
+      }
+    }
+    updateInventoryLocation.mutate({ partId, inventoryLocation: location }, {
+      onError: () => toast.error("Failed to update inventory location."),
+    });
+  }, [updateInventoryLocation, gridQuery.data]);
 
   // ── View mutations ─────────────────────────────────────────────────────────
   const createView = useCreateView();
@@ -579,6 +635,8 @@ export default function PartsPage() {
                 filters={effectiveFilters}
                 scrollContainerRef={scrollContainerRef}
                 onSelectPart={setSelectedPartId}
+                onStockCountChange={handleStockCountChange}
+                onInventoryLocationChange={handleInventoryLocationChange}
                 onSortToggle={handleSortToggle}
                 onSortSet={handleSortSet}
                 onAddToSort={handleAddToSort}
@@ -606,6 +664,29 @@ export default function PartsPage() {
           </SheetContent>
         </Sheet>
       </div>
+
+      {locationCollisionDialog && (
+        <Dialog open onOpenChange={() => locationCollisionDialog.onCancel()}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Location already assigned</DialogTitle>
+              <DialogDescription>
+                The location <strong>{locationCollisionDialog.location}</strong> is currently
+                assigned to{" "}
+                <strong>{locationCollisionDialog.collidingPart.partNumber}</strong> (
+                {locationCollisionDialog.collidingPart.partName}). You can assign both
+                Parts to this location, but confirm this is intentional.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={locationCollisionDialog.onCancel}>
+                Cancel
+              </Button>
+              <Button onClick={locationCollisionDialog.onConfirm}>Assign anyway</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       <ViewManagementModal
         open={viewManagementOpen}
