@@ -224,7 +224,7 @@ export default function PartsGrid({
 
   return (
     <div className="overflow-x-auto">
-      <Table>
+      <Table className="w-max">
         <TableHeader>
           <TableRow className="hover:bg-transparent">
             {columns.map((col) => {
