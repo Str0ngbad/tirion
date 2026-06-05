@@ -79,6 +79,15 @@ async function main() {
   // ── Idempotent pre-run cleanup ───────────────────────────────────────────────
   // Remove any fixture residuals left by a prior aborted run so this run starts
   // from a known-clean state. Errors here are suppressed — missing records are fine.
+  //
+  // assembliesUsedInCount fixture cleanup: delete BOM edges before Parts
+  await prisma.bOM.deleteMany({
+    where: {
+      parentPart: { partNumber: "VGRID-TEST-ASSEMBLY" },
+    },
+  });
+  // Remove any fixture residuals left by a prior aborted run so this run starts
+  // from a known-clean state. Errors here are suppressed — missing records are fine.
   const staleTemplate = await prisma.routingTemplateDefinition.findFirst({
     where: { templateName: "__VGRID_TEST_TEMPLATE__" },
   });
@@ -91,7 +100,7 @@ async function main() {
     });
   }
   await prisma.part.deleteMany({
-    where: { partNumber: { in: ["VGRID-TEST-001", "VGRID-TEST-002", "VGRID-TEST-003", "VGRID-TEST-004"] } },
+    where: { partNumber: { in: ["VGRID-TEST-001", "VGRID-TEST-002", "VGRID-TEST-003", "VGRID-TEST-004", "VGRID-TEST-ASSEMBLY"] } },
   });
 
   // ── Fixture setup ─────────────────────────────────────────────────────────────
@@ -155,6 +164,22 @@ async function main() {
     await deactivatePart(p4Raw.partId, userId);
     fixtures.push(p4Raw);
 
+    // Assembly fixture: used for assembliesUsedInCount filter tests.
+    // pAssembly has p1 and p2 as children (so p1.assembliesUsedInCount >= 1,
+    // p2.assembliesUsedInCount >= 1, p3.assembliesUsedInCount = 0).
+    const pAssembly = await createPart(
+      { partNumber: "VGRID-TEST-ASSEMBLY", partName: "Grid Verify Assembly", partType: "Assembly" },
+      userId
+    );
+    fixtures.push(pAssembly);
+    // Create BOM edges: p1 and p2 are children of pAssembly.
+    await prisma.bOM.createMany({
+      data: [
+        { parentPartId: pAssembly.partId, childPartId: p1.partId, quantity: 1 },
+        { parentPartId: pAssembly.partId, childPartId: p2.partId, quantity: 1 },
+      ],
+    });
+
     // ── viewId-driven queries ─────────────────────────────────────────────────
 
     console.log("\n── viewId-driven queries ────────────────────────────────────────\n");
@@ -217,8 +242,8 @@ async function main() {
       sort: [],
     });
     assert(
-      filteredRows.length === 3 && filteredRows.every((r) => r.partNumber.includes("VGRID-TEST")),
-      `Ad-hoc filter: partNumber contains "VGRID-TEST" → exactly 3 active rows`
+      filteredRows.length === 4 && filteredRows.every((r) => r.partNumber.includes("VGRID-TEST")),
+      `Ad-hoc filter: partNumber contains "VGRID-TEST" → exactly 4 active rows (p1, p2, p3, assembly)`
     );
 
     // 7. Ad-hoc multi-column sort: partType asc, partNumber desc.
@@ -311,6 +336,58 @@ async function main() {
       "15. Sort by buildableCount desc executes without error"
     );
 
+    console.log("\n── assembliesUsedInCount filter tests ──────────────────────────\n");
+
+    // 15b. assembliesUsedInCount gte 1 returns only parts used in at least one BOM
+    //      (p1 and p2 are children of pAssembly; p3 is not a child of anything)
+    const usedInAtLeastOne = await queryPartsGrid({
+      filters: [
+        { column: "partNumber", operator: "contains", value: "VGRID-TEST" },
+        { column: "assembliesUsedInCount", operator: "greater_than_or_eq", value: 1 },
+      ],
+      sort: [],
+      activeFilter: "all",
+    });
+    assert(
+      usedInAtLeastOne.some((r) => r.partId === p1.partId) &&
+        usedInAtLeastOne.some((r) => r.partId === p2.partId) &&
+        !usedInAtLeastOne.some((r) => r.partId === p3.partId),
+      "15b. assembliesUsedInCount gte 1: p1 and p2 present, p3 absent"
+    );
+
+    // 15c. assembliesUsedInCount num_equals 0 returns parts with no parent BOM edges
+    //      (p3 has 0 parents; p1 and p2 each have 1 parent)
+    const usedInZero = await queryPartsGrid({
+      filters: [
+        { column: "partNumber", operator: "contains", value: "VGRID-TEST" },
+        { column: "assembliesUsedInCount", operator: "num_equals", value: 0 },
+      ],
+      sort: [],
+      activeFilter: "all",
+    });
+    assert(
+      usedInZero.some((r) => r.partId === p3.partId) &&
+        !usedInZero.some((r) => r.partId === p1.partId) &&
+        !usedInZero.some((r) => r.partId === p2.partId),
+      "15c. assembliesUsedInCount num_equals 0: p3 present, p1 and p2 absent"
+    );
+
+    // 15d. assembliesUsedInCount num_is_not_empty always returns all rows
+    //      (assembliesUsedInCount is never null — always a number)
+    const usedInNotEmpty = await queryPartsGrid({
+      filters: [
+        { column: "partNumber", operator: "contains", value: "VGRID-TEST" },
+        { column: "assembliesUsedInCount", operator: "num_is_not_empty" },
+      ],
+      sort: [],
+      activeFilter: "all",
+    });
+    // All 5 fixture rows should be present (count not null for any of them)
+    assert(
+      usedInNotEmpty.length >= 5,
+      "15d. assembliesUsedInCount num_is_not_empty: all fixture rows returned (never null)"
+    );
+
     console.log("\n── materialForm and assembliesUsedInCount fields ───────────────\n");
 
     // 16. Every PartRow has a materialForm field (string | null)
@@ -335,10 +412,12 @@ async function main() {
       "18. Every PartRow has assembliesUsedInCount (number >= 0)"
     );
 
-    // 19. Fixture Parts not used in any BOM have assembliesUsedInCount = 0
+    // 19. p3 (not a BOM child) has assembliesUsedInCount = 0;
+    //     p1 and p2 are children of pAssembly so their counts are >= 1.
+    const p3Row = allForNewFields.find((r) => r.partId === p3.partId);
     assert(
-      partFixturesForForm.every((r) => r.assembliesUsedInCount === 0),
-      "19. Fixture Parts with no parent BOM edges have assembliesUsedInCount = 0"
+      p3Row?.assembliesUsedInCount === 0,
+      "19. p3 (no parent BOM edges) has assembliesUsedInCount = 0"
     );
 
     // 20. Every PartRow has a processTypes field (string[])
@@ -409,6 +488,15 @@ async function main() {
 
     if (failed > 0) process.exit(1);
   } finally {
+    // Delete BOM edges before Parts (FK dependency).
+    try {
+      await prisma.bOM.deleteMany({
+        where: { parentPart: { partNumber: "VGRID-TEST-ASSEMBLY" } },
+      });
+    } catch (err) {
+      console.error("Failed to clean up BOM fixture edges:", err);
+    }
+
     // Delete Parts before template (FK dependency). Log but do not re-throw so
     // a partial cleanup doesn't mask the original failure.
     for (const part of [...fixtures].reverse()) {

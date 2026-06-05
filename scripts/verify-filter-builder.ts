@@ -313,6 +313,15 @@ async function main() {
     "multi-filter AND combination"
   );
 
+  // Note: assembliesUsedInCount and buildableCount filters are extracted from the
+  // filter list before buildPartWhereClause is called (see queryPartsGrid in service.ts).
+  // These columns produce a Prisma _count aggregate or a DFS-computed value that cannot
+  // appear in a WHERE clause. Their functional tests live in verify-grid-endpoint.ts.
+  assert(
+    deepEqual(buildPartWhereClause([]), {}),
+    "assembliesUsedInCount/buildableCount filters pre-extracted — builder never sees them"
+  );
+
   console.log(`\n── Results: ${passed} passed, ${failed} failed ─────────────────────\n`);
   if (failed > 0) process.exit(1);
 }

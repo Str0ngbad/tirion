@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { PlusIcon, SearchIcon, AlertCircleIcon, XIcon } from "lucide-react";
 import { toast } from "sonner";
 import { usePartsGrid } from "@/lib/api/parts";
@@ -40,6 +40,26 @@ function useDebounce<T>(value: T, delay: number): T {
   return debounced;
 }
 
+// ─── Dirty detection helpers ──────────────────────────────────────────────────
+
+function sortSpecsEqual(a: SortSpec[], b: SortSpec[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((s, i) => s.column === b[i]!.column && s.direction === b[i]!.direction);
+}
+
+function filterObjectsEqual(a: FilterObject[], b: FilterObject[]): boolean {
+  if (a.length !== b.length) return false;
+  // Sort by column so filter order doesn't matter for AND semantics.
+  const sortedA = [...a].sort((x, y) => x.column.localeCompare(y.column));
+  const sortedB = [...b].sort((x, y) => x.column.localeCompare(y.column));
+  return sortedA.every((f, i) => JSON.stringify(f) === JSON.stringify(sortedB[i]));
+}
+
+function columnsEqual(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((c, i) => c === b[i]);
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function PartsPage() {
@@ -63,7 +83,19 @@ export default function PartsPage() {
   const [draftVisibleColumns, setDraftVisibleColumns] = useState<string[] | null>(null);
   const [draftFilters, setDraftFilters] = useState<FilterObject[] | null>(null);
 
-  const isDirty = draftSorts !== null || draftVisibleColumns !== null || draftFilters !== null;
+  // Bidirectional dirty: compares current state against the View's saved state.
+  // Manually returning to the saved state clears the dirty indicator.
+  const isDirty = useMemo(() => {
+    if (!activeView) return false;
+    const currentSorts = draftSorts ?? activeView.defaultSort;
+    const currentFilters = draftFilters ?? activeView.filters;
+    const currentColumns = draftVisibleColumns ?? activeView.visibleColumns;
+    return (
+      !sortSpecsEqual(currentSorts, activeView.defaultSort) ||
+      !filterObjectsEqual(currentFilters, activeView.filters) ||
+      !columnsEqual(currentColumns, activeView.visibleColumns)
+    );
+  }, [activeView, draftSorts, draftFilters, draftVisibleColumns]);
 
   const effectiveVisibleColumns: string[] =
     draftVisibleColumns ?? activeView?.visibleColumns ?? [];
@@ -356,98 +388,128 @@ export default function PartsPage() {
 
       {/* Toolbar */}
       <div className="border-b bg-muted/20 px-8 py-2.5">
-        <div className="mx-auto max-w-7xl flex items-center gap-3 flex-wrap">
-          <ViewSwitcher
-            views={views}
-            activeViewId={activeViewId}
-            isDirty={isDirty}
-            onSelectView={handleSelectView}
-            onOpenManage={() => setViewManagementOpen(true)}
-          />
+        <div className="mx-auto max-w-7xl flex items-start gap-4">
 
-          {isDirty && !saveAsMode && (
-            <div className="flex items-center gap-2">
-              {activeView && !activeView.isLocked && (
+          {/* Left: View switcher + dirty actions */}
+          <div className="shrink-0 flex items-center gap-2 flex-wrap pt-0.5">
+            <ViewSwitcher
+              views={views}
+              activeViewId={activeViewId}
+              isDirty={isDirty}
+              onSelectView={handleSelectView}
+              onOpenManage={() => setViewManagementOpen(true)}
+            />
+
+            {isDirty && !saveAsMode && (
+              <div className="flex items-center gap-2">
+                {activeView && !activeView.isLocked && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs"
+                    onClick={handleSave}
+                    disabled={updateView.isPending}
+                  >
+                    Save
+                  </Button>
+                )}
                 <Button
                   size="sm"
                   variant="outline"
                   className="h-7 text-xs"
-                  onClick={handleSave}
-                  disabled={updateView.isPending}
+                  onClick={() => setSaveAsMode(true)}
                 >
-                  Save
+                  Save as new
                 </Button>
-              )}
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-7 text-xs"
-                onClick={() => setSaveAsMode(true)}
-              >
-                Save as new
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-7 text-xs text-muted-foreground"
-                onClick={handleRevert}
-              >
-                Revert
-              </Button>
-            </div>
-          )}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 text-xs text-muted-foreground"
+                  onClick={handleRevert}
+                >
+                  Revert
+                </Button>
+              </div>
+            )}
 
-          {saveAsMode && (
-            <div className="flex items-center gap-2">
-              <Input
-                autoFocus
-                placeholder="View name…"
-                value={saveAsName}
-                onChange={(e) => setSaveAsName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleSaveAsNew();
-                  if (e.key === "Escape") {
+            {saveAsMode && (
+              <div className="flex items-center gap-2">
+                <Input
+                  autoFocus
+                  placeholder="View name…"
+                  value={saveAsName}
+                  onChange={(e) => setSaveAsName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleSaveAsNew();
+                    if (e.key === "Escape") {
+                      setSaveAsMode(false);
+                      setSaveAsName("");
+                    }
+                  }}
+                  className="h-7 w-40 text-xs"
+                />
+                <Button
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={handleSaveAsNew}
+                  disabled={!saveAsName.trim() || createView.isPending}
+                >
+                  Create
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 text-xs"
+                  onClick={() => {
                     setSaveAsMode(false);
                     setSaveAsName("");
-                  }
-                }}
-                className="h-7 w-40 text-xs"
-              />
-              <Button
-                size="sm"
-                className="h-7 text-xs"
-                onClick={handleSaveAsNew}
-                disabled={!saveAsName.trim() || createView.isPending}
-              >
-                Create
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-7 text-xs"
-                onClick={() => {
-                  setSaveAsMode(false);
-                  setSaveAsName("");
-                }}
-              >
-                Cancel
-              </Button>
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Middle: Active Sorts + Active Filters chrome groups with labels */}
+          {(effectiveSorts.length > 0 || effectiveFilters.length > 0) && (
+            <div className="flex-1 flex items-start gap-4 min-w-0">
+              {effectiveSorts.length > 0 && (
+                <div className="flex flex-col gap-1 min-w-0">
+                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium leading-none">
+                    Sort
+                  </span>
+                  <ActiveSortsChrome
+                    sorts={effectiveSorts}
+                    viewSorts={activeView?.defaultSort ?? []}
+                    onReorderSorts={handleReorderSorts}
+                    onToggleDirection={handleToggleSortDirection}
+                    onRemoveSort={(column) => handleClearThisSort(column as ColumnId)}
+                  />
+                </div>
+              )}
+
+              {effectiveSorts.length > 0 && effectiveFilters.length > 0 && (
+                <div className="w-px self-stretch bg-border mt-4 shrink-0" />
+              )}
+
+              {effectiveFilters.length > 0 && (
+                <div className="flex flex-col gap-1 min-w-0">
+                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium leading-none">
+                    Filter
+                  </span>
+                  <ActiveFiltersChrome
+                    filters={effectiveFilters}
+                    viewFilters={activeView?.filters ?? []}
+                    onRemoveFilter={handleRemoveFilter}
+                  />
+                </div>
+              )}
             </div>
           )}
 
-          <div className="ml-auto flex items-center gap-3 flex-wrap">
-            <ActiveSortsChrome
-              sorts={effectiveSorts}
-              viewSorts={activeView?.defaultSort ?? []}
-              onReorderSorts={handleReorderSorts}
-              onToggleDirection={handleToggleSortDirection}
-              onRemoveSort={(column) => handleClearThisSort(column as ColumnId)}
-            />
-            <ActiveFiltersChrome
-              filters={effectiveFilters}
-              viewFilters={activeView?.filters ?? []}
-              onRemoveFilter={handleRemoveFilter}
-            />
+          {/* Right: Condense toggle + Columns picker */}
+          <div className="shrink-0 flex items-center gap-2 ml-auto pt-0.5">
             <CondenseToggle checked={condensed} onCheckedChange={setCondensed} />
             <ColumnsButton
               visibleColumns={effectiveVisibleColumns}
@@ -455,6 +517,7 @@ export default function PartsPage() {
               onChange={handleColumnToggle}
             />
           </div>
+
         </div>
       </div>
 

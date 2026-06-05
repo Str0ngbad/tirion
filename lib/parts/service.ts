@@ -528,10 +528,14 @@ export async function queryPartsGrid(input: GridQueryBody): Promise<PartRow[]> {
     sort = input.sort;
   }
 
-  // Extract buildableCount filters and sorts — handled post-query since
-  // buildableCount is computed, not a DB column.
+  // Extract computed-column filters — handled post-query since these values are
+  // not DB columns: buildableCount is DFS-computed; assembliesUsedInCount is a
+  // Prisma _count aggregate that cannot appear in a WHERE clause.
   const buildableFilters = filters.filter((f) => f.column === "buildableCount");
-  const dbFilters = filters.filter((f) => f.column !== "buildableCount");
+  const assemblyUsedInFilters = filters.filter((f) => f.column === "assembliesUsedInCount");
+  const dbFilters = filters.filter(
+    (f) => f.column !== "buildableCount" && f.column !== "assembliesUsedInCount"
+  );
   const buildableSortSpecs = sort.filter((s) => s.column === "buildableCount");
   const dbSort = sort.filter((s) => s.column !== "buildableCount");
 
@@ -561,9 +565,12 @@ export async function queryPartsGrid(input: GridQueryBody): Promise<PartRow[]> {
     };
   });
 
-  // Apply buildableCount filters in TypeScript
+  // Apply computed-column filters in TypeScript (post-query, not expressible in DB WHERE)
   if (buildableFilters.length > 0) {
     rows = rows.filter((row) => applyBuildableFilters(row.buildableCount, buildableFilters));
+  }
+  if (assemblyUsedInFilters.length > 0) {
+    rows = rows.filter((row) => applyBuildableFilters(row.assembliesUsedInCount, assemblyUsedInFilters));
   }
 
   // Apply buildableCount sort in TypeScript (last, after DB sort)
