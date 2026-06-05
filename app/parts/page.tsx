@@ -390,18 +390,20 @@ export default function PartsPage() {
       <div className="border-b bg-muted/20 px-8 py-2.5">
         <div className="mx-auto max-w-7xl flex items-start gap-4">
 
-          {/* Left: View switcher + dirty actions */}
-          <div className="shrink-0 flex items-center gap-2 flex-wrap pt-0.5">
-            <ViewSwitcher
-              views={views}
-              activeViewId={activeViewId}
-              isDirty={isDirty}
-              onSelectView={handleSelectView}
-              onOpenManage={() => setViewManagementOpen(true)}
-            />
+          {/* Left: View switcher — dirty actions stack below when dirty */}
+          <div className="shrink-0 flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <ViewSwitcher
+                views={views}
+                activeViewId={activeViewId}
+                isDirty={isDirty}
+                onSelectView={handleSelectView}
+                onOpenManage={() => setViewManagementOpen(true)}
+              />
+            </div>
 
             {isDirty && !saveAsMode && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
                 {activeView && !activeView.isLocked && (
                   <Button
                     size="sm"
@@ -508,9 +510,8 @@ export default function PartsPage() {
             </div>
           )}
 
-          {/* Right: Condense toggle + Columns picker */}
+          {/* Right: Columns picker */}
           <div className="shrink-0 flex items-center gap-2 ml-auto pt-0.5">
-            <CondenseToggle checked={condensed} onCheckedChange={setCondensed} />
             <ColumnsButton
               visibleColumns={effectiveVisibleColumns}
               activeFilters={effectiveFilters}
@@ -521,8 +522,10 @@ export default function PartsPage() {
         </div>
       </div>
 
-      {/* Process type legend */}
-      <ProcessTypeLegend />
+      {/* Process type legend — Condense toggle anchored to its right edge */}
+      <ProcessTypeLegend
+        rightSlot={<CondenseToggle checked={condensed} onCheckedChange={setCondensed} />}
+      />
 
       {/* Error banner */}
       {hasError && (
