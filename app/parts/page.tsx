@@ -473,42 +473,42 @@ export default function PartsPage() {
             )}
           </div>
 
-          {/* Middle: Active Sorts + Active Filters chrome groups with labels */}
-          {(effectiveSorts.length > 0 || effectiveFilters.length > 0) && (
-            <div className="flex-1 flex items-start gap-4 min-w-0">
-              {effectiveSorts.length > 0 && (
-                <div className="flex flex-col gap-1 min-w-0">
-                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium leading-none">
-                    Sort
-                  </span>
-                  <ActiveSortsChrome
-                    sorts={effectiveSorts}
-                    viewSorts={activeView?.defaultSort ?? []}
-                    onReorderSorts={handleReorderSorts}
-                    onToggleDirection={handleToggleSortDirection}
-                    onRemoveSort={(column) => handleClearThisSort(column as ColumnId)}
-                  />
-                </div>
-              )}
-
-              {effectiveSorts.length > 0 && effectiveFilters.length > 0 && (
-                <div className="w-px self-stretch bg-border mt-4 shrink-0" />
-              )}
-
-              {effectiveFilters.length > 0 && (
-                <div className="flex flex-col gap-1 min-w-0">
-                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium leading-none">
-                    Filter
-                  </span>
-                  <ActiveFiltersChrome
-                    filters={effectiveFilters}
-                    viewFilters={activeView?.filters ?? []}
-                    onRemoveFilter={handleRemoveFilter}
-                  />
-                </div>
+          {/* Middle: Active Sorts + Active Filters chrome groups — always rendered */}
+          <div className="flex-1 flex items-start gap-4 min-w-0">
+            <div className="flex flex-col gap-1 min-w-0 flex-1">
+              <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium leading-none">
+                Active Sorts
+              </span>
+              {effectiveSorts.length > 0 ? (
+                <ActiveSortsChrome
+                  sorts={effectiveSorts}
+                  viewSorts={activeView?.defaultSort ?? []}
+                  onReorderSorts={handleReorderSorts}
+                  onToggleDirection={handleToggleSortDirection}
+                  onRemoveSort={(column) => handleClearThisSort(column as ColumnId)}
+                />
+              ) : (
+                <span className="text-xs text-muted-foreground/60 italic">No active sorts</span>
               )}
             </div>
-          )}
+
+            <div className="w-px self-stretch bg-border mt-4 shrink-0" />
+
+            <div className="flex flex-col gap-1 min-w-0 flex-1">
+              <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium leading-none">
+                Active Filters
+              </span>
+              {effectiveFilters.length > 0 ? (
+                <ActiveFiltersChrome
+                  filters={effectiveFilters}
+                  viewFilters={activeView?.filters ?? []}
+                  onRemoveFilter={handleRemoveFilter}
+                />
+              ) : (
+                <span className="text-xs text-muted-foreground/60 italic">No active filters</span>
+              )}
+            </div>
+          </div>
 
           {/* Right: Columns picker */}
           <div className="shrink-0 flex items-center gap-2 ml-auto pt-0.5">

@@ -243,9 +243,9 @@ export default function PartsGrid({
                 >
                   <div
                     className={cn(
-                      "inline-flex items-center gap-1",
-                      col.align === "right" && "flex-row-reverse w-full justify-start",
-                      col.align === "center" && "justify-center w-full"
+                      "flex items-center gap-1",
+                      col.align === "right" && "justify-end",
+                      col.align === "center" && "justify-center"
                     )}
                   >
                     <button
