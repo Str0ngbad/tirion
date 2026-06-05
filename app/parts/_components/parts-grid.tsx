@@ -4,17 +4,10 @@ import React, { useMemo, useContext, createContext } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { ArrowUpIcon, ArrowDownIcon } from "lucide-react";
 import type { SortSpec } from "@/lib/views/types";
-import {
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import type { PartRowClient } from "@/lib/api/parts";
 import {
   ALL_COLUMNS,
-  COLUMN_BY_ID,
   type ColumnId,
 } from "@/app/parts/_lib/columns";
 import ProcessTypeChip from "@/components/process-type-chip";
@@ -209,30 +202,33 @@ const PartRowComponent = React.memo(function PartRowComponent({
   style,
 }: PartRowProps) {
   return (
-    <TableRow
+    <div
+      role="row"
       onClick={() => onSelectPart(row.partId)}
       style={style}
       className={cn(
-        "cursor-pointer",
+        "flex cursor-pointer border-b border-border transition-colors hover:bg-muted/50",
         isSelected && "border-l-4 border-l-primary bg-primary/10",
         row.partType === "Assembly" && "bg-muted/30",
         !row.isActive && "opacity-40 hover:opacity-60"
       )}
     >
       {columns.map((col) => (
-        <TableCell
+        <div
           key={col.id}
+          role="cell"
+          style={{ width: col.width, minWidth: col.width, maxWidth: col.width }}
           className={cn(
-            "px-3 py-1.5 text-sm",
+            "overflow-hidden px-3 py-1.5 text-sm",
             col.align === "right" && "text-right",
             col.align === "center" && "text-center",
-            col.id === "routing" ? "whitespace-nowrap" : col.defaultWidth
+            col.id === "routing" && "whitespace-nowrap"
           )}
         >
           {renderCell(row, col.id)}
-        </TableCell>
+        </div>
       ))}
-    </TableRow>
+    </div>
   );
 });
 
@@ -280,6 +276,11 @@ export default function PartsGrid({
     return ALL_COLUMNS.filter((c) => visibleSet.has(c.id));
   }, [visibleColumns]);
 
+  const totalWidth = useMemo(
+    () => columns.reduce((sum, c) => sum + c.width, 0),
+    [columns]
+  );
+
   const filterByColumn = useMemo(
     () => new Map(filters.map((f) => [f.column, f])),
     [filters]
@@ -298,26 +299,26 @@ export default function PartsGrid({
 
   return (
     <CondensedContext.Provider value={condensed}>
-    <table className="caption-bottom text-sm" style={{ tableLayout: "fixed", width: `${columns.reduce((sum, c) => sum + c.width, 0)}px` }}>
-        <colgroup>
-          {columns.map((col) => (
-            <col key={col.id} style={{ width: `${col.width}px` }} />
-          ))}
-        </colgroup>
-        <TableHeader className="sticky top-0 z-10 bg-background">
-          <TableRow className="hover:bg-transparent">
+      <div role="table" style={{ width: totalWidth }} className="text-sm">
+        {/* Sticky header */}
+        <div
+          role="rowgroup"
+          className="sticky top-0 z-10 bg-background border-b border-border"
+        >
+          <div role="row" className="flex">
             {columns.map((col) => {
               const sortEntry = sorts.find((s) => s.column === col.id);
               const sortIndex = sortEntry ? sorts.indexOf(sortEntry) : -1;
 
               return (
-                <TableHead
+                <div
                   key={col.id}
+                  role="columnheader"
+                  style={{ width: col.width, minWidth: col.width, maxWidth: col.width }}
                   className={cn(
-                    "group/header select-none whitespace-nowrap px-3 py-2 text-xs font-medium",
+                    "group/header overflow-hidden select-none whitespace-nowrap px-3 py-2 text-xs font-medium text-muted-foreground",
                     col.align === "right" && "text-right",
-                    col.align === "center" && "text-center",
-                    col.defaultWidth
+                    col.align === "center" && "text-center"
                   )}
                 >
                   <div
@@ -366,12 +367,15 @@ export default function PartsGrid({
                       onRemoveFilter={() => onRemoveFilter(col.id)}
                     />
                   </div>
-                </TableHead>
+                </div>
               );
             })}
-          </TableRow>
-        </TableHeader>
-        <tbody
+          </div>
+        </div>
+
+        {/* Virtual body */}
+        <div
+          role="rowgroup"
           style={{
             height: `${virtualizer.getTotalSize()}px`,
             position: "relative",
@@ -396,8 +400,8 @@ export default function PartsGrid({
               />
             );
           })}
-        </tbody>
-      </table>
+        </div>
+      </div>
     </CondensedContext.Provider>
   );
 }
