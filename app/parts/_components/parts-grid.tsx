@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useMemo, useContext, createContext } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { ArrowUpIcon, ArrowDownIcon } from "lucide-react";
 import type { SortSpec } from "@/lib/views/types";
 import {
-  TableBody,
   TableCell,
   TableHead,
   TableHeader,
@@ -198,6 +198,7 @@ interface PartRowProps {
   isSelected: boolean;
   columns: Column[];
   onSelectPart: (partId: number) => void;
+  style?: React.CSSProperties;
 }
 
 const PartRowComponent = React.memo(function PartRowComponent({
@@ -205,10 +206,12 @@ const PartRowComponent = React.memo(function PartRowComponent({
   isSelected,
   columns,
   onSelectPart,
+  style,
 }: PartRowProps) {
   return (
     <TableRow
       onClick={() => onSelectPart(row.partId)}
+      style={style}
       className={cn(
         "cursor-pointer",
         isSelected && "border-l-4 border-l-primary bg-primary/10",
@@ -242,6 +245,7 @@ type Props = {
   condensed: boolean;
   selectedPartId: number | null;
   filters: FilterObject[];
+  scrollContainerRef: React.RefObject<HTMLDivElement | null>;
   onSelectPart: (partId: number) => void;
   onSortToggle: (columnId: ColumnId, addToStack: boolean) => void;
   onSortSet: (columnId: ColumnId, direction: "asc" | "desc") => void;
@@ -261,6 +265,7 @@ export default function PartsGrid({
   condensed,
   selectedPartId,
   filters,
+  scrollContainerRef,
   onSelectPart,
   onSortToggle,
   onSortSet,
@@ -281,6 +286,15 @@ export default function PartsGrid({
   );
 
   const showPriority = sorts.length > 1;
+
+  const virtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => scrollContainerRef.current,
+    estimateSize: () => 33,
+    overscan: 10,
+  });
+
+  const virtualRows = virtualizer.getVirtualItems();
 
   return (
     <CondensedContext.Provider value={condensed}>
@@ -352,17 +366,32 @@ export default function PartsGrid({
             })}
           </TableRow>
         </TableHeader>
-        <TableBody>
-          {rows.map((row) => (
-            <PartRowComponent
-              key={row.partId}
-              row={row}
-              isSelected={row.partId === selectedPartId}
-              columns={columns}
-              onSelectPart={onSelectPart}
-            />
-          ))}
-        </TableBody>
+        <tbody
+          style={{
+            height: `${virtualizer.getTotalSize()}px`,
+            position: "relative",
+          }}
+        >
+          {virtualRows.map((virtualRow) => {
+            const row = rows[virtualRow.index]!;
+            return (
+              <PartRowComponent
+                key={virtualRow.key}
+                row={row}
+                isSelected={row.partId === selectedPartId}
+                columns={columns}
+                onSelectPart={onSelectPart}
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  width: "100%",
+                  transform: `translateY(${virtualRow.start}px)`,
+                }}
+              />
+            );
+          })}
+        </tbody>
       </table>
     </CondensedContext.Provider>
   );

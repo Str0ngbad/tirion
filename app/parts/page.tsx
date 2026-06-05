@@ -120,6 +120,7 @@ export default function PartsPage() {
   const [condensed, setCondensed] = useState(true);
   const [selectedPartId, setSelectedPartId] = useState<number | null>(null);
   const [viewManagementOpen, setViewManagementOpen] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const [saveAsMode, setSaveAsMode] = useState(false);
   const [saveAsName, setSaveAsName] = useState("");
@@ -556,7 +557,7 @@ export default function PartsPage() {
 
       {/* Grid area — scrolls internally; everything above is anchored */}
       <div className="relative flex flex-1 overflow-hidden">
-        <div className="flex-1 overflow-auto px-8 py-4">
+        <div ref={scrollContainerRef} className="flex-1 overflow-auto px-8 py-4">
           <div className="mx-auto max-w-7xl">
             {isLoading ? (
               <div className="space-y-2 pt-2">
@@ -576,6 +577,7 @@ export default function PartsPage() {
                 condensed={condensed}
                 selectedPartId={selectedPartId}
                 filters={effectiveFilters}
+                scrollContainerRef={scrollContainerRef}
                 onSelectPart={setSelectedPartId}
                 onSortToggle={handleSortToggle}
                 onSortSet={handleSortSet}
