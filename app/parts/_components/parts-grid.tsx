@@ -99,7 +99,7 @@ function renderCell(
     case "routing":
       if (row.processTypes.length === 0) return <Dash />;
       return (
-        <div className="flex flex-wrap gap-0.5">
+        <div className="flex items-center gap-1 flex-nowrap">
           {row.processTypes.map((pt, i) => (
             <ProcessTypeChip
               key={i}
@@ -291,7 +291,8 @@ export default function PartsGrid({
                   className={cn(
                     "px-3 py-1.5 text-sm",
                     col.align === "right" && "text-right",
-                    col.align === "center" && "text-center"
+                    col.align === "center" && "text-center",
+                    col.id === "routing" ? "whitespace-nowrap" : col.defaultWidth
                   )}
                 >
                   {renderCell(row, col.id, condensed)}

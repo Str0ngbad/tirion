@@ -363,6 +363,35 @@ async function main() {
       "22. Fixture row with no routing template has processTypes = []"
     );
 
+    console.log("\n── Master View completeness ────────────────────────────────────\n");
+
+    // 23. Master View seed includes all non-excluded columns.
+    const masterView = await prisma.view.findFirst({
+      where: { name: "Master View", isLocked: true },
+    });
+    assert(masterView !== null, "23. Master View exists and is locked");
+    if (masterView) {
+      const visibleCols = masterView.visibleColumns as string[];
+      const expectedCols = [
+        "partNumber", "partName", "partType", "procurementCategory",
+        "material", "materialForm", "vendor", "vendorPartNumber",
+        "routing", "buildableCount", "stockCount", "inventoryLocation",
+        "stockSize", "blankLength", "partCost", "partCostUpdatedAt",
+        "assembliesUsedInCount", "machineCycleTime", "numberOfSetups",
+        "isActive",
+      ];
+      assert(
+        visibleCols.length === expectedCols.length,
+        `23a. Master View has ${expectedCols.length} columns (has ${visibleCols.length})`
+      );
+      for (const col of expectedCols) {
+        assert(
+          visibleCols.includes(col),
+          `23b. Master View includes column: ${col}`
+        );
+      }
+    }
+
     console.log("\n── Regression: prior verification scripts ──────────────────────\n");
     console.log("  Run the following to confirm no regressions:");
     console.log("  npx tsx scripts/verify-sort-builder.ts");

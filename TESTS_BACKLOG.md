@@ -816,6 +816,37 @@ Discovered: Phase 2 form implementation, commit e88672d.
 
 ---
 
+### Seed-vs-spec drift in View configurations
+
+Phase 2 Commit 2 (commit 0cce39f) shipped with the Master View seed
+missing several columns and using older column IDs that didn't
+match the production ColumnId type. The issues were discovered only
+when the UI rendered Master View as incomplete and the user
+surfaced the gap during review.
+
+Pattern: seeded data and spec language drift apart silently. The
+spec describes what each View should contain; the seed is the
+implementation that should follow. When they diverge, the UI
+exposes the gap, but only if someone notices during visual review.
+
+Mitigation in this commit: added a verify-script assertion that the
+Master View seed includes all non-excluded columns from ALL_COLUMNS.
+
+Worth considering: similar structural assertions for the other
+seeded Views (Material Audit, Inventory Check, etc.) — though
+their column sets are smaller and more curated, drift there is
+less likely to be silently incorrect.
+
+If recurring drift becomes a real issue, the systemic fix is to
+generate the seed Views from spec language (e.g., a structured
+data file in /spec/views/ that the seed reads). Premature
+optimization now; would be worth it if Views grew significantly
+in number or complexity.
+
+Discovered: Phase 2 Commit 2 user review.
+
+---
+
 ## Categories Summary
 
 | Category | Count | Notes |
