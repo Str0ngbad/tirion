@@ -1,9 +1,9 @@
 "use client";
 
+import React, { useMemo, useContext, createContext } from "react";
 import { ArrowUpIcon, ArrowDownIcon } from "lucide-react";
 import type { SortSpec } from "@/lib/views/types";
 import {
-  Table,
   TableBody,
   TableCell,
   TableHead,
@@ -22,6 +22,12 @@ import type { ProcessTypeKey } from "@/lib/process-types";
 import type { FilterObject } from "@/lib/views/types";
 import ColumnHeaderMenu from "./column-header-menu";
 import { useTruncatedTitle } from "@/lib/hooks/use-truncated-title";
+
+// ─── Condensed context ────────────────────────────────────────────────────────
+// Keeps `condensed` out of row props so toggling it only re-renders routing
+// cells, not all 2000+ rows.
+
+const CondensedContext = createContext(true);
 
 // ─── Cell helpers ─────────────────────────────────────────────────────────────
 
@@ -56,12 +62,26 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
+// ─── Routing cell ─────────────────────────────────────────────────────────────
+// Subscribes to CondensedContext so parent rows don't re-render on toggle.
+
+function RoutingCellContent({ processTypes }: { processTypes: string[] }) {
+  const condensed = useContext(CondensedContext);
+  if (processTypes.length === 0) return <Dash />;
+  return (
+    <div className="flex items-center gap-1 flex-nowrap">
+      {processTypes.map((pt, i) => (
+        <ProcessTypeChip key={i} processType={pt as ProcessTypeKey} compact={condensed} />
+      ))}
+    </div>
+  );
+}
+
 // ─── Cell renderer ────────────────────────────────────────────────────────────
 
 function renderCell(
   row: PartRowClient,
-  columnId: ColumnId,
-  condensed: boolean
+  columnId: ColumnId
 ): React.ReactNode {
   switch (columnId) {
     case "partNumber":
@@ -99,18 +119,7 @@ function renderCell(
         <Dash />
       );
     case "routing":
-      if (row.processTypes.length === 0) return <Dash />;
-      return (
-        <div className="flex items-center gap-1 flex-nowrap">
-          {row.processTypes.map((pt, i) => (
-            <ProcessTypeChip
-              key={i}
-              processType={pt as ProcessTypeKey}
-              compact={condensed}
-            />
-          ))}
-        </div>
-      );
+      return <RoutingCellContent processTypes={row.processTypes} />;
     case "buildableCount":
       return row.buildableCount !== null ? (
         <span className="tabular-nums">{row.buildableCount}</span>
@@ -180,6 +189,50 @@ function renderCell(
   }
 }
 
+// ─── Row component ────────────────────────────────────────────────────────────
+
+type Column = (typeof ALL_COLUMNS)[number];
+
+interface PartRowProps {
+  row: PartRowClient;
+  isSelected: boolean;
+  columns: Column[];
+  onSelectPart: (partId: number) => void;
+}
+
+const PartRowComponent = React.memo(function PartRowComponent({
+  row,
+  isSelected,
+  columns,
+  onSelectPart,
+}: PartRowProps) {
+  return (
+    <TableRow
+      onClick={() => onSelectPart(row.partId)}
+      className={cn(
+        "cursor-pointer",
+        isSelected && "border-l-4 border-l-primary bg-primary/10",
+        row.partType === "Assembly" && "bg-muted/30",
+        !row.isActive && "opacity-40 hover:opacity-60"
+      )}
+    >
+      {columns.map((col) => (
+        <TableCell
+          key={col.id}
+          className={cn(
+            "px-3 py-1.5 text-sm",
+            col.align === "right" && "text-right",
+            col.align === "center" && "text-center",
+            col.id === "routing" ? "whitespace-nowrap" : col.defaultWidth
+          )}
+        >
+          {renderCell(row, col.id)}
+        </TableCell>
+      ))}
+    </TableRow>
+  );
+});
+
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 type Props = {
@@ -217,15 +270,22 @@ export default function PartsGrid({
   onApplyFilter,
   onRemoveFilter,
 }: Props) {
-  const visibleSet = new Set(visibleColumns);
-  const columns = ALL_COLUMNS.filter((c) => visibleSet.has(c.id));
-  const filterByColumn = new Map(filters.map((f) => [f.column, f]));
+  const columns = useMemo(() => {
+    const visibleSet = new Set(visibleColumns);
+    return ALL_COLUMNS.filter((c) => visibleSet.has(c.id));
+  }, [visibleColumns]);
+
+  const filterByColumn = useMemo(
+    () => new Map(filters.map((f) => [f.column, f])),
+    [filters]
+  );
+
   const showPriority = sorts.length > 1;
 
   return (
-    <div className="overflow-x-auto">
-      <Table className="w-max">
-        <TableHeader>
+    <CondensedContext.Provider value={condensed}>
+    <table className="w-max caption-bottom text-sm">
+        <TableHeader className="sticky top-0 z-10 bg-background">
           <TableRow className="hover:bg-transparent">
             {columns.map((col) => {
               const sortEntry = sorts.find((s) => s.column === col.id);
@@ -294,33 +354,16 @@ export default function PartsGrid({
         </TableHeader>
         <TableBody>
           {rows.map((row) => (
-            <TableRow
+            <PartRowComponent
               key={row.partId}
-              onClick={() => onSelectPart(row.partId)}
-              className={cn(
-                "cursor-pointer",
-                row.partId === selectedPartId && "border-l-4 border-l-primary bg-primary/10",
-                row.partType === "Assembly" && "bg-muted/30",
-                !row.isActive && "opacity-40 hover:opacity-60"
-              )}
-            >
-              {columns.map((col) => (
-                <TableCell
-                  key={col.id}
-                  className={cn(
-                    "px-3 py-1.5 text-sm",
-                    col.align === "right" && "text-right",
-                    col.align === "center" && "text-center",
-                    col.id === "routing" ? "whitespace-nowrap" : col.defaultWidth
-                  )}
-                >
-                  {renderCell(row, col.id, condensed)}
-                </TableCell>
-              ))}
-            </TableRow>
+              row={row}
+              isSelected={row.partId === selectedPartId}
+              columns={columns}
+              onSelectPart={onSelectPart}
+            />
           ))}
         </TableBody>
-      </Table>
-    </div>
+      </table>
+    </CondensedContext.Provider>
   );
 }

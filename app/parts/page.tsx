@@ -97,14 +97,20 @@ export default function PartsPage() {
     );
   }, [activeView, draftSorts, draftFilters, draftVisibleColumns]);
 
-  const effectiveVisibleColumns: string[] =
-    draftVisibleColumns ?? activeView?.visibleColumns ?? [];
+  const effectiveVisibleColumns = useMemo<string[]>(
+    () => draftVisibleColumns ?? activeView?.visibleColumns ?? [],
+    [draftVisibleColumns, activeView]
+  );
 
-  const effectiveFilters: FilterObject[] =
-    draftFilters ?? activeView?.filters ?? [];
+  const effectiveFilters = useMemo<FilterObject[]>(
+    () => draftFilters ?? activeView?.filters ?? [],
+    [draftFilters, activeView]
+  );
 
-  const effectiveSorts: SortSpec[] =
-    draftSorts ?? activeView?.defaultSort ?? [];
+  const effectiveSorts = useMemo<SortSpec[]>(
+    () => draftSorts ?? activeView?.defaultSort ?? [],
+    [draftSorts, activeView]
+  );
 
   // ── Search ─────────────────────────────────────────────────────────────────
   const [searchRaw, setSearchRaw] = useState("");
@@ -126,7 +132,7 @@ export default function PartsPage() {
       : { filters: effectiveFilters, sort: effectiveSorts }
   );
 
-  const displayRows = (() => {
+  const displayRows = useMemo(() => {
     let rows: PartRowClient[] = gridQuery.data ?? [];
 
     if (search.trim()) {
@@ -147,7 +153,7 @@ export default function PartsPage() {
     }
 
     return rows;
-  })();
+  }, [gridQuery.data, search, draftSorts, draftFilters]);
 
   // ── View mutations ─────────────────────────────────────────────────────────
   const createView = useCreateView();
@@ -217,9 +223,8 @@ export default function PartsPage() {
     setSaveAsName("");
   }
 
-  function handleSortToggle(columnId: ColumnId, addToStack: boolean) {
+  const handleSortToggle = useCallback((columnId: ColumnId, addToStack: boolean) => {
     if (addToStack) {
-      // Shift-click: add to stack or toggle direction if already present.
       setDraftSorts((current) => {
         const base = current ?? effectiveSorts;
         const existing = base.find((s) => s.column === columnId);
@@ -233,7 +238,6 @@ export default function PartsPage() {
         return [...base, { column: columnId, direction: "asc" }];
       });
     } else {
-      // Plain click: replace stack (or toggle direction if already the only sort).
       setDraftSorts((current) => {
         const base = current ?? effectiveSorts;
         const existing = base.find((s) => s.column === columnId);
@@ -243,13 +247,13 @@ export default function PartsPage() {
         return [{ column: columnId, direction: "asc" }];
       });
     }
-  }
+  }, [effectiveSorts]);
 
-  function handleSortSet(columnId: ColumnId, direction: "asc" | "desc") {
+  const handleSortSet = useCallback((columnId: ColumnId, direction: "asc" | "desc") => {
     setDraftSorts([{ column: columnId, direction }]);
-  }
+  }, []);
 
-  function handleAddToSort(columnId: ColumnId) {
+  const handleAddToSort = useCallback((columnId: ColumnId) => {
     setDraftSorts((current) => {
       const base = current ?? effectiveSorts;
       const existing = base.find((s) => s.column === columnId);
@@ -262,21 +266,20 @@ export default function PartsPage() {
       }
       return [...base, { column: columnId, direction: "asc" }];
     });
-  }
+  }, [effectiveSorts]);
 
-  function handleClearThisSort(columnId: ColumnId) {
+  const handleClearThisSort = useCallback((columnId: ColumnId) => {
     setDraftSorts((current) => {
       const base = current ?? effectiveSorts;
-      const next = base.filter((s) => s.column !== columnId);
-      return next;
+      return base.filter((s) => s.column !== columnId);
     });
-  }
+  }, [effectiveSorts]);
 
-  function handleReorderSorts(sorts: SortSpec[]) {
+  const handleReorderSorts = useCallback((sorts: SortSpec[]) => {
     setDraftSorts(sorts);
-  }
+  }, []);
 
-  function handleToggleSortDirection(column: string) {
+  const handleToggleSortDirection = useCallback((column: string) => {
     setDraftSorts((current) => {
       const base = current ?? effectiveSorts;
       return base.map((s) =>
@@ -285,37 +288,42 @@ export default function PartsPage() {
           : s
       );
     });
-  }
+  }, [effectiveSorts]);
 
-  function handleHideColumn(columnId: ColumnId) {
-    const base = effectiveVisibleColumns;
-    setDraftVisibleColumns(base.filter((id) => id !== columnId));
-  }
+  const handleHideColumn = useCallback((columnId: ColumnId) => {
+    setDraftVisibleColumns((current) => {
+      const base = current ?? effectiveVisibleColumns;
+      return base.filter((id) => id !== columnId);
+    });
+  }, [effectiveVisibleColumns]);
 
-  function handleColumnToggle(columnId: ColumnId, visible: boolean) {
-    const base = effectiveVisibleColumns;
-    if (visible) {
-      const allIds = ["partNumber","partName","partType","procurementCategory","material","materialForm","vendor","vendorPartNumber","routing","buildableCount","stockCount","inventoryLocation","stockSize","blankLength","partCost","partCostUpdatedAt","assembliesUsedInCount","machineCycleTime","numberOfSetups","isActive"];
-      const next = allIds.filter((id) => id === columnId || base.includes(id));
-      setDraftVisibleColumns(next);
-    } else {
-      setDraftVisibleColumns(base.filter((id) => id !== columnId));
-    }
-  }
+  const handleColumnToggle = useCallback((columnId: ColumnId, visible: boolean) => {
+    setDraftVisibleColumns((current) => {
+      const base = current ?? effectiveVisibleColumns;
+      if (visible) {
+        const allIds = ["partNumber","partName","partType","procurementCategory","material","materialForm","vendor","vendorPartNumber","routing","buildableCount","stockCount","inventoryLocation","stockSize","blankLength","partCost","partCostUpdatedAt","assembliesUsedInCount","machineCycleTime","numberOfSetups","isActive"];
+        return allIds.filter((id) => id === columnId || base.includes(id));
+      }
+      return base.filter((id) => id !== columnId);
+    });
+  }, [effectiveVisibleColumns]);
 
-  function handleApplyFilter(filter: FilterObject) {
-    const base = effectiveFilters;
-    const idx = base.findIndex((f) => f.column === filter.column);
-    const next = idx >= 0
-      ? base.map((f, i) => (i === idx ? filter : f))
-      : [...base, filter];
-    setDraftFilters(next);
-  }
+  const handleApplyFilter = useCallback((filter: FilterObject) => {
+    setDraftFilters((current) => {
+      const base = current ?? effectiveFilters;
+      const idx = base.findIndex((f) => f.column === filter.column);
+      return idx >= 0
+        ? base.map((f, i) => (i === idx ? filter : f))
+        : [...base, filter];
+    });
+  }, [effectiveFilters]);
 
-  function handleRemoveFilter(column: string) {
-    const next = effectiveFilters.filter((f) => f.column !== column);
-    setDraftFilters(next);
-  }
+  const handleRemoveFilter = useCallback((column: string) => {
+    setDraftFilters((current) => {
+      const base = current ?? effectiveFilters;
+      return base.filter((f) => f.column !== column);
+    });
+  }, [effectiveFilters]);
 
   function handleRenameView(viewId: number, newName: string) {
     updateView.mutate(
@@ -346,7 +354,7 @@ export default function PartsPage() {
   const hasError = gridQuery.isError || viewsQuery.isError;
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-screen flex-col overflow-hidden">
       {/* Page header */}
       <div className="border-b bg-background">
         <div className="mx-auto max-w-7xl px-8 py-5">
@@ -546,7 +554,7 @@ export default function PartsPage() {
         </div>
       )}
 
-      {/* Grid area */}
+      {/* Grid area — scrolls internally; everything above is anchored */}
       <div className="relative flex flex-1 overflow-hidden">
         <div className="flex-1 overflow-auto px-8 py-4">
           <div className="mx-auto max-w-7xl">
