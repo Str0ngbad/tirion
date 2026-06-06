@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const ListPartsQuerySchema = z.object({
   active: z.enum(["true", "false", "all"]).default("true"),
+  partType: z.enum(["Part", "Assembly"]).optional(),
 });
 
 export const CreatePartSchema = z.object({
@@ -92,6 +93,7 @@ export const PartRowSchema = z.object({
   buildableCount: z.number().int().nullable(),
   materialForm: z.string().nullable(),
   assembliesUsedInCount: z.number().int().min(0),
+  directChildCount: z.number().int().min(0),
   processTypes: z.array(z.string()),
 });
 

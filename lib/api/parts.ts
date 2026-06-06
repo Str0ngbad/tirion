@@ -45,6 +45,7 @@ export type PartRowClient = {
   partCostUpdatedAt: string | null;
   buildableCount: number | null;
   assembliesUsedInCount: number;
+  directChildCount: number;
 };
 
 export type PartsGridQuery =
@@ -308,6 +309,34 @@ export function useCreatePart(): UseMutationResult<PartRowClient, ApiError, Crea
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["parts", "grid"] });
     },
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ─── Assembly selector ────────────────────────────────────────────────────────
+
+export type AssemblyOption = {
+  partId: number;
+  partNumber: string;
+  partName: string;
+  directChildCount: number;
+};
+
+export function useAssemblies(): UseQueryResult<AssemblyOption[], ApiError> {
+  return useQuery({
+    queryKey: ["parts", "assemblies"],
+    queryFn: () =>
+      apiFetch<{ data: PartRowClient[] }>("/api/v1/parts?partType=Assembly&active=true").then(
+        (r) =>
+          r.data.map((p) => ({
+            partId: p.partId,
+            partNumber: p.partNumber,
+            partName: p.partName,
+            directChildCount: p.directChildCount,
+          }))
+      ),
+    staleTime: 30_000,
   });
 }
 

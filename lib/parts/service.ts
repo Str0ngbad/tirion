@@ -61,7 +61,7 @@ type PartRaw = {
     templateName: string;
     steps: Array<{ processType: { processName: string } }>;
   } | null;
-  _count: { bomChild: number };
+  _count: { bomChild: number; bomParent: number };
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -82,6 +82,7 @@ const PART_INCLUDE = {
   _count: {
     select: {
       bomChild: { where: { parentPart: { isActive: true } } },
+      bomParent: { where: { childPart: { isActive: true } } },
     },
   },
 } as const;
@@ -119,6 +120,7 @@ function toPartRow(raw: PartRaw): PartRow {
     buildableCount: null,
     materialForm: raw.materialSpec?.form ?? null,
     assembliesUsedInCount: raw._count.bomChild,
+    directChildCount: raw._count.bomParent,
     processTypes: raw.routingTemplate?.steps.map((s) => s.processType.processName) ?? [],
   };
 }
@@ -209,6 +211,10 @@ export async function listParts(query: ListPartsQuery): Promise<PartRow[]> {
       const _exhaustive: never = query.active;
       throw new Error(`Unhandled active filter: ${String(_exhaustive)}`);
     }
+  }
+
+  if (query.partType !== undefined) {
+    where = { ...where, partType: query.partType };
   }
 
   const rows = await prisma.part.findMany({
