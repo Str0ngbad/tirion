@@ -116,6 +116,181 @@ export function useUpdateStockCount(): UseMutationResult<PartRowClient, ApiError
   });
 }
 
+type UpdatePartVars = {
+  partId: number;
+  input: {
+    partName?: string;
+    description?: string | null;
+    notes?: string | null;
+    defaultVendorId?: number | null;
+    vendorPartNumber?: string | null;
+    materialSpecId?: number | null;
+    stockSize?: string | null;
+    routingTemplateDefinitionId?: number | null;
+    blankLength?: number | null;
+    procurementCategoryId?: number | null;
+    partCost?: number | null;
+  };
+};
+
+type SetActiveVars = { partId: number; active: boolean };
+
+export function useUpdatePart(): UseMutationResult<PartRowClient, ApiError, UpdatePartVars> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ partId, input }: UpdatePartVars) =>
+      apiFetch<PartRowClient>(`/api/v1/parts/${partId}`, {
+        method: "PATCH",
+        body: JSON.stringify(input),
+      }),
+    onMutate: async ({ partId, input }) => {
+      await queryClient.cancelQueries({ queryKey: ["parts", "grid"] });
+      const snapshots = queryClient.getQueriesData<PartRowClient[]>({ queryKey: ["parts", "grid"] });
+      queryClient.setQueriesData<PartRowClient[]>(
+        { queryKey: ["parts", "grid"] },
+        (old) => old?.map((r) => r.partId === partId ? { ...r, ...input } : r)
+      );
+      return { snapshots };
+    },
+    onError: (_err, _vars, ctx) => {
+      const context = ctx as { snapshots: [unknown, PartRowClient[] | undefined][] } | undefined;
+      context?.snapshots.forEach(([key, data]) => {
+        queryClient.setQueryData(key as Parameters<typeof queryClient.setQueryData>[0], data);
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["parts", "grid"] });
+    },
+  });
+}
+
+export function useSetPartActive(): UseMutationResult<PartRowClient, ApiError, SetActiveVars> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ partId, active }: SetActiveVars) =>
+      apiFetch<PartRowClient>(
+        `/api/v1/parts/${partId}/${active ? "reactivate" : "deactivate"}`,
+        { method: "POST" }
+      ),
+    onMutate: async ({ partId, active }) => {
+      await queryClient.cancelQueries({ queryKey: ["parts", "grid"] });
+      const snapshots = queryClient.getQueriesData<PartRowClient[]>({ queryKey: ["parts", "grid"] });
+      queryClient.setQueriesData<PartRowClient[]>(
+        { queryKey: ["parts", "grid"] },
+        (old) => old?.map((r) => r.partId === partId ? { ...r, isActive: active } : r)
+      );
+      return { snapshots };
+    },
+    onError: (_err, _vars, ctx) => {
+      const context = ctx as { snapshots: [unknown, PartRowClient[] | undefined][] } | undefined;
+      context?.snapshots.forEach(([key, data]) => {
+        queryClient.setQueryData(key as Parameters<typeof queryClient.setQueryData>[0], data);
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["parts", "grid"] });
+    },
+  });
+}
+
+// ─── Part-scoped detail hooks ─────────────────────────────────────────────────
+
+export type AuditLogEntry = {
+  auditLogId: number;
+  actionName: string;
+  changedByUserName: string;
+  timestamp: string;
+  note: string | null;
+};
+
+export type BomParentRow = {
+  bomId: number;
+  parentPartId: number;
+  partNumber: string;
+  partName: string;
+  isActive: boolean;
+  qtyUsed: number;
+};
+
+export type BomChildRow = {
+  bomId: number;
+  childPartId: number;
+  partNumber: string;
+  partName: string;
+  isActive: boolean;
+  quantity: number;
+  stockCount: number;
+  buildableFromThis: number;
+};
+
+export type OpenWoRow = {
+  workOrderId: number;
+  projectNumber: string;
+  projectName: string;
+  status: string;
+  quantity: number;
+};
+
+export function usePartAuditLog(
+  partId: number,
+  enabled: boolean
+): UseQueryResult<AuditLogEntry[], ApiError> {
+  return useQuery({
+    queryKey: ["parts", "audit-log", partId],
+    queryFn: () =>
+      apiFetch<{ data: AuditLogEntry[] }>(`/api/v1/parts/${partId}/audit-log`).then(
+        (r) => r.data
+      ),
+    enabled,
+    staleTime: 0,
+  });
+}
+
+export function useBomParents(
+  partId: number,
+  enabled: boolean
+): UseQueryResult<BomParentRow[], ApiError> {
+  return useQuery({
+    queryKey: ["parts", "bom-parents", partId],
+    queryFn: () =>
+      apiFetch<{ data: BomParentRow[] }>(`/api/v1/parts/${partId}/bom-parents`).then(
+        (r) => r.data
+      ),
+    enabled,
+    staleTime: 30_000,
+  });
+}
+
+export function useBomChildren(
+  partId: number,
+  enabled: boolean
+): UseQueryResult<BomChildRow[], ApiError> {
+  return useQuery({
+    queryKey: ["parts", "bom-children", partId],
+    queryFn: () =>
+      apiFetch<{ data: BomChildRow[] }>(`/api/v1/parts/${partId}/bom-children`).then(
+        (r) => r.data
+      ),
+    enabled,
+    staleTime: 30_000,
+  });
+}
+
+export function usePartOpenWos(
+  partId: number,
+  enabled: boolean
+): UseQueryResult<OpenWoRow[], ApiError> {
+  return useQuery({
+    queryKey: ["parts", "open-wos", partId],
+    queryFn: () =>
+      apiFetch<{ data: OpenWoRow[] }>(`/api/v1/parts/${partId}/open-wos`).then((r) => r.data),
+    enabled,
+    staleTime: 30_000,
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export function useUpdateInventoryLocation(): UseMutationResult<PartRowClient, ApiError, UpdateInventoryLocationVars> {
   const queryClient = useQueryClient();
   return useMutation({

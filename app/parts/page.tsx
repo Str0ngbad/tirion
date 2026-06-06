@@ -12,7 +12,6 @@ import {
 } from "@/lib/api/views";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
   Dialog,
   DialogContent,
@@ -30,12 +29,38 @@ import ViewManagementModal from "./_components/view-management-modal";
 import ColumnsButton from "./_components/columns-button";
 import ActiveFiltersChrome from "./_components/active-filters-chrome";
 import ActiveSortsChrome from "./_components/active-sorts-chrome";
+import PartFormSheet, { SECTION_IDS, type SectionId } from "./_components/part-form-sheet";
 import {
   applyClientSorts,
   type ColumnId,
 } from "./_lib/columns";
 import type { FilterObject, SortSpec } from "@/lib/views/types";
 import type { ViewRow } from "@/lib/api/views";
+
+// ─── Column → Sheet section mapping ──────────────────────────────────────────
+
+const COLUMN_SECTION: Partial<Record<ColumnId, SectionId>> = {
+  partNumber:            SECTION_IDS.description,
+  partName:              SECTION_IDS.description,
+  partType:              SECTION_IDS.description,
+  isActive:              SECTION_IDS.description,
+  procurementCategory:   SECTION_IDS.materialVendor,
+  blankLength:           SECTION_IDS.materialVendor,
+  material:              SECTION_IDS.materialVendor,
+  materialForm:          SECTION_IDS.materialVendor,
+  vendor:                SECTION_IDS.materialVendor,
+  vendorPartNumber:      SECTION_IDS.materialVendor,
+  stockSize:             SECTION_IDS.materialVendor,
+  partCost:              SECTION_IDS.materialVendor,
+  partCostUpdatedAt:     SECTION_IDS.materialVendor,
+  routing:               SECTION_IDS.routing,
+  machineCycleTime:      SECTION_IDS.routing,
+  numberOfSetups:        SECTION_IDS.routing,
+  stockCount:            SECTION_IDS.inventory,
+  inventoryLocation:     SECTION_IDS.inventory,
+  buildableCount:        SECTION_IDS.children,
+  assembliesUsedInCount: SECTION_IDS.parents,
+};
 
 // ─── Debounce hook ────────────────────────────────────────────────────────────
 
@@ -127,8 +152,14 @@ export default function PartsPage() {
   // ── UI state ───────────────────────────────────────────────────────────────
   const [condensed, setCondensed] = useState(true);
   const [selectedPartId, setSelectedPartId] = useState<number | null>(null);
+  const [panelSection, setPanelSection] = useState<SectionId | undefined>(undefined);
   const [viewManagementOpen, setViewManagementOpen] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const handleNavigateToPart = useCallback((partId: number) => {
+    setSelectedPartId(partId);
+    setPanelSection(SECTION_IDS.description);
+  }, []);
 
   const [saveAsMode, setSaveAsMode] = useState(false);
   const [saveAsName, setSaveAsName] = useState("");
@@ -634,7 +665,10 @@ export default function PartsPage() {
                 selectedPartId={selectedPartId}
                 filters={effectiveFilters}
                 scrollContainerRef={scrollContainerRef}
-                onSelectPart={setSelectedPartId}
+                onSelectPart={(partId) => {
+                  setSelectedPartId(partId);
+                  setPanelSection(undefined);
+                }}
                 onStockCountChange={handleStockCountChange}
                 onInventoryLocationChange={handleInventoryLocationChange}
                 onSortToggle={handleSortToggle}
@@ -649,20 +683,25 @@ export default function PartsPage() {
           </div>
         </div>
 
-        {/* Part Form Sheet placeholder */}
-        <Sheet
-          open={selectedPartId !== null}
-          onOpenChange={(open) => { if (!open) setSelectedPartId(null); }}
-        >
-          <SheetContent side="right" className="w-[480px] sm:max-w-[480px]">
-            <SheetHeader>
-              <SheetTitle>Part Details</SheetTitle>
-            </SheetHeader>
-            <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">
-              Part form coming in Commit 6.
+        {/* Part Form Sheet — inline flex sibling so it sits below sticky chrome */}
+        {selectedPartId !== null && (() => {
+          const part = displayRows.find((r) => r.partId === selectedPartId);
+          if (!part) return null;
+          return (
+            <div className="w-[480px] shrink-0 border-l bg-background flex flex-col overflow-hidden">
+              <PartFormSheet
+                key={part.partId}
+                part={part}
+                initialSection={panelSection}
+                onClose={() => setSelectedPartId(null)}
+                onUpdate={() => {
+                  // Optimistic update applied by mutation; grid refetches on settle.
+                }}
+                onNavigateToPart={handleNavigateToPart}
+              />
             </div>
-          </SheetContent>
-        </Sheet>
+          );
+        })()}
       </div>
 
       {locationCollisionDialog && (
