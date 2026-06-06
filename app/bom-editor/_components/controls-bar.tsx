@@ -4,9 +4,16 @@ import { Button } from "@/components/ui/button";
 interface ControlsBarProps {
   onExpandAll: () => void;
   onCollapseAll: () => void;
+  expandState: boolean | null;
+  onSelfManage: () => void;
 }
 
-export function ControlsBar({ onExpandAll, onCollapseAll }: ControlsBarProps) {
+export function ControlsBar({
+  onExpandAll,
+  onCollapseAll,
+  expandState,
+  onSelfManage,
+}: ControlsBarProps) {
   return (
     <div className="shrink-0 border-b bg-background px-4 py-2 flex items-center gap-2">
       <Button variant="ghost" size="sm" onClick={onExpandAll}>
@@ -16,6 +23,11 @@ export function ControlsBar({ onExpandAll, onCollapseAll }: ControlsBarProps) {
       <Button variant="ghost" size="sm" onClick={onCollapseAll}>
         Collapse All
       </Button>
+      {expandState !== null && (
+        <Button variant="ghost" size="sm" onClick={onSelfManage}>
+          Self-manage
+        </Button>
+      )}
     </div>
   );
 }

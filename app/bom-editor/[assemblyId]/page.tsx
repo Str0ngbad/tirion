@@ -1,19 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { use, useState } from "react";
 import { useBomTree } from "@/lib/api/bom";
 import { BomEditorChrome } from "../_components/bom-editor-chrome";
 import { AssemblyIdentityBand } from "../_components/assembly-identity-band";
 import { ControlsBar } from "../_components/controls-bar";
+import { BomTree } from "../_components/bom-tree";
 
 interface BomEditorAssemblyPageProps {
-  params: { assemblyId: string };
+  params: Promise<{ assemblyId: string }>;
 }
 
 export default function BomEditorAssemblyPage({ params }: BomEditorAssemblyPageProps) {
-  const assemblyId = parseInt(params.assemblyId, 10);
+  const { assemblyId: assemblyIdStr } = use(params);
+  const assemblyId = parseInt(assemblyIdStr, 10);
   const { data: tree, isLoading, error } = useBomTree(isNaN(assemblyId) ? null : assemblyId);
-  const [, setExpandState] = useState<boolean | null>(null);
+  const [expandState, setExpandState] = useState<boolean | null>(null);
 
   if (isNaN(assemblyId)) {
     return (
@@ -62,13 +64,17 @@ export default function BomEditorAssemblyPage({ params }: BomEditorAssemblyPageP
       <ControlsBar
         onExpandAll={() => setExpandState(true)}
         onCollapseAll={() => setExpandState(false)}
+        expandState={expandState}
+        onSelfManage={() => setExpandState(null)}
       />
 
-      <div className="flex-1 flex items-center justify-center text-muted-foreground">
-        {directChildCount === 0
-          ? `${tree.partName} has no components`
-          : "Tree visualization coming in next commit"}
-      </div>
+      {directChildCount === 0 ? (
+        <div className="flex-1 flex items-center justify-center text-muted-foreground">
+          {tree.partName} has no components.
+        </div>
+      ) : (
+        <BomTree root={tree} expandState={expandState} />
+      )}
     </div>
   );
 }
