@@ -60,6 +60,12 @@ type UpdateBomQuantityVars = {
 
 type UpdateBomQuantityResult = SaveResponse | { deleted: true };
 
+function updateNodeQty(tree: BomNode, bomId: number, quantity: number): BomNode {
+  if (tree.bomId === bomId) return { ...tree, quantity };
+  if (!tree.children?.length) return tree;
+  return { ...tree, children: tree.children.map((c) => updateNodeQty(c, bomId, quantity)) };
+}
+
 export function useUpdateBomQuantity(): UseMutationResult<
   UpdateBomQuantityResult,
   ApiError,
@@ -72,7 +78,20 @@ export function useUpdateBomQuantity(): UseMutationResult<
         method: "PATCH",
         body: JSON.stringify({ quantity }),
       }),
-    onSuccess: (_data, vars) => {
+    onMutate: async ({ bomId, quantity, parentPartId }) => {
+      await qc.cancelQueries({ queryKey: ["bom", "tree", parentPartId] });
+      const previous = qc.getQueryData<BomNode>(["bom", "tree", parentPartId]);
+      if (previous) {
+        qc.setQueryData(["bom", "tree", parentPartId], updateNodeQty(previous, bomId, quantity));
+      }
+      return { previous };
+    },
+    onError: (_err, vars, context) => {
+      if (context?.previous) {
+        qc.setQueryData(["bom", "tree", vars.parentPartId], context.previous);
+      }
+    },
+    onSettled: (_data, _err, vars) => {
       qc.invalidateQueries({ queryKey: ["bom", "tree", vars.parentPartId] });
       qc.invalidateQueries({ queryKey: ["parts", "grid"] });
       qc.invalidateQueries({ queryKey: ["parts", "bom-children", vars.parentPartId] });
@@ -87,12 +106,35 @@ type RemoveBomChildVars = {
   parentPartId: number;
 };
 
+function removeNodeFromTree(tree: BomNode, bomId: number): BomNode {
+  if (!tree.children?.length) return tree;
+  return {
+    ...tree,
+    children: tree.children
+      .filter((c) => c.bomId !== bomId)
+      .map((c) => removeNodeFromTree(c, bomId)),
+  };
+}
+
 export function useRemoveBomChild(): UseMutationResult<void, ApiError, RemoveBomChildVars> {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ bomId }: RemoveBomChildVars) =>
       apiFetch<void>(`/api/v1/bom-edges/${bomId}`, { method: "DELETE" }),
-    onSuccess: (_data, vars) => {
+    onMutate: async ({ bomId, parentPartId }) => {
+      await qc.cancelQueries({ queryKey: ["bom", "tree", parentPartId] });
+      const previous = qc.getQueryData<BomNode>(["bom", "tree", parentPartId]);
+      if (previous) {
+        qc.setQueryData(["bom", "tree", parentPartId], removeNodeFromTree(previous, bomId));
+      }
+      return { previous };
+    },
+    onError: (_err, vars, context) => {
+      if (context?.previous) {
+        qc.setQueryData(["bom", "tree", vars.parentPartId], context.previous);
+      }
+    },
+    onSettled: (_data, _err, vars) => {
       qc.invalidateQueries({ queryKey: ["bom", "tree", vars.parentPartId] });
       qc.invalidateQueries({ queryKey: ["parts", "grid"] });
       qc.invalidateQueries({ queryKey: ["parts", "bom-children", vars.parentPartId] });

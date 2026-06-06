@@ -11,6 +11,7 @@ import {
   computeFreshness,
 } from "@/lib/bom/rollup-helpers";
 import { FreshnessIndicator } from "./freshness-indicator";
+import { QtyEditCell } from "./qty-edit-cell";
 import type { BomNode } from "@/lib/bom/types";
 
 interface BomTreeRowProps {
@@ -20,6 +21,8 @@ interface BomTreeRowProps {
   isRoot: boolean;
   now: Date;
   onOpenPartSheet?: (partId: number) => void;
+  parentPartId?: number;
+  parentPartNumber?: string;
 }
 
 const INDENT = 24;
@@ -31,6 +34,8 @@ export function BomTreeRow({
   isRoot,
   now,
   onOpenPartSheet,
+  parentPartId,
+  parentPartNumber,
 }: BomTreeRowProps) {
   const [selfExpanded, setSelfExpanded] = useState(isRoot);
   const expanded = forceExpanded ?? selfExpanded;
@@ -110,9 +115,19 @@ export function BomTreeRow({
         </div>
 
         {/* Qty */}
-        <div className="w-16 shrink-0 text-right tabular-nums px-2 text-sm">
-          {node.quantity ?? "—"}
-        </div>
+        {isRoot || node.bomId === null || parentPartId === undefined || parentPartNumber === undefined ? (
+          <div className="w-16 shrink-0 text-right tabular-nums px-2 text-sm text-muted-foreground">
+            —
+          </div>
+        ) : (
+          <QtyEditCell
+            bomId={node.bomId}
+            parentPartId={parentPartId}
+            parentPartNumber={parentPartNumber}
+            childPartNumber={node.partNumber}
+            currentQty={node.quantity ?? 0}
+          />
+        )}
 
         {/* Stock */}
         <div
@@ -169,6 +184,8 @@ export function BomTreeRow({
             isRoot={false}
             now={now}
             onOpenPartSheet={onOpenPartSheet}
+            parentPartId={node.partId}
+            parentPartNumber={node.partNumber}
           />
         ))}
     </>
