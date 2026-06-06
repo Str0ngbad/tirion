@@ -29,6 +29,7 @@ type TreeRow = {
   part_number: string;
   part_name: string;
   part_type: PartType;
+  is_active: boolean;
   stock_count: Prisma.Decimal | null;
   cost: Prisma.Decimal | null;
   cost_last_updated: Date | null;
@@ -87,6 +88,7 @@ export async function getBomTree(assemblyPartId: number): Promise<BomNode> {
       p."partNumber"          AS part_number,
       p."partName"            AS part_name,
       p."partType"            AS part_type,
+      p."isActive"            AS is_active,
       p."stockCount"          AS stock_count,
       p."partCost"            AS cost,
       p."partCostUpdatedAt"   AS cost_last_updated,
@@ -129,6 +131,7 @@ function buildTree(rootId: number, rows: TreeRow[]): BomNode {
       partNumber: row.part_number,
       partName: row.part_name,
       partType: row.part_type,
+      isActive: row.is_active,
       quantity: row.quantity !== null ? new Prisma.Decimal(row.quantity).toNumber() : null,
       stockCount: row.stock_count !== null ? new Prisma.Decimal(row.stock_count).toNumber() : null,
       cost: row.cost !== null ? new Prisma.Decimal(row.cost).toNumber() : null,
@@ -146,6 +149,7 @@ function buildTree(rootId: number, rows: TreeRow[]): BomNode {
       partNumber: "",
       partName: "",
       partType: "Assembly",
+      isActive: true,
       quantity: null,
       stockCount: null,
       cost: null,
@@ -198,9 +202,9 @@ export async function createBomEdge(
   if (!child) throw new BomChildInvalidError(input.childPartId, "part_not_found");
   if (!child.isActive) throw new BomChildInvalidError(input.childPartId, "part_inactive");
 
-  // 4. Duplicate check (application-layer — no unique constraint on parent+child)
-  const existing = await prisma.bOM.findFirst({
-    where: { parentPartId: input.parentPartId, childPartId: input.childPartId },
+  // 4. Duplicate check
+  const existing = await prisma.bOM.findUnique({
+    where: { parentPartId_childPartId: { parentPartId: input.parentPartId, childPartId: input.childPartId } },
   });
   if (existing) throw new BomDuplicateChildError(input.parentPartId, input.childPartId);
 

@@ -4,6 +4,7 @@ export type BomNode = {
   partNumber: string;
   partName: string;
   partType: "Part" | "Assembly";
+  isActive: boolean;
   quantity: number | null;
   stockCount: number | null;
   cost: number | null;

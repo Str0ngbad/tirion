@@ -74,6 +74,10 @@ model BOM {
   // Relations
   parentPart  Part  @relation("ParentPart", fields: [parentPartId], references: [partId])
   childPart   Part  @relation("ChildPart", fields: [childPartId], references: [partId])
+
+  @@unique([parentPartId, childPartId])
+  @@index([parentPartId])
+  @@index([childPartId])
 }
 
 model RoutingTemplateDefinition {
