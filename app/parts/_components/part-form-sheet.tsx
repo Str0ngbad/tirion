@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { X, ChevronRight, Plus, Check, ChevronsUpDown, ExternalLink, Loader2 } from "lucide-react";
+import { X, ChevronRight, Plus, Check, ChevronsUpDown, ExternalLink, Loader2, Wrench } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -46,8 +46,10 @@ import {
   useBomParents,
   useBomChildren,
   usePartOpenWos,
+  useCreatePart,
 } from "@/lib/api/parts";
 import type { PartRowClient } from "@/lib/api/parts";
+import { useQueryClient } from "@tanstack/react-query";
 import { useVendors, useCreateVendor } from "@/lib/api/vendors";
 import type { VendorRow } from "@/lib/api/vendors";
 import { useMaterialSpecs, useCreateMaterialSpec } from "@/lib/api/material-specs";
@@ -622,41 +624,58 @@ function UnsavedChangesDialog({
 
 // ─── Part Form Sheet ──────────────────────────────────────────────────────────
 
-interface PartFormSheetProps {
-  part: PartRowClient;
-  initialSection?: SectionId;
-  onClose: () => void;
-  onUpdate: (updated: PartRowClient) => void;
-  onNavigateToPart?: (partId: number) => void;
-}
+type PartFormSheetProps =
+  | {
+      mode: "edit";
+      part: PartRowClient;
+      initialSection?: SectionId;
+      onClose: () => void;
+      onUpdate: (updated: PartRowClient) => void;
+      onNavigateToPart?: (partId: number) => void;
+      onCreated?: never;
+    }
+  | {
+      mode: "create";
+      part?: never;
+      initialSection?: never;
+      onClose: () => void;
+      onUpdate?: never;
+      onNavigateToPart?: never;
+      /** Called with the newly-created part so the page can switch to edit mode */
+      onCreated: (created: PartRowClient) => void;
+    };
 
-export default function PartFormSheet({
-  part,
-  initialSection,
-  onClose,
-  onUpdate,
-  onNavigateToPart,
-}: PartFormSheetProps) {
+export default function PartFormSheet(props: PartFormSheetProps) {
+  const { mode, onClose } = props;
+  const part = mode === "edit" ? props.part : undefined;
+  const onUpdate = mode === "edit" ? props.onUpdate : undefined;
+  const onNavigateToPart = mode === "edit" ? props.onNavigateToPart : undefined;
+  const onCreated = mode === "create" ? props.onCreated : undefined;
+  const initialSection = mode === "edit" ? props.initialSection : undefined;
+  // ── Create mode fields ─────────────────────────────────────────────────────
+  const [createPartNumber, setCreatePartNumber] = useState("");
+  const [createPartType, setCreatePartType] = useState<"Part" | "Assembly">("Part");
+
   // ── Core form state ────────────────────────────────────────────────────────
-  const [partName, setPartName] = useState(part.partName);
-  const [isActive, setIsActive] = useState(part.isActive);
-  const [description, setDescription] = useState(part.description ?? "");
-  const [notes, setNotes] = useState<string | null>(part.notes);
-  const [notesOpen, setNotesOpen] = useState(part.notes !== null && part.notes !== "");
-  const [stockCount, setStockCount] = useState(part.stockCount ?? 0);
-  const [inventoryLocation, setInventoryLocation] = useState<string | null>(part.inventoryLocation);
+  const [partName, setPartName] = useState(part?.partName ?? "");
+  const [isActive, setIsActive] = useState(part?.isActive ?? true);
+  const [description, setDescription] = useState(part?.description ?? "");
+  const [notes, setNotes] = useState<string | null>(part?.notes ?? null);
+  const [notesOpen, setNotesOpen] = useState((part?.notes ?? null) !== null && (part?.notes ?? "") !== "");
+  const [stockCount, setStockCount] = useState(part?.stockCount ?? 0);
+  const [inventoryLocation, setInventoryLocation] = useState<string | null>(part?.inventoryLocation ?? null);
 
   // ── Definition fields ──────────────────────────────────────────────────────
-  const [materialSpecId, setMaterialSpecId] = useState<number | null>(part.materialSpecId);
-  const [defaultVendorId, setDefaultVendorId] = useState<number | null>(part.defaultVendorId);
-  const [stockSize, setStockSize] = useState<string | null>(part.stockSize);
-  const [blankLength, setBlankLength] = useState<number | null>(part.blankLength);
-  const [procurementCategoryId] = useState<number | null>(part.procurementCategoryId);
+  const [materialSpecId, setMaterialSpecId] = useState<number | null>(part?.materialSpecId ?? null);
+  const [defaultVendorId, setDefaultVendorId] = useState<number | null>(part?.defaultVendorId ?? null);
+  const [stockSize, setStockSize] = useState<string | null>(part?.stockSize ?? null);
+  const [blankLength, setBlankLength] = useState<number | null>(part?.blankLength ?? null);
+  const [procurementCategoryId] = useState<number | null>(part?.procurementCategoryId ?? null);
   const [routingTemplateDefinitionId, setRoutingTemplateDefinitionId] = useState<number | null>(
-    part.routingTemplateDefinitionId
+    part?.routingTemplateDefinitionId ?? null
   );
-  const [partCost, setPartCost] = useState<number | null>(part.partCost);
-  const [vendorPartNumber, setVendorPartNumber] = useState<string | null>(part.vendorPartNumber);
+  const [partCost, setPartCost] = useState<number | null>(part?.partCost ?? null);
+  const [vendorPartNumber, setVendorPartNumber] = useState<string | null>(part?.vendorPartNumber ?? null);
 
   // ── UI state ───────────────────────────────────────────────────────────────
   const [auditLogOpen, setAuditLogOpen] = useState(false);
@@ -667,23 +686,24 @@ export default function PartFormSheet({
   const [unsavedDialogOpen, setUnsavedDialogOpen] = useState(false);
   const [pendingNavPartId, setPendingNavPartId] = useState<number | null>(null);
 
-  // Sync when part prop changes (e.g., cross-sheet navigation or inline grid edit)
-  useEffect(() => { setPartName(part.partName); }, [part.partName]);
-  useEffect(() => { setIsActive(part.isActive); }, [part.isActive]);
-  useEffect(() => { setDescription(part.description ?? ""); }, [part.description]);
-  useEffect(() => { setNotes(part.notes); setNotesOpen(part.notes !== null && part.notes !== ""); }, [part.notes]);
-  useEffect(() => { setStockCount(part.stockCount ?? 0); }, [part.stockCount]);
-  useEffect(() => { setInventoryLocation(part.inventoryLocation); }, [part.inventoryLocation]);
-  useEffect(() => { setMaterialSpecId(part.materialSpecId); }, [part.materialSpecId]);
-  useEffect(() => { setDefaultVendorId(part.defaultVendorId); }, [part.defaultVendorId]);
-  useEffect(() => { setStockSize(part.stockSize); }, [part.stockSize]);
-  useEffect(() => { setBlankLength(part.blankLength); }, [part.blankLength]);
-  useEffect(() => { setRoutingTemplateDefinitionId(part.routingTemplateDefinitionId); }, [part.routingTemplateDefinitionId]);
-  useEffect(() => { setPartCost(part.partCost); }, [part.partCost]);
-  useEffect(() => { setVendorPartNumber(part.vendorPartNumber); }, [part.vendorPartNumber]);
+  // Sync when part prop changes (e.g., cross-sheet navigation or inline grid edit).
+  // Guards against undefined in create mode (part is undefined there, so these never fire).
+  useEffect(() => { if (part) setPartName(part.partName); }, [part?.partName]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (part) setIsActive(part.isActive); }, [part?.isActive]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (part) setDescription(part.description ?? ""); }, [part?.description]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (part) { setNotes(part.notes); setNotesOpen(part.notes !== null && part.notes !== ""); } }, [part?.notes]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (part) setStockCount(part.stockCount ?? 0); }, [part?.stockCount]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (part) setInventoryLocation(part.inventoryLocation); }, [part?.inventoryLocation]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (part) setMaterialSpecId(part.materialSpecId); }, [part?.materialSpecId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (part) setDefaultVendorId(part.defaultVendorId); }, [part?.defaultVendorId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (part) setStockSize(part.stockSize); }, [part?.stockSize]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (part) setBlankLength(part.blankLength); }, [part?.blankLength]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (part) setRoutingTemplateDefinitionId(part.routingTemplateDefinitionId); }, [part?.routingTemplateDefinitionId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (part) setPartCost(part.partCost); }, [part?.partCost]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (part) setVendorPartNumber(part.vendorPartNumber); }, [part?.vendorPartNumber]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Dirty detection ────────────────────────────────────────────────────────
-  const isDirty =
+  const isDirty = part !== undefined && (
     partName !== part.partName ||
     isActive !== part.isActive ||
     description !== (part.description ?? "") ||
@@ -696,7 +716,8 @@ export default function PartFormSheet({
     blankLength !== part.blankLength ||
     routingTemplateDefinitionId !== part.routingTemplateDefinitionId ||
     partCost !== part.partCost ||
-    vendorPartNumber !== part.vendorPartNumber;
+    vendorPartNumber !== part.vendorPartNumber
+  );
 
   const definitionDirty: DefinitionFields = {
     materialSpecId,
@@ -707,20 +728,38 @@ export default function PartFormSheet({
     routingTemplateDefinitionId,
     partCost,
   };
-  const isDefinitionDirty =
+  const isDefinitionDirty = part !== undefined && (
     materialSpecId !== part.materialSpecId ||
     defaultVendorId !== part.defaultVendorId ||
     stockSize !== part.stockSize ||
     blankLength !== part.blankLength ||
     routingTemplateDefinitionId !== part.routingTemplateDefinitionId ||
-    partCost !== part.partCost;
+    partCost !== part.partCost
+  );
   void definitionDirty;
 
-  // ── Lazy fetches ───────────────────────────────────────────────────────────
-  const auditLogQuery = usePartAuditLog(part.partId, auditLogOpen);
-  const bomParentsQuery = useBomParents(part.partId, true);
-  const bomChildrenQuery = useBomChildren(part.partId, part.partType === "Assembly");
-  const openWosQuery = usePartOpenWos(part.partId, true);
+  // ── Create mode: Part Number uniqueness check ──────────────────────────────
+  const queryClient = useQueryClient();
+  const createPartNumberConflict = (() => {
+    if (mode !== "create" || !createPartNumber.trim()) return false;
+    const cached = queryClient.getQueriesData<PartRowClient[]>({ queryKey: ["parts", "grid"] });
+    return cached.some(([, rows]) =>
+      rows?.some((r) => r.partNumber.toLowerCase() === createPartNumber.trim().toLowerCase())
+    );
+  })();
+
+  const createCanSave =
+    mode === "create" &&
+    createPartNumber.trim().length > 0 &&
+    partName.trim().length > 0 &&
+    !createPartNumberConflict;
+
+  // ── Lazy fetches (disabled in create mode — no partId yet) ────────────────
+  const partId = part?.partId ?? 0;
+  const auditLogQuery = usePartAuditLog(partId, auditLogOpen && mode === "edit");
+  const bomParentsQuery = useBomParents(partId, mode === "edit");
+  const bomChildrenQuery = useBomChildren(partId, mode === "edit" && part?.partType === "Assembly");
+  const openWosQuery = usePartOpenWos(partId, mode === "edit");
 
   // ── External data ──────────────────────────────────────────────────────────
   const vendorsQuery = useVendors({ active: "true" });
@@ -744,9 +783,10 @@ export default function PartFormSheet({
     (t) => t.routingTemplateDefinitionId === routingTemplateDefinitionId
   );
 
+  const effectivePartType = mode === "create" ? createPartType : part?.partType;
   const compatibleTemplates = (templatesQuery.data ?? []).filter((t) => {
     if (!t.isActive) return false;
-    if (part.partType === "Assembly") {
+    if (effectivePartType === "Assembly") {
       return !t.steps.some((s) =>
         ["Purchase", "Receive"].includes(s.processTypeName)
       );
@@ -782,16 +822,43 @@ export default function PartFormSheet({
   const setPartActive = useSetPartActive();
   const updateStockCount = useUpdateStockCount();
   const updateInventoryLocation = useUpdateInventoryLocation();
+  const createPartMutation = useCreatePart();
 
   const isSaving =
     updatePart.isPending ||
     setPartActive.isPending ||
     updateStockCount.isPending ||
-    updateInventoryLocation.isPending;
+    updateInventoryLocation.isPending ||
+    createPartMutation.isPending;
+
+  // ── Create Part ────────────────────────────────────────────────────────────
+  async function handleCreate() {
+    if (!createCanSave) return;
+    createPartMutation.mutate(
+      {
+        partNumber: createPartNumber.trim(),
+        partName: partName.trim(),
+        partType: createPartType,
+      },
+      {
+        onSuccess: (created) => {
+          toast.success(`Part ${created.partNumber} created`);
+          onCreated?.(created);
+        },
+        onError: (err) => {
+          if (err.message?.includes("409") || err.message?.toLowerCase().includes("already exists")) {
+            toast.error(`Part number "${createPartNumber.trim()}" already exists.`);
+          } else {
+            toast.error("Failed to create part.");
+          }
+        },
+      }
+    );
+  }
 
   // ── Save (inner, no DCF check) ────────────────────────────────────────────
   async function commitSave() {
-    if (!isDirty) return;
+    if (!isDirty || !part) return;
     const promises: Promise<unknown>[] = [];
 
     type PatchInput = Parameters<typeof updatePart.mutate>[0]["input"];
@@ -848,7 +915,7 @@ export default function PartFormSheet({
 
     try {
       await Promise.all(promises);
-      onUpdate({
+      onUpdate?.({
         ...part,
         partName,
         isActive,
@@ -880,7 +947,7 @@ export default function PartFormSheet({
 
   // ── Save (with DCF gate) ───────────────────────────────────────────────────
   async function handleSave() {
-    if (!isDirty) return;
+    if (!isDirty || !part) return;
 
     if (isDefinitionDirty) {
       const parentCount = bomParentsQuery.data?.length ?? 0;
@@ -895,13 +962,13 @@ export default function PartFormSheet({
     await commitSave();
   }
 
-  // ── Cross-sheet navigation ────────────────────────────────────────────────
-  function requestNavigate(partId: number) {
+  // ── Cross-sheet navigation (edit mode only) ────────────────────────────────
+  function requestNavigate(targetPartId: number) {
     if (isDirty) {
-      setPendingNavPartId(partId);
+      setPendingNavPartId(targetPartId);
       setUnsavedDialogOpen(true);
     } else {
-      onNavigateToPart?.(partId);
+      onNavigateToPart?.(targetPartId);
     }
   }
 
@@ -923,29 +990,73 @@ export default function PartFormSheet({
         {/* Identity row */}
         <div className="flex items-start gap-3 border-b px-4 py-3 shrink-0">
           <div className="flex flex-col min-w-0 flex-1 gap-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-mono text-sm font-semibold text-muted-foreground">
-                {part.partNumber}
-              </span>
-              <Badge variant={part.partType === "Assembly" ? "secondary" : "outline"}>
-                {part.partType}
-              </Badge>
-              <div className="flex items-center gap-1.5 ml-1">
-                <Switch
-                  checked={isActive}
-                  onCheckedChange={setIsActive}
-                  className="scale-90"
+            {mode === "create" ? (
+              /* Create mode: editable Part Number, Part Type select, Part Name input */
+              <div className="flex flex-col gap-2">
+                <span className="text-sm font-semibold text-muted-foreground">Create New Part</span>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <Input
+                      value={createPartNumber}
+                      onChange={(e) => setCreatePartNumber(e.target.value)}
+                      placeholder="Part Number *"
+                      className="font-mono text-sm h-8"
+                      autoFocus
+                    />
+                    {createPartNumberConflict && (
+                      <p className="text-xs text-destructive mt-1">
+                        Part number already exists in the library.
+                      </p>
+                    )}
+                  </div>
+                  <Select
+                    value={createPartType}
+                    onValueChange={(v) => setCreatePartType(v as "Part" | "Assembly")}
+                  >
+                    <SelectTrigger className="w-[120px] h-8 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Part">Part</SelectItem>
+                      <SelectItem value="Assembly">Assembly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Input
+                  value={partName}
+                  onChange={(e) => setPartName(e.target.value)}
+                  placeholder="Part Name *"
+                  className="text-sm h-8"
                 />
-                <span className="text-xs text-muted-foreground">
-                  {isActive ? "Active" : "Inactive"}
-                </span>
               </div>
-            </div>
-            <Input
-              value={partName}
-              onChange={(e) => setPartName(e.target.value)}
-              className="text-sm border-0 px-0 h-7 focus-visible:ring-0 focus-visible:ring-offset-0 font-medium bg-transparent"
-            />
+            ) : (
+              /* Edit mode: part number read-only, badge, active toggle, editable name */
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-mono text-sm font-semibold text-muted-foreground">
+                    {part?.partNumber}
+                  </span>
+                  <Badge variant={part?.partType === "Assembly" ? "secondary" : "outline"}>
+                    {part?.partType}
+                  </Badge>
+                  <div className="flex items-center gap-1.5 ml-1">
+                    <Switch
+                      checked={isActive}
+                      onCheckedChange={setIsActive}
+                      className="scale-90"
+                    />
+                    <span className="text-xs text-muted-foreground">
+                      {isActive ? "Active" : "Inactive"}
+                    </span>
+                  </div>
+                </div>
+                <Input
+                  value={partName}
+                  onChange={(e) => setPartName(e.target.value)}
+                  className="text-sm border-0 px-0 h-7 focus-visible:ring-0 focus-visible:ring-offset-0 font-medium bg-transparent"
+                />
+              </div>
+            )}
           </div>
           <Button
             variant="ghost"
@@ -958,83 +1069,87 @@ export default function PartFormSheet({
           </Button>
         </div>
 
-        {/* Stat tile row */}
-        <div className="flex items-stretch gap-2 px-4 py-3 border-b shrink-0">
-          {part.partType === "Assembly" ? (
+        {/* Stat tile row — hidden in create mode */}
+        {mode === "edit" && (
+          <div className="flex items-stretch gap-2 px-4 py-3 border-b shrink-0">
+            {part?.partType === "Assembly" ? (
+              <StatTile
+                label="Buildable"
+                value={part.buildableCount ?? 0}
+                unit="buildable"
+                onClick={() => scrollTo(SECTION_IDS.children)}
+              />
+            ) : (
+              <StatTile
+                label="Stock"
+                value={stockCount}
+                unit="in stock"
+                onClick={() => scrollTo(SECTION_IDS.inventory)}
+              />
+            )}
             <StatTile
-              label="Buildable"
-              value={part.buildableCount ?? 0}
-              unit="buildable"
-              onClick={() => scrollTo(SECTION_IDS.children)}
+              label="Used In"
+              value={bomParentsQuery.data?.length ?? (part?.assembliesUsedInCount ?? 0)}
+              unit={(part?.assembliesUsedInCount ?? 0) === 1 ? "assembly" : "assemblies"}
+              onClick={() => scrollTo(SECTION_IDS.parents)}
             />
-          ) : (
             <StatTile
-              label="Stock"
-              value={stockCount}
-              unit="in stock"
-              onClick={() => scrollTo(SECTION_IDS.inventory)}
+              label="Active WOs"
+              value={activeWoCount}
+              unit="work orders"
+              onClick={() => scrollTo(SECTION_IDS.activeWos)}
             />
-          )}
-          <StatTile
-            label="Used In"
-            value={bomParentsQuery.data?.length ?? part.assembliesUsedInCount}
-            unit={part.assembliesUsedInCount === 1 ? "assembly" : "assemblies"}
-            onClick={() => scrollTo(SECTION_IDS.parents)}
-          />
-          <StatTile
-            label="Active WOs"
-            value={activeWoCount}
-            unit="work orders"
-            onClick={() => scrollTo(SECTION_IDS.activeWos)}
-          />
-        </div>
+          </div>
+        )}
 
-        {/* Jump-to row */}
-        <div className="flex items-center gap-3 border-b bg-muted/20 px-4 py-2 shrink-0 flex-wrap">
-          <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
-            Jump to
-          </span>
-          <button
-            onClick={() => scrollTo(SECTION_IDS.inventory)}
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Inventory
-          </button>
-          {part.partType !== "Assembly" && (
+        {/* Jump-to row — hidden in create mode */}
+        {mode === "edit" && (
+          <div className="flex items-center gap-3 border-b bg-muted/20 px-4 py-2 shrink-0 flex-wrap">
+            <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
+              Jump to
+            </span>
             <button
-              onClick={() => scrollTo(SECTION_IDS.materialVendor)}
+              onClick={() => scrollTo(SECTION_IDS.inventory)}
               className="text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
-              Material
+              Inventory
             </button>
-          )}
-          <button
-            onClick={() => scrollTo(SECTION_IDS.routing)}
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Routing
-          </button>
-          <button
-            onClick={() => scrollTo(SECTION_IDS.parents)}
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Parents
-          </button>
-          {part.partType === "Assembly" && (
+            {part?.partType !== "Assembly" && (
+              <button
+                onClick={() => scrollTo(SECTION_IDS.materialVendor)}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Material
+              </button>
+            )}
             <button
-              onClick={() => scrollTo(SECTION_IDS.children)}
+              onClick={() => scrollTo(SECTION_IDS.routing)}
               className="text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
-              Children
+              Routing
             </button>
-          )}
-          <button
-            onClick={() => scrollTo(SECTION_IDS.auditLog)}
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Audit
-          </button>
-        </div>
+            <button
+              onClick={() => scrollTo(SECTION_IDS.parents)}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Parents
+            </button>
+            {part?.partType === "Assembly" && (
+              <button
+                onClick={() => scrollTo(SECTION_IDS.children)}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Children
+              </button>
+            )}
+            <button
+              onClick={() => scrollTo(SECTION_IDS.auditLog)}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Audit
+            </button>
+          </div>
+        )}
 
         {/* Scrollable body */}
         <div ref={scrollAreaRef} className="flex-1 overflow-y-auto">
@@ -1099,7 +1214,7 @@ export default function PartFormSheet({
           </section>
 
           {/* Material & Vendor (non-Assembly only) */}
-          {part.partType !== "Assembly" && (
+          {effectivePartType !== "Assembly" && (
             <section id={SECTION_IDS.materialVendor} className="border-b px-4 py-4">
               <SectionHeader>Material &amp; Vendor</SectionHeader>
               <div className="grid grid-cols-2 gap-4">
@@ -1136,15 +1251,15 @@ export default function PartFormSheet({
                   </FormField>
                   <FormField label="Procurement Type">
                     <Select
-                      value={part.procurementCategoryName ?? ""}
+                      value={part?.procurementCategoryName ?? ""}
                       disabled
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Not set" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value={part.procurementCategoryName ?? ""}>
-                          {part.procurementCategoryName ?? "—"}
+                        <SelectItem value={part?.procurementCategoryName ?? ""}>
+                          {part?.procurementCategoryName ?? "—"}
                         </SelectItem>
                       </SelectContent>
                     </Select>
@@ -1193,7 +1308,7 @@ export default function PartFormSheet({
                   <FormField label="Cost Updated">
                     <Input
                       value={
-                        part.partCostUpdatedAt
+                        part?.partCostUpdatedAt
                           ? new Date(part.partCostUpdatedAt).toLocaleDateString()
                           : "—"
                       }
@@ -1293,8 +1408,8 @@ export default function PartFormSheet({
             )}
           </section>
 
-          {/* Parents */}
-          <section id={SECTION_IDS.parents} className="border-b px-4 py-4">
+          {/* Parents — hidden in create mode */}
+          {mode === "edit" && <section id={SECTION_IDS.parents} className="border-b px-4 py-4">
             <SectionHeader>Parents</SectionHeader>
             {bomParentsQuery.isLoading ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -1333,19 +1448,36 @@ export default function PartFormSheet({
                 </table>
               </div>
             )}
-          </section>
+          </section>}
 
-          {/* Children (Assembly only) */}
-          {part.partType === "Assembly" && (
+          {/* Children (Assembly only) — in create mode shows "Define Assembly" placeholder */}
+          {effectivePartType === "Assembly" && (
             <section id={SECTION_IDS.children} className="border-b px-4 py-4">
               <SectionHeader>Children</SectionHeader>
-              {bomChildrenQuery.isLoading ? (
+              {mode === "create" ? (
+                <div className="flex flex-col gap-2">
+                  <p className="text-sm text-muted-foreground italic">
+                    Save this part first, then define its assembly structure.
+                  </p>
+                </div>
+              ) : bomChildrenQuery.isLoading ? (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Loader2 className="h-3 w-3 animate-spin" />
                   Loading…
                 </div>
               ) : !bomChildrenQuery.data || bomChildrenQuery.data.length === 0 ? (
-                <p className="text-sm text-muted-foreground italic">No child parts defined.</p>
+                <div className="flex flex-col gap-3">
+                  <p className="text-sm text-muted-foreground italic">No child parts defined.</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-fit gap-1.5"
+                    onClick={() => toast.info("BOM Editor coming in a future release.")}
+                  >
+                    <Wrench className="h-3.5 w-3.5" />
+                    Define Assembly
+                  </Button>
+                </div>
               ) : (() => {
                 const minBuildable = Math.min(
                   ...bomChildrenQuery.data.map((r) => r.buildableFromThis)
@@ -1398,14 +1530,25 @@ export default function PartFormSheet({
                         })}
                       </tbody>
                     </table>
+                    <div className="mt-3">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5"
+                        onClick={() => toast.info("BOM Editor coming in a future release.")}
+                      >
+                        <Wrench className="h-3.5 w-3.5" />
+                        Edit Assembly
+                      </Button>
+                    </div>
                   </div>
                 );
               })()}
             </section>
           )}
 
-          {/* Active WOs */}
-          <section id={SECTION_IDS.activeWos} className="border-b px-4 py-4">
+          {/* Active WOs — hidden in create mode */}
+          {mode === "edit" && <section id={SECTION_IDS.activeWos} className="border-b px-4 py-4">
             <SectionHeader>Active Work Orders</SectionHeader>
             {openWosQuery.isLoading ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -1451,10 +1594,10 @@ export default function PartFormSheet({
                 </table>
               </div>
             )}
-          </section>
+          </section>}
 
-          {/* Audit Log */}
-          <section id={SECTION_IDS.auditLog} className="border-b px-4 py-4">
+          {/* Audit Log — hidden in create mode */}
+          {mode === "edit" && <section id={SECTION_IDS.auditLog} className="border-b px-4 py-4">
             <button
               onClick={() => setAuditLogOpen((v) => !v)}
               className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground font-medium w-full text-left mb-0"
@@ -1499,23 +1642,40 @@ export default function PartFormSheet({
                 )}
               </div>
             )}
-          </section>
+          </section>}
 
         </div>
 
         {/* Footer */}
         <div className="border-t px-4 py-3 flex items-center justify-between shrink-0">
-          <span
-            className={cn(
-              "text-xs",
-              isDirty ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"
-            )}
-          >
-            {isDirty ? "Unsaved changes" : "No unsaved changes"}
-          </span>
-          <Button size="sm" onClick={handleSave} disabled={!isDirty || isSaving}>
-            {isSaving ? "Saving…" : "Save Changes"}
-          </Button>
+          {mode === "create" ? (
+            <>
+              <span className="text-xs text-muted-foreground">
+                {createPartNumberConflict
+                  ? "Part number conflict"
+                  : !createPartNumber.trim() || !partName.trim()
+                  ? "Fill required fields to save"
+                  : "Ready to create"}
+              </span>
+              <Button size="sm" onClick={handleCreate} disabled={!createCanSave || isSaving}>
+                {isSaving ? "Creating…" : "Create Part"}
+              </Button>
+            </>
+          ) : (
+            <>
+              <span
+                className={cn(
+                  "text-xs",
+                  isDirty ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"
+                )}
+              >
+                {isDirty ? "Unsaved changes" : "No unsaved changes"}
+              </span>
+              <Button size="sm" onClick={handleSave} disabled={!isDirty || isSaving}>
+                {isSaving ? "Saving…" : "Save Changes"}
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -1537,10 +1697,10 @@ export default function PartFormSheet({
       />
       <DcfDialog
         open={dcfDialogOpen}
-        partNumber={part.partNumber}
+        partNumber={part?.partNumber ?? ""}
         parentCount={bomParentsQuery.data?.length ?? 0}
         openWoCount={openWosQuery.data?.length ?? 0}
-        stockCount={part.stockCount ?? 0}
+        stockCount={part?.stockCount ?? 0}
         onCancel={() => setDcfDialogOpen(false)}
         onConfirm={async () => {
           setDcfDialogOpen(false);
@@ -1549,7 +1709,7 @@ export default function PartFormSheet({
       />
       <UnsavedChangesDialog
         open={unsavedDialogOpen}
-        partNumber={part.partNumber}
+        partNumber={part?.partNumber ?? ""}
         onCancel={() => {
           setUnsavedDialogOpen(false);
           setPendingNavPartId(null);

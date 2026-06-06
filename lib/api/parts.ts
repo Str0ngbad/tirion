@@ -289,6 +289,28 @@ export function usePartOpenWos(
   });
 }
 
+// ─── Create part ──────────────────────────────────────────────────────────────
+
+type CreatePartVars = {
+  partNumber: string;
+  partName: string;
+  partType: "Part" | "Assembly";
+};
+
+export function useCreatePart(): UseMutationResult<PartRowClient, ApiError, CreatePartVars> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: CreatePartVars) =>
+      apiFetch<PartRowClient>("/api/v1/parts", {
+        method: "POST",
+        body: JSON.stringify(vars),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["parts", "grid"] });
+    },
+  });
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function useUpdateInventoryLocation(): UseMutationResult<PartRowClient, ApiError, UpdateInventoryLocationVars> {

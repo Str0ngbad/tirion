@@ -152,6 +152,7 @@ export default function PartsPage() {
   // ── UI state ───────────────────────────────────────────────────────────────
   const [condensed, setCondensed] = useState(true);
   const [selectedPartId, setSelectedPartId] = useState<number | null>(null);
+  const [createMode, setCreateMode] = useState(false);
   const [panelSection, setPanelSection] = useState<SectionId | undefined>(undefined);
   const [viewManagementOpen, setViewManagementOpen] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -473,7 +474,14 @@ export default function PartsPage() {
                   </button>
                 )}
               </div>
-              <Button size="sm" disabled className="gap-1.5 text-sm">
+              <Button
+                size="sm"
+                className="gap-1.5 text-sm"
+                onClick={() => {
+                  setSelectedPartId(null);
+                  setCreateMode(true);
+                }}
+              >
                 <PlusIcon className="h-3.5 w-3.5" />
                 Add Part
               </Button>
@@ -666,6 +674,7 @@ export default function PartsPage() {
                 filters={effectiveFilters}
                 scrollContainerRef={scrollContainerRef}
                 onSelectPart={(partId) => {
+                  setCreateMode(false);
                   setSelectedPartId(partId);
                   setPanelSection(undefined);
                 }}
@@ -684,13 +693,27 @@ export default function PartsPage() {
         </div>
 
         {/* Part Form Sheet — inline flex sibling so it sits below sticky chrome */}
-        {selectedPartId !== null && (() => {
+        {createMode ? (
+          <div className="w-[480px] shrink-0 border-l bg-background flex flex-col overflow-hidden">
+            <PartFormSheet
+              key="create"
+              mode="create"
+              onClose={() => setCreateMode(false)}
+              onCreated={(created) => {
+                setCreateMode(false);
+                setSelectedPartId(created.partId);
+                setPanelSection(SECTION_IDS.description);
+              }}
+            />
+          </div>
+        ) : selectedPartId !== null && (() => {
           const part = displayRows.find((r) => r.partId === selectedPartId);
           if (!part) return null;
           return (
             <div className="w-[480px] shrink-0 border-l bg-background flex flex-col overflow-hidden">
               <PartFormSheet
                 key={part.partId}
+                mode="edit"
                 part={part}
                 initialSection={panelSection}
                 onClose={() => setSelectedPartId(null)}
