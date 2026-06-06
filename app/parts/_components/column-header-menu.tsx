@@ -84,9 +84,9 @@ export default function ColumnHeaderMenu({
               <button
                 className={cn(
                   "ml-0.5 inline-flex h-4 w-4 items-center justify-center rounded transition-opacity",
-                  "opacity-40 hover:!opacity-100 focus:opacity-100 focus:outline-none",
-                  isInStack && "opacity-60",
-                  hasActiveFilter && "text-amber-600 dark:text-amber-400 opacity-80"
+                  "opacity-60 hover:!opacity-100 focus:opacity-100 focus:outline-none",
+                  isInStack && "opacity-80",
+                  hasActiveFilter && "text-amber-300 opacity-90"
                 )}
                 onClick={(e) => e.stopPropagation()}
                 aria-label={`Options for ${label}`}

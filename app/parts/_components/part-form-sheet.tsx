@@ -103,13 +103,14 @@ function StatTile({
   return (
     <button
       onClick={onClick}
-      className="flex-1 flex flex-col items-start rounded-md border bg-card/30 overflow-hidden hover:bg-muted/40 transition-colors text-left"
+      className="flex-1 flex flex-col rounded-md border overflow-hidden hover:opacity-90 transition-opacity"
     >
-      <div className="h-1 w-full bg-primary" />
-      <div className="px-3 py-2 flex flex-col gap-0.5">
-        <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
+      <div className="bg-primary text-primary-foreground px-3 py-1.5 flex items-center justify-center">
+        <span className="text-[10px] uppercase tracking-wide font-semibold">
           {label}
         </span>
+      </div>
+      <div className="bg-card/30 px-3 py-3 flex-1 flex flex-col items-center justify-center gap-0.5">
         <div className="flex items-baseline gap-1">
           <span className="text-2xl font-semibold tabular-nums">{value}</span>
           {unit && <span className="text-xs text-muted-foreground">{unit}</span>}

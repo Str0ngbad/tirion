@@ -224,7 +224,7 @@ const PartRowComponent = React.memo(function PartRowComponent({
       style={style}
       className={cn(
         "flex cursor-pointer border-b border-border transition-colors hover:bg-muted/50",
-        isSelected && "border-l-4 border-l-primary bg-primary/10",
+        isSelected && "shadow-[inset_4px_0_0_hsl(var(--primary))] bg-primary/10",
         row.partType === "Assembly" && "bg-muted/30",
         !row.isActive && "opacity-40 hover:opacity-60"
       )}
@@ -298,8 +298,13 @@ export default function PartsGrid({
 }: Props) {
   const columns = useMemo(() => {
     const visibleSet = new Set(visibleColumns);
-    return ALL_COLUMNS.filter((c) => visibleSet.has(c.id));
-  }, [visibleColumns]);
+    return ALL_COLUMNS
+      .filter((c) => visibleSet.has(c.id))
+      .map((c) => c.id === "routing"
+        ? { ...c, width: condensed ? 120 : 400 }
+        : c
+      );
+  }, [visibleColumns, condensed]);
 
   const totalWidth = useMemo(
     () => columns.reduce((sum, c) => sum + c.width, 0),
@@ -333,7 +338,7 @@ export default function PartsGrid({
         {/* Sticky header */}
         <div
           role="rowgroup"
-          className="sticky top-0 z-10 bg-background border-b border-border"
+          className="sticky top-0 z-10 bg-muted border-b border-border"
         >
           <div role="row" className="flex">
             {columns.map((col) => {
@@ -346,7 +351,7 @@ export default function PartsGrid({
                   role="columnheader"
                   style={{ width: col.width, minWidth: col.width, maxWidth: col.width }}
                   className={cn(
-                    "group/header overflow-hidden select-none whitespace-nowrap px-3 py-2 text-xs font-semibold text-muted-foreground bg-primary/5",
+                    "group/header overflow-hidden select-none whitespace-nowrap px-3 py-2 text-xs font-semibold text-foreground",
                     col.align === "right" && "text-right",
                     col.align === "center" && "text-center"
                   )}
@@ -359,17 +364,14 @@ export default function PartsGrid({
                     )}
                   >
                     <button
-                      className={cn(
-                        "leading-none hover:text-foreground transition-colors",
-                        sortEntry ? "text-foreground" : "text-muted-foreground"
-                      )}
+                      className="leading-none text-foreground hover:text-foreground/70 transition-colors"
                       onClick={(e) => col.sortable && onSortToggle(col.id, e.shiftKey)}
                       disabled={!col.sortable}
                     >
                       {col.label}
                     </button>
                     {sortEntry && (
-                      <span className="inline-flex items-center gap-0.5 text-primary">
+                      <span className="inline-flex items-center gap-0.5 text-foreground/60">
                         {sortEntry.direction === "asc"
                           ? <ArrowUpIcon className="h-3 w-3 shrink-0" />
                           : <ArrowDownIcon className="h-3 w-3 shrink-0" />}

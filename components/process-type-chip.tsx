@@ -20,7 +20,7 @@ export default function ProcessTypeChip({ processType, compact = false }: Props)
   }
 
   return (
-    <span className="relative inline-flex items-center overflow-hidden rounded-sm border border-border/50 bg-card text-sm text-foreground">
+    <span className="relative inline-flex shrink-0 items-center overflow-hidden rounded-sm border border-border/50 bg-card text-sm text-foreground">
       <span
         className="absolute inset-0"
         style={{ backgroundColor: `var(${meta.cssVar})` }}
