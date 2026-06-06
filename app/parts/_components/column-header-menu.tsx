@@ -91,7 +91,7 @@ export default function ColumnHeaderMenu({
                 onClick={(e) => e.stopPropagation()}
                 aria-label={`Options for ${label}`}
               >
-                <ChevronDownIcon className="h-3 w-3" />
+                <ChevronDownIcon className="h-3 w-3 text-foreground" strokeWidth={2.5} />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-44">

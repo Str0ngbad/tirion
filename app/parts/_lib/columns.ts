@@ -52,7 +52,7 @@ export const ALL_COLUMNS: ColumnMeta[] = [
   { id: "materialForm",          label: "Form",          dataType: "categorical", sortable: true,  filterable: true,  align: "left",   defaultWidth: "min-w-[100px] max-w-[140px]", width: 120 },
   { id: "vendor",                label: "Vendor",        dataType: "categorical", sortable: true,  filterable: true,  align: "left",   defaultWidth: "min-w-[120px] max-w-[160px]", width: 140 },
   { id: "vendorPartNumber",      label: "Vendor Part #", dataType: "text",        sortable: true,  filterable: true,  align: "left",   defaultWidth: "min-w-[120px] max-w-[150px]", width: 130 },
-  { id: "routing",               label: "Routing",       dataType: "routing",     sortable: false, filterable: true,  align: "left",   defaultWidth: "",                             width: 160 },
+  { id: "routing",               label: "Routing",       dataType: "routing",     sortable: false, filterable: true,  align: "left",   defaultWidth: "",                             width: 220 },
   { id: "buildableCount",        label: "Buildable",     dataType: "numeric",     sortable: true,  filterable: true,  align: "right",  defaultWidth: "w-24",                        width: 96  },
   { id: "stockCount",            label: "Stock",         dataType: "numeric",     sortable: true,  filterable: true,  align: "right",  defaultWidth: "w-20",                        width: 80  },
   { id: "inventoryLocation",     label: "Location",      dataType: "text",        sortable: true,  filterable: true,  align: "left",   defaultWidth: "min-w-[100px] max-w-[160px]", width: 130 },
@@ -62,7 +62,7 @@ export const ALL_COLUMNS: ColumnMeta[] = [
   { id: "partCostUpdatedAt",     label: "Cost Updated",  dataType: "date",        sortable: true,  filterable: true,  align: "left",   defaultWidth: "w-28",                        width: 112 },
   { id: "assembliesUsedInCount", label: "Used In",       dataType: "numeric",     sortable: false, filterable: true,  align: "right",  defaultWidth: "w-20",                        width: 80  },
   { id: "machineCycleTime",      label: "Cycle Time",    dataType: "numeric",     sortable: true,  filterable: true,  align: "right",  defaultWidth: "w-24",                        width: 96  },
-  { id: "numberOfSetups",        label: "Setups",        dataType: "numeric",     sortable: true,  filterable: true,  align: "right",  defaultWidth: "w-16",                        width: 64  },
+  { id: "numberOfSetups",        label: "Setups",        dataType: "numeric",     sortable: true,  filterable: true,  align: "right",  defaultWidth: "w-20",                        width: 80  },
   { id: "isActive",              label: "Active",        dataType: "boolean",     sortable: true,  filterable: true,  align: "center", defaultWidth: "w-16",                        width: 64  },
 ];
 

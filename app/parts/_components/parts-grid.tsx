@@ -233,9 +233,12 @@ const PartRowComponent = React.memo(function PartRowComponent({
         <div
           key={col.id}
           role="cell"
-          style={{ width: col.width, minWidth: col.width, maxWidth: col.width }}
+          style={col.id === "routing"
+            ? { minWidth: col.width }
+            : { width: col.width, minWidth: col.width, maxWidth: col.width }}
           className={cn(
-            "overflow-hidden px-3 py-1.5 text-sm",
+            "px-3 py-1.5 text-sm",
+            col.id !== "routing" && "overflow-hidden",
             col.align === "right" && "text-right",
             col.align === "center" && "text-center",
             col.id === "routing" && "whitespace-nowrap",
@@ -343,7 +346,7 @@ export default function PartsGrid({
                   role="columnheader"
                   style={{ width: col.width, minWidth: col.width, maxWidth: col.width }}
                   className={cn(
-                    "group/header overflow-hidden select-none whitespace-nowrap px-3 py-2 text-xs font-medium text-muted-foreground",
+                    "group/header overflow-hidden select-none whitespace-nowrap px-3 py-2 text-xs font-semibold text-muted-foreground bg-primary/5",
                     col.align === "right" && "text-right",
                     col.align === "center" && "text-center"
                   )}

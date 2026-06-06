@@ -103,13 +103,18 @@ function StatTile({
   return (
     <button
       onClick={onClick}
-      className="flex-1 flex flex-col items-start gap-0.5 rounded-md border bg-card/30 px-3 py-2 hover:bg-muted/40 transition-colors text-left"
+      className="flex-1 flex flex-col items-start rounded-md border bg-card/30 overflow-hidden hover:bg-muted/40 transition-colors text-left"
     >
-      <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
-        {label}
-      </span>
-      <span className="text-2xl font-semibold tabular-nums">{value}</span>
-      {unit && <span className="text-xs text-muted-foreground">{unit}</span>}
+      <div className="h-1 w-full bg-primary" />
+      <div className="px-3 py-2 flex flex-col gap-0.5">
+        <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
+          {label}
+        </span>
+        <div className="flex items-baseline gap-1">
+          <span className="text-2xl font-semibold tabular-nums">{value}</span>
+          {unit && <span className="text-xs text-muted-foreground">{unit}</span>}
+        </div>
+      </div>
     </button>
   );
 }
@@ -475,12 +480,17 @@ function AddMaterialSpecModal({
 
 type DcfDetail = "parents" | "wos" | "stock" | null;
 
+type DcfParent = { bomId: number; partNumber: string; partName: string; qtyUsed: number };
+type DcfWo = { workOrderId: number; projectNumber: string; projectName: string; quantity: number };
+
 function DcfDialog({
   open,
   partNumber,
   parentCount,
   openWoCount,
   stockCount,
+  parents,
+  openWos,
   onCancel,
   onConfirm,
 }: {
@@ -489,6 +499,8 @@ function DcfDialog({
   parentCount: number;
   openWoCount: number;
   stockCount: number;
+  parents?: DcfParent[];
+  openWos?: DcfWo[];
   onCancel: () => void;
   onConfirm: () => void;
 }) {
@@ -555,17 +567,52 @@ function DcfDialog({
           )}
         </div>
 
-        {expanded === "parents" && (
-          <p className="text-sm text-muted-foreground">
-            {parentCount} parent {parentCount === 1 ? "assembly references" : "assemblies reference"}{" "}
-            this part. Their BOMs may need review if the part definition change affects fit or form.
-          </p>
+        {expanded === "parents" && parents && parents.length > 0 && (
+          <div className="max-h-48 overflow-y-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  <th className="text-left pb-1.5 font-medium">Part #</th>
+                  <th className="text-left pb-1.5 font-medium">Name</th>
+                  <th className="text-right pb-1.5 font-medium">Qty Used</th>
+                </tr>
+              </thead>
+              <tbody>
+                {parents.map((p) => (
+                  <tr key={p.bomId} className="border-t border-border/50">
+                    <td className="font-mono text-xs py-1 pr-2 text-muted-foreground">{p.partNumber}</td>
+                    <td className="py-1 pr-2 truncate max-w-[160px]">{p.partName}</td>
+                    <td className="py-1 text-right tabular-nums text-muted-foreground">{p.qtyUsed}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
-        {expanded === "wos" && (
-          <p className="text-sm text-muted-foreground">
-            {openWoCount} open work {openWoCount === 1 ? "order" : "orders"} for this part. These
-            WOs may need to be reviewed for conformance to the updated definition.
-          </p>
+        {expanded === "wos" && openWos && openWos.length > 0 && (
+          <div className="max-h-48 overflow-y-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  <th className="text-left pb-1.5 font-medium">WO #</th>
+                  <th className="text-left pb-1.5 font-medium">Project</th>
+                  <th className="text-right pb-1.5 font-medium">Qty</th>
+                </tr>
+              </thead>
+              <tbody>
+                {openWos.map((wo) => (
+                  <tr key={wo.workOrderId} className="border-t border-border/50">
+                    <td className="font-mono text-xs py-1 pr-2 text-muted-foreground">{wo.workOrderId}</td>
+                    <td className="py-1 pr-2 text-xs truncate max-w-[160px]">
+                      <span>{wo.projectNumber}</span>
+                      <span className="text-muted-foreground ml-1">{wo.projectName}</span>
+                    </td>
+                    <td className="py-1 text-right tabular-nums text-muted-foreground">{wo.quantity}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
         {expanded === "stock" && (
           <p className="text-sm text-muted-foreground">
@@ -1081,7 +1128,7 @@ export default function PartFormSheet(props: PartFormSheetProps) {
               />
             ) : (
               <StatTile
-                label="Stock"
+                label="Inventory"
                 value={stockCount}
                 unit="in stock"
                 onClick={() => scrollTo(SECTION_IDS.inventory)}
@@ -1105,7 +1152,7 @@ export default function PartFormSheet(props: PartFormSheetProps) {
         {/* Jump-to row — hidden in create mode */}
         {mode === "edit" && (
           <div className="flex items-center gap-3 border-b bg-muted/20 px-4 py-2 shrink-0 flex-wrap">
-            <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
+            <span className="text-xs uppercase tracking-wide text-muted-foreground font-medium">
               Jump to
             </span>
             <button
@@ -1701,6 +1748,8 @@ export default function PartFormSheet(props: PartFormSheetProps) {
         parentCount={bomParentsQuery.data?.length ?? 0}
         openWoCount={openWosQuery.data?.length ?? 0}
         stockCount={part?.stockCount ?? 0}
+        parents={bomParentsQuery.data ?? undefined}
+        openWos={openWosQuery.data ?? undefined}
         onCancel={() => setDcfDialogOpen(false)}
         onConfirm={async () => {
           setDcfDialogOpen(false);
