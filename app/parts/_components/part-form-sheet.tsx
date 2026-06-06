@@ -54,6 +54,8 @@ import { useMaterialSpecs, useCreateMaterialSpec } from "@/lib/api/material-spec
 import type { MaterialSpecRow } from "@/lib/api/material-specs";
 import { useRoutingTemplates } from "@/lib/api/routing-templates";
 import type { RoutingTemplateRow } from "@/lib/routing-templates/types";
+import ProcessTypeChip from "@/components/process-type-chip";
+import type { ProcessTypeKey } from "@/lib/process-types";
 
 // ─── Section IDs ──────────────────────────────────────────────────────────────
 
@@ -615,16 +617,6 @@ function UnsavedChangesDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
-}
-
-// ─── ProcessType chip ─────────────────────────────────────────────────────────
-
-function ProcessTypeChip({ name }: { name: string }) {
-  return (
-    <span className="inline-flex items-center rounded-sm bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-      {name}
-    </span>
   );
 }
 
@@ -1224,7 +1216,7 @@ export default function PartFormSheet({
                     <span className="text-sm font-medium truncate">{currentTemplate.templateName}</span>
                     <div className="flex flex-wrap gap-1">
                       {currentTemplate.steps.map((s) => (
-                        <ProcessTypeChip key={s.routingTemplateStepId} name={s.processTypeName} />
+                        <ProcessTypeChip key={s.routingTemplateStepId} processType={s.processTypeName as ProcessTypeKey} />
                       ))}
                     </div>
                   </div>
