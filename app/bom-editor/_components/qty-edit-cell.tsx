@@ -34,11 +34,13 @@ export function QtyEditCell({
   const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const committedRef = useRef(false);
 
   const updateMutation = useUpdateBomQuantity();
   const deleteMutation = useRemoveBomChild();
 
   const startEditing = () => {
+    committedRef.current = false;
     setInputValue(String(currentQty));
     setError(null);
     setEditing(true);
@@ -51,6 +53,8 @@ export function QtyEditCell({
   };
 
   const commit = () => {
+    if (committedRef.current) return;
+    committedRef.current = true;
     const trimmed = inputValue.trim();
 
     if (!trimmed) { stopEditing(); return; }
@@ -102,6 +106,7 @@ export function QtyEditCell({
   };
 
   const cancelRemove = () => {
+    committedRef.current = false;
     setRemoveDialogOpen(false);
     stopEditing();
   };

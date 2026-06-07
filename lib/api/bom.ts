@@ -22,7 +22,7 @@ export function useBomTree(
     queryKey: ["bom", "tree", assemblyId],
     queryFn: () => apiFetch<BomNode>(`/api/v1/parts/${assemblyId}/bom-tree`),
     enabled: assemblyId !== null,
-    staleTime: 30_000,
+    staleTime: 0,
   });
 }
 
