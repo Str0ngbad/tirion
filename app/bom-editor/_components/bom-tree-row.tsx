@@ -139,9 +139,9 @@ export function BomTreeRow({
             </Badge>
           )}
 
-          {/* ⋮ menu adjacent to Part Name, before data columns (Assembly rows only) */}
+          {/* ⋮ menu — right edge of Component column */}
           {isAssembly && (
-            <div className="shrink-0 ml-1">
+            <div className="shrink-0 ml-auto">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button

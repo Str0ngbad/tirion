@@ -31,11 +31,6 @@ export function BomEditorChrome({ selectedAssemblyId, autoFocusSearch }: BomEdit
     );
   }, [query, assemblies]);
 
-  const selectedAssembly = useMemo(
-    () => assemblies.find((a) => a.partId === selectedAssemblyId),
-    [selectedAssemblyId, assemblies]
-  );
-
   const handleSelect = (assemblyId: number) => {
     setQuery("");
     setDropdownOpen(false);
@@ -82,11 +77,7 @@ export function BomEditorChrome({ selectedAssemblyId, autoFocusSearch }: BomEdit
                 inputRef.current?.blur();
               }
             }}
-            placeholder={
-              selectedAssembly
-                ? `${selectedAssembly.partNumber} — ${selectedAssembly.partName}`
-                : "Search assemblies…"
-            }
+            placeholder="Search assemblies…"
             className="pl-8"
           />
 
