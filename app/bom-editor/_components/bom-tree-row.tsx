@@ -302,7 +302,7 @@ export function BomTreeRow({
 
         {/* Freshness */}
         <div className="w-8 shrink-0 flex items-center justify-center">
-          <FreshnessIndicator freshness={freshness} />
+          <FreshnessIndicator freshness={freshness} isAssembly={isAssembly} />
         </div>
 
         {/* Location */}
