@@ -13,6 +13,7 @@ import type {
   CreateVendorInput,
   UpdateVendorInput,
   VendorWithCounts,
+  VendorWithParts,
 } from "@/lib/vendors/types";
 
 // Internal shape of Prisma's return when requesting vendor _count with filters.
@@ -106,7 +107,7 @@ export async function listVendors(query: ListVendorsQuery): Promise<VendorWithCo
   return rows.map(toVendorWithCounts);
 }
 
-export async function getVendor(vendorId: number): Promise<VendorWithCounts> {
+export async function getVendor(vendorId: number): Promise<VendorWithParts> {
   const raw = await prisma.vendor.findUnique({
     where: { vendorId },
     include: {
@@ -116,12 +117,20 @@ export async function getVendor(vendorId: number): Promise<VendorWithCounts> {
           supplyOrders: { where: { status: { in: OPEN_SO_STATUSES } } },
         },
       },
+      parts: {
+        where: { isActive: true },
+        select: { partId: true, partNumber: true, partName: true },
+        orderBy: { partNumber: "asc" },
+      },
     },
   });
 
   if (raw === null) throw new VendorNotFoundError(vendorId);
 
-  return toVendorWithCounts(raw);
+  return {
+    ...toVendorWithCounts(raw),
+    parts: raw.parts,
+  };
 }
 
 export async function createVendor(

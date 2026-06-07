@@ -31,3 +31,13 @@ export const ProcurementCategoryWithCountsSchema = z.object({
   isActive: z.boolean(),
   usedByCount: z.number().int(),
 });
+
+export const ProcurementCategoryWithPartsSchema = ProcurementCategoryWithCountsSchema.extend({
+  parts: z.array(
+    z.object({
+      partId: z.number().int(),
+      partNumber: z.string(),
+      partName: z.string(),
+    })
+  ),
+});

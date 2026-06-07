@@ -38,3 +38,13 @@ export const VendorWithCountsSchema = z.object({
   defaultVendorForCount: z.number().int(),
   openSupplyOrderCount: z.number().int(),
 });
+
+export const VendorWithPartsSchema = VendorWithCountsSchema.extend({
+  parts: z.array(
+    z.object({
+      partId: z.number().int(),
+      partNumber: z.string(),
+      partName: z.string(),
+    })
+  ),
+});

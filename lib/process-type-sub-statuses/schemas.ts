@@ -31,4 +31,5 @@ export const ProcessTypeSubStatusSchema = z.object({
   description: z.string().nullable(),
   displayOrder: z.number().int(),
   isActive: z.boolean(),
+  usedByCount: z.number().int(),
 });

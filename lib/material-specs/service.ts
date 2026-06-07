@@ -7,6 +7,7 @@ import {
   MaterialSpecAlreadyActiveError,
   MaterialSpecAlreadyInactiveError,
   MaterialSpecCollisionError,
+  MaterialSpecDeactivationBlockedError,
 } from "@/lib/errors/material-spec";
 import type {
   ListMaterialSpecsQuery,
@@ -237,6 +238,12 @@ export async function deactivateMaterialSpec(
       const spec = await tx.materialSpec.findUnique({ where: { materialSpecId } });
       if (spec === null) throw new MaterialSpecNotFoundError(materialSpecId);
       if (!spec.isActive) throw new MaterialSpecAlreadyInactiveError(materialSpecId);
+
+      const blockingParts = await tx.part.findMany({
+        where: { materialSpecId, isActive: true },
+        select: { partId: true, partNumber: true },
+      });
+      if (blockingParts.length > 0) throw new MaterialSpecDeactivationBlockedError(blockingParts);
 
       await tx.materialSpec.update({
         where: { materialSpecId },

@@ -14,6 +14,7 @@ import type {
   CreateProcurementCategoryInput,
   UpdateProcurementCategoryInput,
   ProcurementCategoryWithCounts,
+  ProcurementCategoryWithParts,
 } from "@/lib/procurement-categories/types";
 
 type ProcurementCategoryWithCountsRaw = {
@@ -104,7 +105,7 @@ export async function listProcurementCategories(
 
 export async function getProcurementCategory(
   procurementCategoryId: number
-): Promise<ProcurementCategoryWithCounts> {
+): Promise<ProcurementCategoryWithParts> {
   const raw = await prisma.procurementCategory.findUnique({
     where: { procurementCategoryId },
     include: {
@@ -113,12 +114,20 @@ export async function getProcurementCategory(
           parts: { where: { isActive: true } },
         },
       },
+      parts: {
+        where: { isActive: true },
+        select: { partId: true, partNumber: true, partName: true },
+        orderBy: { partNumber: "asc" },
+      },
     },
   });
 
   if (raw === null) throw new ProcurementCategoryNotFoundError(procurementCategoryId);
 
-  return toProcurementCategoryWithCounts(raw);
+  return {
+    ...toProcurementCategoryWithCounts(raw),
+    parts: raw.parts,
+  };
 }
 
 export async function createProcurementCategory(

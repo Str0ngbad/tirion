@@ -29,6 +29,9 @@ type ProcessTypeSubStatusRaw = {
     processCode: string;
     processName: string;
   };
+  _count: {
+    workOrderSteps: number;
+  };
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -43,6 +46,7 @@ function toProcessTypeSubStatus(raw: ProcessTypeSubStatusRaw): ProcessTypeSubSta
     description: raw.description,
     displayOrder: raw.displayOrder,
     isActive: raw.isActive,
+    usedByCount: raw._count.workOrderSteps,
   };
 }
 
@@ -54,6 +58,7 @@ async function fetchByIdWithProcessType(
     where: { processTypeSubStatusId },
     include: {
       processType: { select: { processCode: true, processName: true } },
+      _count: { select: { workOrderSteps: true } },
     },
   }) as Promise<ProcessTypeSubStatusRaw>;
 }
@@ -102,6 +107,7 @@ export async function listProcessTypeSubStatuses(
     where,
     include: {
       processType: { select: { processCode: true, processName: true } },
+      _count: { select: { workOrderSteps: true } },
     },
     orderBy: [
       { processTypeId: "asc" },
@@ -120,6 +126,7 @@ export async function getProcessTypeSubStatus(
     where: { processTypeSubStatusId },
     include: {
       processType: { select: { processCode: true, processName: true } },
+      _count: { select: { workOrderSteps: true } },
     },
   });
 

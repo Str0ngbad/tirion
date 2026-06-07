@@ -33,6 +33,17 @@ export class MaterialSpecAlreadyInactiveError extends DomainError {
   }
 }
 
+export class MaterialSpecDeactivationBlockedError extends DomainError {
+  readonly statusCode = 409;
+  readonly errorCode = "MATERIAL_SPEC_DEACTIVATION_BLOCKED";
+  readonly details: Record<string, unknown>;
+
+  constructor(blockingParts: Array<{ partId: number; partNumber: string }>) {
+    super("Cannot deactivate MaterialSpec with active Part references");
+    this.details = { blockingParts };
+  }
+}
+
 export class MaterialSpecCollisionError extends DomainError {
   readonly statusCode = 409;
   readonly errorCode = "MATERIAL_SPEC_COLLISION";
