@@ -10,6 +10,7 @@ import {
 import { apiFetch } from "./client";
 import { ApiError } from "./client-error";
 import type { BomNode, BomEdgeRow, SaveResponse } from "@/lib/bom/types";
+import type { AllActivePartOption } from "./parts";
 
 export type { BomNode, BomEdgeRow, SaveResponse };
 
@@ -42,12 +43,53 @@ export function useAddBomChild(): UseMutationResult<SaveResponse, ApiError, AddB
         method: "POST",
         body: JSON.stringify(vars),
       }),
-    onSuccess: (_data, vars) => {
-      qc.invalidateQueries({ queryKey: ["bom", "tree", vars.parentPartId] });
+    onMutate: async (vars) => {
+      await qc.cancelQueries({ queryKey: ["bom", "tree"] });
+      const snapshots = qc.getQueriesData<BomNode>({ queryKey: ["bom", "tree"] });
+      const allParts = qc.getQueryData<AllActivePartOption[]>(["parts", "all-active"]) ?? [];
+      const childPart = allParts.find((p) => p.partId === vars.childPartId);
+      if (childPart) {
+        const newChild: BomNode = {
+          bomId: -1,
+          partId: childPart.partId,
+          partNumber: childPart.partNumber,
+          partName: childPart.partName,
+          partType: childPart.partType,
+          isActive: true,
+          quantity: vars.quantity,
+          stockCount: null,
+          cost: null,
+          costLastUpdated: null,
+          inventoryLocation: null,
+          children: [],
+        };
+        qc.setQueriesData<BomNode>(
+          { queryKey: ["bom", "tree"] },
+          (old) => (old ? addNodeToTree(old, vars.parentPartId, newChild) : old)
+        );
+      }
+      return { snapshots };
+    },
+    onError: (_err, _vars, context) => {
+      const ctx = context as { snapshots: [unknown, BomNode | undefined][] } | undefined;
+      ctx?.snapshots.forEach(([key, data]) => {
+        qc.setQueryData(key as Parameters<typeof qc.setQueryData>[0], data);
+      });
+    },
+    onSettled: (_data, _err, vars) => {
+      qc.invalidateQueries({ queryKey: ["bom", "tree"] });
       qc.invalidateQueries({ queryKey: ["parts", "grid"] });
       qc.invalidateQueries({ queryKey: ["parts", "bom-children", vars.parentPartId] });
     },
   });
+}
+
+function addNodeToTree(tree: BomNode, parentPartId: number, newChild: BomNode): BomNode {
+  if (tree.partId === parentPartId) {
+    return { ...tree, children: [...tree.children, newChild] };
+  }
+  if (!tree.children.length) return tree;
+  return { ...tree, children: tree.children.map((c) => addNodeToTree(c, parentPartId, newChild)) };
 }
 
 // ─── Update quantity ──────────────────────────────────────────────────────────
@@ -149,6 +191,16 @@ type BulkRemoveBomChildrenVars = {
   parentPartId: number;
 };
 
+function removeNodesFromTree(tree: BomNode, edgeIds: Set<number>): BomNode {
+  if (!tree.children?.length) return tree;
+  return {
+    ...tree,
+    children: tree.children
+      .filter((c) => c.bomId === null || !edgeIds.has(c.bomId))
+      .map((c) => removeNodesFromTree(c, edgeIds)),
+  };
+}
+
 export function useBulkRemoveBomChildren(): UseMutationResult<
   { deletedCount: number },
   ApiError,
@@ -161,7 +213,23 @@ export function useBulkRemoveBomChildren(): UseMutationResult<
         method: "POST",
         body: JSON.stringify({ edgeIds }),
       }),
-    onSuccess: (_data, vars) => {
+    onMutate: async ({ edgeIds, parentPartId }) => {
+      await qc.cancelQueries({ queryKey: ["bom", "tree", parentPartId] });
+      const previous = qc.getQueryData<BomNode>(["bom", "tree", parentPartId]);
+      if (previous) {
+        qc.setQueryData(
+          ["bom", "tree", parentPartId],
+          removeNodesFromTree(previous, new Set(edgeIds))
+        );
+      }
+      return { previous };
+    },
+    onError: (_err, vars, context) => {
+      if (context?.previous) {
+        qc.setQueryData(["bom", "tree", vars.parentPartId], context.previous);
+      }
+    },
+    onSettled: (_data, _err, vars) => {
       qc.invalidateQueries({ queryKey: ["bom", "tree", vars.parentPartId] });
       qc.invalidateQueries({ queryKey: ["parts", "grid"] });
       qc.invalidateQueries({ queryKey: ["parts", "bom-children", vars.parentPartId] });
