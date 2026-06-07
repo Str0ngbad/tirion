@@ -154,25 +154,8 @@ export function BomTreeRow({
           isInRemoveSelection && isRemoveSelected && "bg-destructive/5"
         )}
       >
-        {/* Checkbox column — visible when this row is a direct child in remove-selection */}
-        {isInRemoveSelection && (
-          <div className="flex w-6 shrink-0 items-center justify-center pl-1">
-            <Checkbox
-              checked={isRemoveSelected}
-              onCheckedChange={handleToggleChild}
-              aria-label={`Select ${node.partNumber} for removal`}
-              className="h-3.5 w-3.5"
-            />
-          </div>
-        )}
-
-        {/* Tree zone — narrows by checkbox width when in remove selection */}
-        <div
-          className={cn(
-            "flex shrink-0 items-center overflow-hidden self-stretch",
-            isInRemoveSelection ? "w-[400px]" : "w-[424px]"
-          )}
-        >
+        {/* Tree zone */}
+        <div className="flex shrink-0 items-center overflow-hidden self-stretch w-[424px]">
           {/* Indent */}
           <div style={{ width: depth * INDENT }} className="flex shrink-0 self-stretch">
             {Array.from({ length: depth }).map((_, i) => (
@@ -203,6 +186,14 @@ export function BomTreeRow({
 
           {/* Component column */}
           <div className="flex items-center gap-2 flex-1 min-w-0 px-2 py-1.5">
+            {isInRemoveSelection && (
+              <Checkbox
+                checked={isRemoveSelected}
+                onCheckedChange={handleToggleChild}
+                aria-label={`Select ${node.partNumber} for removal`}
+                className="h-3.5 w-3.5 shrink-0"
+              />
+            )}
             <button
               onClick={() => onOpenPartSheet?.(node.partId)}
               className="font-mono text-xs hover:underline text-foreground shrink-0"
