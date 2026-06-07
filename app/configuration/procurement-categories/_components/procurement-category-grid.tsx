@@ -130,7 +130,7 @@ export function ProcurementCategoryGrid({
             key={cat.procurementCategoryId}
             onClick={() => onSelect(cat.procurementCategoryId)}
             className={cn(
-              'flex w-full items-center gap-3 border-b px-4 py-2.5 text-sm hover:bg-muted/50 transition-colors text-left',
+              'flex w-full items-start gap-3 border-b px-4 py-2.5 text-sm hover:bg-muted/50 transition-colors text-left',
               selectedId === cat.procurementCategoryId && 'bg-muted/70',
               !cat.isActive && 'opacity-40'
             )}
@@ -145,7 +145,7 @@ export function ProcurementCategoryGrid({
               )}
             </div>
             <div className="flex-1 min-w-0 hidden md:block">
-              <span className="truncate text-muted-foreground text-xs">
+              <span className="text-muted-foreground text-xs">
                 {cat.description ?? ''}
               </span>
             </div>

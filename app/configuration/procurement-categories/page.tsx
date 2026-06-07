@@ -68,7 +68,8 @@ export default function ProcurementCategoriesPage() {
       onAdd={() => setCreateModalOpen(true)}
     >
       <div className="flex h-full min-h-0">
-        <div className="flex-1 min-w-0 overflow-hidden">
+        <div className="flex-1 min-w-0 overflow-auto">
+          <div className="max-w-4xl mx-auto h-full">
           <ProcurementCategoryGrid
             categories={sorted}
             isLoading={isLoading}
@@ -78,6 +79,7 @@ export default function ProcurementCategoriesPage() {
             onSort={handleSort}
             onSelect={(id) => setSelectedId((prev) => (prev === id ? null : id))}
           />
+          </div>
         </div>
 
         {selectedId !== null && (
