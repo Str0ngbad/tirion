@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const ListPartsQuerySchema = z.object({
-  active: z.enum(["true", "false", "all"]).default("true"),
+  active: z.enum(["true", "false", "all"]).default("all"),
   partType: z.enum(["Part", "Assembly"]).optional(),
 });
 

@@ -548,8 +548,7 @@ export async function queryPartsGrid(input: GridQueryBody): Promise<PartRow[]> {
   const baseWhere = buildPartWhereClause(dbFilters);
   const orderBy = buildPartSortOrder(dbSort);
 
-  // Default activeFilter is "true" — grid hides inactive Parts unless overridden.
-  const activeFilterValue = input.activeFilter ?? "true";
+  const activeFilterValue = input.activeFilter ?? "all";
   let where: Prisma.PartWhereInput;
   if (activeFilterValue === "all") {
     where = baseWhere;
