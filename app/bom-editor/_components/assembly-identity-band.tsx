@@ -25,8 +25,7 @@ export function AssemblyIdentityBand({
       </span>
 
       <Link
-        href={`/parts`}
-        data-part-id={partId}
+        href={`/parts?partId=${partId}`}
         className="ml-auto text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
       >
         Open in Parts Master

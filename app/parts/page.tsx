@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { PlusIcon, SearchIcon, AlertCircleIcon, XIcon } from "lucide-react";
 import { toast } from "sonner";
 import { usePartsGrid, useUpdateStockCount, useUpdateInventoryLocation } from "@/lib/api/parts";
@@ -95,7 +96,8 @@ function columnsEqual(a: string[], b: string[]): boolean {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function PartsPage() {
+function PartsPageInner() {
+  const searchParams = useSearchParams();
   const viewsQuery = useViews();
   const views: ViewRow[] = viewsQuery.data ?? [];
 
@@ -156,6 +158,21 @@ export default function PartsPage() {
   const [panelSection, setPanelSection] = useState<SectionId | undefined>(undefined);
   const [viewManagementOpen, setViewManagementOpen] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Deep-link: /parts?partId=X opens the Sheet for that part on mount.
+  const deepLinkHandled = useRef(false);
+  useEffect(() => {
+    if (deepLinkHandled.current) return;
+    const partIdParam = searchParams.get("partId");
+    if (partIdParam) {
+      const parsed = parseInt(partIdParam, 10);
+      if (!isNaN(parsed)) {
+        deepLinkHandled.current = true;
+        setSelectedPartId(parsed);
+        setCreateMode(false);
+      }
+    }
+  }, [searchParams]);
 
   const handleNavigateToPart = useCallback((partId: number) => {
     setSelectedPartId(partId);
@@ -759,5 +776,13 @@ export default function PartsPage() {
         onDelete={handleDeleteView}
       />
     </div>
+  );
+}
+
+export default function PartsPage() {
+  return (
+    <Suspense>
+      <PartsPageInner />
+    </Suspense>
   );
 }

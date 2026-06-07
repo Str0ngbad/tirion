@@ -194,6 +194,17 @@ export function useSetPartActive(): UseMutationResult<PartRowClient, ApiError, S
   });
 }
 
+// ─── Single part fetch ────────────────────────────────────────────────────────
+
+export function usePart(partId: number | null): UseQueryResult<PartRowClient, ApiError> {
+  return useQuery({
+    queryKey: ["parts", "detail", partId],
+    queryFn: () => apiFetch<PartRowClient>(`/api/v1/parts/${partId}`),
+    enabled: partId !== null,
+    staleTime: 30_000,
+  });
+}
+
 // ─── Part-scoped detail hooks ─────────────────────────────────────────────────
 
 export type AuditLogEntry = {
@@ -335,6 +346,33 @@ export function useAssemblies(): UseQueryResult<AssemblyOption[], ApiError> {
             partName: p.partName,
             directChildCount: p.directChildCount,
           }))
+      ),
+    staleTime: 30_000,
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ─── All active parts (for BOM Editor combobox) ───────────────────────────────
+
+export type AllActivePartOption = {
+  partId: number;
+  partNumber: string;
+  partName: string;
+  partType: "Part" | "Assembly";
+};
+
+export function useAllActiveParts(): UseQueryResult<AllActivePartOption[], ApiError> {
+  return useQuery({
+    queryKey: ["parts", "all-active"],
+    queryFn: () =>
+      apiFetch<{ data: PartRowClient[] }>("/api/v1/parts?active=true").then((r) =>
+        r.data.map((p) => ({
+          partId: p.partId,
+          partNumber: p.partNumber,
+          partName: p.partName,
+          partType: p.partType,
+        }))
       ),
     staleTime: 30_000,
   });

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { X, ChevronRight, Plus, Check, ChevronsUpDown, ExternalLink, Loader2, Wrench } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -787,6 +788,7 @@ export default function PartFormSheet(props: PartFormSheetProps) {
   void definitionDirty;
 
   // ── Create mode: Part Number uniqueness check ──────────────────────────────
+  const router = useRouter();
   const queryClient = useQueryClient();
   const createPartNumberConflict = (() => {
     if (mode !== "create" || !createPartNumber.trim()) return false;
@@ -1022,9 +1024,24 @@ export default function PartFormSheet(props: PartFormSheetProps) {
 
   function handleUnsavedDiscard() {
     setUnsavedDialogOpen(false);
-    if (pendingNavPartId !== null) {
+    if (pendingNavPartId === -2 && part) {
+      setPendingNavPartId(null);
+      router.push(`/bom-editor/${part.partId}`);
+    } else if (pendingNavPartId !== null && pendingNavPartId !== -1) {
       onNavigateToPart?.(pendingNavPartId);
       setPendingNavPartId(null);
+    } else {
+      setPendingNavPartId(null);
+    }
+  }
+
+  function handleBomEditorClick() {
+    if (!part) return;
+    if (isDirty) {
+      setPendingNavPartId(-2);
+      setUnsavedDialogOpen(true);
+    } else {
+      router.push(`/bom-editor/${part.partId}`);
     }
   }
 
@@ -1520,7 +1537,7 @@ export default function PartFormSheet(props: PartFormSheetProps) {
                     variant="outline"
                     size="sm"
                     className="w-fit gap-1.5"
-                    onClick={() => toast.info("BOM Editor coming in a future release.")}
+                    onClick={handleBomEditorClick}
                   >
                     <Wrench className="h-3.5 w-3.5" />
                     Define Assembly
@@ -1583,7 +1600,7 @@ export default function PartFormSheet(props: PartFormSheetProps) {
                         variant="outline"
                         size="sm"
                         className="gap-1.5"
-                        onClick={() => toast.info("BOM Editor coming in a future release.")}
+                        onClick={handleBomEditorClick}
                       >
                         <Wrench className="h-3.5 w-3.5" />
                         Edit Assembly
