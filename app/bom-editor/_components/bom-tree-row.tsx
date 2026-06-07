@@ -96,32 +96,34 @@ export function BomTreeRow({
           inactiveClass
         )}
       >
-        {/* Indent */}
-        <div style={{ width: depth * INDENT }} className="flex shrink-0 self-stretch">
-          {Array.from({ length: depth }).map((_, i) => (
-            <div key={i} style={{ width: INDENT }} className="border-l border-border/30" />
-          ))}
-        </div>
+        {/* Tree zone — fixed width matches column header */}
+        <div className="flex w-[424px] shrink-0 items-center overflow-hidden self-stretch">
+          {/* Indent */}
+          <div style={{ width: depth * INDENT }} className="flex shrink-0 self-stretch">
+            {Array.from({ length: depth }).map((_, i) => (
+              <div key={i} style={{ width: INDENT }} className="border-l border-border/30" />
+            ))}
+          </div>
 
-        {/* Chevron */}
-        <div className="w-6 shrink-0 flex items-center justify-center">
-          {hasChildren && (
-            <button
-              onClick={() => setSelfExpanded(() => !expanded)}
-              className="p-0.5 hover:bg-muted rounded"
-              aria-label={expanded ? "Collapse" : "Expand"}
-            >
-              {expanded ? (
-                <ChevronDown className="h-3 w-3" strokeWidth={2.5} />
-              ) : (
-                <ChevronRight className="h-3 w-3" strokeWidth={2.5} />
-              )}
-            </button>
-          )}
-        </div>
+          {/* Chevron */}
+          <div className="w-6 shrink-0 flex items-center justify-center">
+            {hasChildren && (
+              <button
+                onClick={() => setSelfExpanded(() => !expanded)}
+                className="p-0.5 hover:bg-muted rounded"
+                aria-label={expanded ? "Collapse" : "Expand"}
+              >
+                {expanded ? (
+                  <ChevronDown className="h-3 w-3" strokeWidth={2.5} />
+                ) : (
+                  <ChevronRight className="h-3 w-3" strokeWidth={2.5} />
+                )}
+              </button>
+            )}
+          </div>
 
-        {/* Component column */}
-        <div className="flex items-center gap-2 flex-1 min-w-0 px-2 py-1.5">
+          {/* Component column */}
+          <div className="flex items-center gap-2 flex-1 min-w-0 px-2 py-1.5">
           <button
             onClick={() => onOpenPartSheet?.(node.partId)}
             className="font-mono text-xs hover:underline text-foreground shrink-0"
@@ -164,6 +166,7 @@ export function BomTreeRow({
             </div>
           )}
         </div>
+        </div>{/* end tree zone */}
 
         {/* Qty */}
         {isRoot || node.bomId === null || parentPartId === undefined || parentPartNumber === undefined ? (
