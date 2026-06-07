@@ -711,7 +711,7 @@ function PartsPageInner() {
 
         {/* Part Form Sheet — inline flex sibling so it sits below sticky chrome */}
         {createMode ? (
-          <div className="w-[480px] shrink-0 border-l bg-background flex flex-col overflow-hidden">
+          <div className="w-[400px] shrink-0 border-l bg-background flex flex-col overflow-hidden">
             <PartFormSheet
               key="create"
               mode="create"
@@ -727,7 +727,7 @@ function PartsPageInner() {
           const part = displayRows.find((r) => r.partId === selectedPartId);
           if (!part) return null;
           return (
-            <div className="w-[480px] shrink-0 border-l bg-background flex flex-col overflow-hidden">
+            <div className="w-[400px] shrink-0 border-l bg-background flex flex-col overflow-hidden">
               <PartFormSheet
                 key={part.partId}
                 mode="edit"

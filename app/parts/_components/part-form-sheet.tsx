@@ -1388,32 +1388,36 @@ export default function PartFormSheet(props: PartFormSheetProps) {
 
           {/* Routing */}
           <section id={SECTION_IDS.routing} className="border-b px-4 py-4">
-            <SectionHeader>Routing</SectionHeader>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs uppercase tracking-wide text-muted-foreground font-medium">
+                Routing
+              </h3>
+              {currentTemplate && (
+                <a
+                  href={`/routing-templates/${currentTemplate.routingTemplateDefinitionId}`}
+                  onClick={(e) => {
+                    if (isDirty) {
+                      e.preventDefault();
+                      setPendingNavPartId(-1);
+                      setUnsavedDialogOpen(true);
+                    }
+                  }}
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  View/Edit
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              )}
+            </div>
             {currentTemplate ? (
               <div className="flex flex-col gap-3">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex flex-col gap-1 min-w-0">
-                    <span className="text-sm font-medium truncate">{currentTemplate.templateName}</span>
-                    <div className="flex flex-wrap gap-1">
-                      {currentTemplate.steps.map((s) => (
-                        <ProcessTypeChip key={s.routingTemplateStepId} processType={s.processTypeName as ProcessTypeKey} />
-                      ))}
-                    </div>
+                <div className="flex flex-col gap-1 min-w-0">
+                  <span className="text-sm font-medium truncate">{currentTemplate.templateName}</span>
+                  <div className="flex flex-wrap gap-1">
+                    {currentTemplate.steps.map((s) => (
+                      <ProcessTypeChip key={s.routingTemplateStepId} processType={s.processTypeName as ProcessTypeKey} />
+                    ))}
                   </div>
-                  <a
-                    href={`/routing-templates/${currentTemplate.routingTemplateDefinitionId}`}
-                    onClick={(e) => {
-                      if (isDirty) {
-                        e.preventDefault();
-                        setPendingNavPartId(-1);
-                        setUnsavedDialogOpen(true);
-                      }
-                    }}
-                    className="shrink-0 flex items-center gap-1 text-xs text-primary hover:underline"
-                  >
-                    View/Edit
-                    <ExternalLink className="h-3 w-3" />
-                  </a>
                 </div>
                 {!showRoutingPicker && (
                   <Button
