@@ -11,5 +11,8 @@ export default defineConfig({
   },
   datasource: {
     url: process.env["DATABASE_URL"],
+    // directUrl bypasses the pooler for DDL — Neon's pooled connection does
+    // not support migrations, so prisma migrate deploy must use a direct connection.
+    directUrl: process.env["DIRECT_URL"],
   },
 });
