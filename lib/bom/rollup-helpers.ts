@@ -1,6 +1,7 @@
 import type { BomNode } from "./types";
 
-const STALE_AGE_MS = 6 * 30 * 24 * 60 * 60 * 1000;
+// 18 months. Cost data older than this is flagged as stale.
+const STALE_AGE_MS = 18 * 30 * 24 * 60 * 60 * 1000;
 
 export function computeBuildable(node: BomNode): number {
   if (node.partType === "Part") {
@@ -50,13 +51,17 @@ export function computeCostRollup(node: BomNode): number | null {
 
 export type Freshness = "ok" | "stale" | "missing";
 
+export function computePartFreshness(part: BomNode, now: Date): Freshness {
+  if (part.cost === null) return "missing";
+  if (!part.costLastUpdated) return "stale";
+  const ageMs = now.getTime() - new Date(part.costLastUpdated).getTime();
+  if (ageMs > STALE_AGE_MS) return "stale";
+  return "ok";
+}
+
 export function computeFreshness(node: BomNode, now: Date): Freshness {
   if (node.partType === "Part") {
-    if (node.cost === null) return "missing";
-    if (!node.costLastUpdated) return "stale";
-    const ageMs = now.getTime() - new Date(node.costLastUpdated).getTime();
-    if (ageMs > STALE_AGE_MS) return "stale";
-    return "ok";
+    return computePartFreshness(node, now);
   }
 
   if (!node.children || node.children.length === 0) return "ok";

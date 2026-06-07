@@ -13,7 +13,7 @@ export function FreshnessIndicator({ freshness }: { freshness: Freshness }) {
   }
 
   return (
-    <span title="One or more components has a cost older than 6 months">
+    <span title="One or more components has a cost older than 18 months">
       <Clock className="h-3 w-3 text-muted-foreground" strokeWidth={2.5} />
     </span>
   );

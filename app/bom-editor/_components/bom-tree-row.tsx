@@ -17,6 +17,7 @@ import {
   computeBuildable,
   computeCostRollup,
   computeFreshness,
+  computePartFreshness,
 } from "@/lib/bom/rollup-helpers";
 import { FreshnessIndicator } from "./freshness-indicator";
 import { QtyEditCell } from "./qty-edit-cell";
@@ -105,9 +106,7 @@ export function BomTreeRow({
   const costRollup = isAssembly ? computeCostRollup(node) : node.cost;
   const freshness = isAssembly
     ? computeFreshness(node, now)
-    : node.cost === null
-    ? "missing"
-    : "ok";
+    : computePartFreshness(node, now);
 
   const partRowClass = node.partType === "Part" ? "bg-muted/80" : "bg-background";
   const inactiveClass = node.isActive ? "" : "opacity-40 hover:opacity-60";
