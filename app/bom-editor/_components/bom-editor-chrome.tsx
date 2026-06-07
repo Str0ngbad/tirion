@@ -65,7 +65,7 @@ export function BomEditorChrome({ selectedAssemblyId, autoFocusSearch }: BomEdit
       <div className="flex items-center gap-4 px-4 py-3">
         <h1 className="text-lg font-semibold">BOM Editor</h1>
 
-        <div ref={containerRef} className="relative ml-auto w-full max-w-md">
+        <div ref={containerRef} className="relative w-full max-w-md">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           <Input
             ref={inputRef}

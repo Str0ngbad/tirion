@@ -1,9 +1,16 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { ChevronRight, ChevronDown } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { ChevronRight, ChevronDown, MoreVertical, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 import { sortBomChildren } from "@/lib/bom/sort-helpers";
 import {
   computeBuildable,
@@ -12,7 +19,12 @@ import {
 } from "@/lib/bom/rollup-helpers";
 import { FreshnessIndicator } from "./freshness-indicator";
 import { QtyEditCell } from "./qty-edit-cell";
+import { AddChildInputRow } from "./add-child-input-row";
 import type { BomNode } from "@/lib/bom/types";
+
+export type EditMode =
+  | { type: "idle" }
+  | { type: "adding"; parentPartId: number };
 
 interface BomTreeRowProps {
   node: BomNode;
@@ -20,6 +32,9 @@ interface BomTreeRowProps {
   forceExpanded: boolean | null;
   isRoot: boolean;
   now: Date;
+  rootTree: BomNode;
+  editMode: EditMode;
+  setEditMode: (mode: EditMode) => void;
   onOpenPartSheet?: (partId: number) => void;
   parentPartId?: number;
   parentPartNumber?: string;
@@ -33,6 +48,9 @@ export function BomTreeRow({
   forceExpanded,
   isRoot,
   now,
+  rootTree,
+  editMode,
+  setEditMode,
   onOpenPartSheet,
   parentPartId,
   parentPartNumber,
@@ -42,6 +60,14 @@ export function BomTreeRow({
 
   const isAssembly = node.partType === "Assembly";
   const hasChildren = isAssembly && (node.children?.length ?? 0) > 0;
+  const isInAddMode = editMode.type === "adding" && editMode.parentPartId === node.partId;
+
+  // Auto-expand when entering add mode for this node
+  useEffect(() => {
+    if (isInAddMode && !selfExpanded) {
+      setSelfExpanded(true);
+    }
+  }, [isInAddMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const sortedChildren = useMemo(
     () => sortBomChildren(node.children ?? []),
@@ -59,6 +85,8 @@ export function BomTreeRow({
   const partRowClass = node.partType === "Part" ? "bg-muted/80" : "bg-background";
   const inactiveClass = node.isActive ? "" : "opacity-40 hover:opacity-60";
 
+  const menuDisabled = editMode.type !== "idle";
+
   return (
     <>
       <div
@@ -68,14 +96,10 @@ export function BomTreeRow({
           inactiveClass
         )}
       >
-        {/* Indent with connector lines */}
+        {/* Indent */}
         <div style={{ width: depth * INDENT }} className="flex shrink-0 self-stretch">
           {Array.from({ length: depth }).map((_, i) => (
-            <div
-              key={i}
-              style={{ width: INDENT }}
-              className="border-l border-border/30"
-            />
+            <div key={i} style={{ width: INDENT }} className="border-l border-border/30" />
           ))}
         </div>
 
@@ -112,11 +136,38 @@ export function BomTreeRow({
               Inactive
             </Badge>
           )}
+
+          {/* ⋮ menu adjacent to Part Name, before data columns (Assembly rows only) */}
+          {isAssembly && (
+            <div className="shrink-0 ml-1">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    disabled={menuDisabled}
+                    aria-label="Row actions"
+                  >
+                    <MoreVertical className="h-3.5 w-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem
+                    onClick={() => setEditMode({ type: "adding", parentPartId: node.partId })}
+                  >
+                    <Plus className="h-3 w-3 mr-2" />
+                    Add Child
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
         </div>
 
         {/* Qty */}
         {isRoot || node.bomId === null || parentPartId === undefined || parentPartNumber === undefined ? (
-          <div className="w-16 shrink-0 text-right tabular-nums px-2 text-sm text-muted-foreground">
+          <div className="w-16 shrink-0 text-right tabular-nums px-2 text-xs text-muted-foreground">
             —
           </div>
         ) : (
@@ -132,7 +183,7 @@ export function BomTreeRow({
         {/* Stock */}
         <div
           className={cn(
-            "w-20 shrink-0 text-right tabular-nums px-2 text-sm",
+            "w-20 shrink-0 text-right tabular-nums px-2 text-xs",
             (node.stockCount ?? 0) === 0 && "text-destructive"
           )}
         >
@@ -142,7 +193,7 @@ export function BomTreeRow({
         {/* Buildable */}
         <div
           className={cn(
-            "w-20 shrink-0 text-right tabular-nums px-2 text-sm",
+            "w-20 shrink-0 text-right tabular-nums px-2 text-xs",
             buildable === 0 && "text-destructive"
           )}
         >
@@ -152,7 +203,7 @@ export function BomTreeRow({
         {/* Cost */}
         <div
           className={cn(
-            "w-24 shrink-0 text-right tabular-nums px-2 text-sm",
+            "w-24 shrink-0 text-right tabular-nums px-2 text-xs",
             costRollup === null && "text-amber-500"
           )}
         >
@@ -169,10 +220,11 @@ export function BomTreeRow({
           {node.inventoryLocation ?? "—"}
         </div>
 
-        {/* Spacer for future ⋮ menu */}
+        {/* trailing spacer to balance column header */}
         <div className="w-8 shrink-0" />
       </div>
 
+      {/* Children */}
       {expanded &&
         hasChildren &&
         sortedChildren.map((child) => (
@@ -183,11 +235,27 @@ export function BomTreeRow({
             forceExpanded={forceExpanded}
             isRoot={false}
             now={now}
+            rootTree={rootTree}
+            editMode={editMode}
+            setEditMode={setEditMode}
             onOpenPartSheet={onOpenPartSheet}
             parentPartId={node.partId}
             parentPartNumber={node.partNumber}
           />
         ))}
+
+      {/* Add child input row */}
+      {isInAddMode && (
+        <AddChildInputRow
+          parentPartId={node.partId}
+          parentPartNumber={parentPartNumber ?? node.partNumber}
+          depth={depth}
+          rootTree={rootTree}
+          existingChildren={node.children ?? []}
+          onSuccess={() => setEditMode({ type: "idle" })}
+          onCancel={() => setEditMode({ type: "idle" })}
+        />
+      )}
     </>
   );
 }
