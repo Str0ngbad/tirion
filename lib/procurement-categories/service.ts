@@ -265,6 +265,42 @@ export async function deactivateProcurementCategory(
   });
 }
 
+export async function reorderProcurementCategories(
+  updates: Array<{ id: number; displayOrder: number }>,
+  actorUserId: number
+): Promise<void> {
+  if (updates.length === 0) return;
+
+  const auditAction = await prisma.auditAction.findUnique({
+    where: { actionName: "ProcurementCategoriesReordered" },
+  });
+  if (auditAction === null) {
+    throw new Error("AuditAction not found for action: ProcurementCategoriesReordered");
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await Promise.all(
+      updates.map(({ id, displayOrder }) =>
+        tx.procurementCategory.update({
+          where: { procurementCategoryId: id },
+          data: { displayOrder },
+        })
+      )
+    );
+
+    await tx.auditLog.create({
+      data: {
+        entityType: "ProcurementCategory",
+        entityId: updates[0]!.id,
+        auditActionId: auditAction.auditActionId,
+        changedByUserId: actorUserId,
+        previousValue: Prisma.DbNull,
+        newValue: { reorder: updates },
+      },
+    });
+  });
+}
+
 export async function reactivateProcurementCategory(
   procurementCategoryId: number,
   userId: number

@@ -136,6 +136,47 @@ export function useDeactivateProcurementCategory(): UseMutationResult<
   });
 }
 
+export function useReorderProcurementCategories(): UseMutationResult<
+  unknown,
+  ApiError,
+  Array<{ id: number; displayOrder: number }>
+> {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (updates) =>
+      apiFetch("/api/v1/procurement-categories/reorder", {
+        method: "POST",
+        body: JSON.stringify({ updates }),
+      }),
+    onMutate: async (updates) => {
+      await qc.cancelQueries({ queryKey: ["procurement-categories", "list"] });
+      const activeKey = ["procurement-categories", "list", { active: "true" }];
+      const allKey = ["procurement-categories", "list", { active: "all" }];
+      const previousActive = qc.getQueryData<ProcurementCategoryRow[]>(activeKey);
+      const previousAll = qc.getQueryData<ProcurementCategoryRow[]>(allKey);
+
+      const applyUpdate = (old: ProcurementCategoryRow[] | undefined) => {
+        if (!old) return old;
+        return old.map((c) => {
+          const u = updates.find((u) => u.id === c.procurementCategoryId);
+          return u ? { ...c, displayOrder: u.displayOrder } : c;
+        });
+      };
+
+      qc.setQueryData(activeKey, applyUpdate);
+      qc.setQueryData(allKey, applyUpdate);
+      return { previousActive, previousAll, activeKey, allKey };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousActive) qc.setQueryData(context.activeKey, context.previousActive);
+      if (context?.previousAll) qc.setQueryData(context.allKey, context.previousAll);
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["procurement-categories", "list"] });
+    },
+  });
+}
+
 export function useReactivateProcurementCategory(): UseMutationResult<
   ProcurementCategoryRow,
   ApiError,

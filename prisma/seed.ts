@@ -202,6 +202,7 @@ async function seedAuditActions() {
     { actionName: "ProcessTypeSubStatusDeactivated", category: "Configuration", description: "ProcessTypeSubStatus isActive set to false" },
     { actionName: "ProcessTypeSubStatusReactivated", category: "Configuration", description: "ProcessTypeSubStatus isActive restored to true" },
     { actionName: "ProcessTypeSubStatusesReordered", category: "Configuration", description: "ProcessTypeSubStatus displayOrder values updated via drag-to-reorder" },
+    { actionName: "ProcurementCategoriesReordered", category: "Configuration", description: "ProcurementCategory displayOrder values updated via drag-to-reorder" },
   ];
 
   for (const aa of auditActions) {
@@ -341,7 +342,7 @@ async function verify() {
   console.log("\nVerification:");
   console.log(`  ProcessTypes:           ${processTypeCount} (expected = 9)`);
   console.log(`  ProcessTypeSubStatuses: ${subStatusCount} (expected = 16)`);
-  console.log(`  AuditActions:           ${auditActionCount} (expected = 86)`);
+  console.log(`  AuditActions:           ${auditActionCount} (expected = 87)`);
   console.log(`  ProcurementCategories:  ${procurementCategoryCount} (expected = 4)`);
   console.log(`  Views:                  ${viewCount} (expected = 5)`);
   console.log(`  Admin user present:     ${userCount === 1 ? "yes" : "NO — check seed"}`);

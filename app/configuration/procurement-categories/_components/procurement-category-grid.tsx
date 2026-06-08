@@ -1,10 +1,28 @@
 'use client';
 
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  sortableKeyboardCoordinates,
+  arrayMove,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
-import type { ProcurementCategoryRow } from '@/lib/api/procurement-categories';
+import { DragHandle } from '@/components/ui/drag-handle';
+import { ActiveIndicator } from '@/components/ui/active-indicator';
+import { useReorderProcurementCategories, type ProcurementCategoryRow } from '@/lib/api/procurement-categories';
 
-type SortKey = 'categoryCode' | 'categoryName' | 'displayOrder' | 'usedByCount';
+type SortKey = 'categoryCode' | 'categoryName' | 'usedByCount';
 
 interface ProcurementCategoryGridProps {
   categories: ProcurementCategoryRow[];
@@ -49,6 +67,62 @@ function SortHeader({
   );
 }
 
+interface SortableCategoryRowProps {
+  category: ProcurementCategoryRow;
+  isSelected: boolean;
+  onClick: () => void;
+}
+
+function SortableCategoryRow({ category, isSelected, onClick }: SortableCategoryRowProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: category.procurementCategoryId });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 10 : 0,
+    position: isDragging ? ('relative' as const) : undefined,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        'flex items-center gap-3 border-b px-4 py-2.5 text-sm hover:bg-muted/50 transition-colors cursor-pointer',
+        isSelected && 'bg-muted/70',
+        !category.isActive && 'opacity-40'
+      )}
+      onClick={(e) => {
+        if ((e.target as HTMLElement).closest('[data-drag-handle]')) return;
+        onClick();
+      }}
+    >
+      <div className="w-6 flex items-center justify-center shrink-0">
+        <DragHandle data-drag-handle {...attributes} {...listeners} />
+      </div>
+      <div className="w-14 flex items-center justify-center shrink-0">
+        <ActiveIndicator active={category.isActive} />
+      </div>
+      <div className="w-20 shrink-0 font-mono text-xs">{category.categoryCode}</div>
+      <div className="w-40 shrink-0 font-medium truncate">{category.categoryName}</div>
+      <div className="flex-1 min-w-0 text-muted-foreground text-xs truncate">
+        {category.description ?? ''}
+      </div>
+      <div className="w-20 shrink-0 text-right text-muted-foreground text-xs tabular-nums">
+        {category.usedByCount > 0 ? category.usedByCount : '—'}
+      </div>
+    </div>
+  );
+}
+
 export function ProcurementCategoryGrid({
   categories,
   isLoading,
@@ -58,6 +132,29 @@ export function ProcurementCategoryGrid({
   onSort,
   onSelect,
 }: ProcurementCategoryGridProps) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const { mutate: reorder } = useReorderProcurementCategories();
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = categories.findIndex((c) => c.procurementCategoryId === active.id);
+    const newIndex = categories.findIndex((c) => c.procurementCategoryId === over.id);
+
+    const reordered = arrayMove(categories, oldIndex, newIndex);
+    const updates = reordered.map((c, i) => ({
+      id: c.procurementCategoryId,
+      displayOrder: i + 1,
+    }));
+
+    reorder(updates);
+  }
+
   if (isLoading) {
     return (
       <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
@@ -78,6 +175,10 @@ export function ProcurementCategoryGrid({
     <div className="h-full flex flex-col">
       {/* Header */}
       <div className="flex items-center gap-3 border-b bg-muted/30 px-4 py-2 shrink-0">
+        <div className="w-6 shrink-0" />
+        <div className="w-14 shrink-0 text-xs font-medium uppercase tracking-wide text-muted-foreground text-center">
+          Active
+        </div>
         <div className="w-20 shrink-0">
           <SortHeader
             label="Code"
@@ -87,7 +188,7 @@ export function ProcurementCategoryGrid({
             onSort={onSort}
           />
         </div>
-        <div className="flex-1 min-w-0">
+        <div className="w-40 shrink-0">
           <SortHeader
             label="Name"
             sortKey="categoryName"
@@ -96,20 +197,10 @@ export function ProcurementCategoryGrid({
             onSort={onSort}
           />
         </div>
-        <div className="flex-1 min-w-0 hidden md:block">
+        <div className="flex-1 min-w-0">
           <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Description
           </span>
-        </div>
-        <div className="w-16 shrink-0">
-          <SortHeader
-            label="Order"
-            sortKey="displayOrder"
-            activeSortKey={sortKey}
-            sortDir={sortDir}
-            onSort={onSort}
-            className="justify-end"
-          />
         </div>
         <div className="w-20 shrink-0">
           <SortHeader
@@ -125,38 +216,25 @@ export function ProcurementCategoryGrid({
 
       {/* Rows */}
       <div className="flex-1 overflow-y-auto">
-        {categories.map((cat) => (
-          <button
-            key={cat.procurementCategoryId}
-            onClick={() => onSelect(cat.procurementCategoryId)}
-            className={cn(
-              'flex w-full items-start gap-3 border-b px-4 py-2.5 text-sm hover:bg-muted/50 transition-colors text-left',
-              selectedId === cat.procurementCategoryId && 'bg-muted/70',
-              !cat.isActive && 'opacity-40'
-            )}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={categories.map((c) => c.procurementCategoryId)}
+            strategy={verticalListSortingStrategy}
           >
-            <div className="w-20 shrink-0 font-mono text-xs">{cat.categoryCode}</div>
-            <div className="flex-1 min-w-0 flex items-center gap-2">
-              <span className="truncate font-medium">{cat.categoryName}</span>
-              {!cat.isActive && (
-                <Badge variant="secondary" className="shrink-0 text-[10px] px-1 py-0">
-                  Inactive
-                </Badge>
-              )}
-            </div>
-            <div className="flex-1 min-w-0 hidden md:block">
-              <span className="text-muted-foreground text-xs">
-                {cat.description ?? ''}
-              </span>
-            </div>
-            <div className="w-16 shrink-0 text-right text-muted-foreground text-xs">
-              {cat.displayOrder}
-            </div>
-            <div className="w-20 shrink-0 text-right text-muted-foreground text-xs">
-              {cat.usedByCount}
-            </div>
-          </button>
-        ))}
+            {categories.map((cat) => (
+              <SortableCategoryRow
+                key={cat.procurementCategoryId}
+                category={cat}
+                isSelected={selectedId === cat.procurementCategoryId}
+                onClick={() => onSelect(cat.procurementCategoryId)}
+              />
+            ))}
+          </SortableContext>
+        </DndContext>
       </div>
     </div>
   );
