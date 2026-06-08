@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { QueryProvider } from "@/components/query-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { GlobalNav } from "@/components/navigation/global-nav";
 
 const inter = Inter({subsets:['latin'],variable:'--font-sans'});
 
@@ -46,7 +47,12 @@ export default function RootLayout({
             <div className="fixed top-4 right-4 z-50">
               <ThemeToggle />
             </div>
-            {children}
+            <div className="h-screen flex flex-col">
+              <GlobalNav />
+              <main className="flex-1 min-h-0 overflow-hidden">
+                {children}
+              </main>
+            </div>
             <Toaster />
           </QueryProvider>
         </ThemeProvider>
