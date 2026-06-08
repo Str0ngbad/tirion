@@ -11,6 +11,7 @@ import { ProcessTypeSheet } from './_components/process-type-sheet';
 type SheetState =
   | { type: 'closed' }
   | { type: 'sub-status'; subStatusId: number }
+  | { type: 'sub-status-create'; processTypeId: number; processTypeName: string }
   | { type: 'process-type'; processTypeId: number };
 
 export default function ProcessesPage() {
@@ -56,6 +57,9 @@ export default function ProcessesPage() {
                   onSelectProcessType={(id) =>
                     setSheetState({ type: 'process-type', processTypeId: id })
                   }
+                  onCreateSubStatus={(processTypeId, processTypeName) =>
+                    setSheetState({ type: 'sub-status-create', processTypeId, processTypeName })
+                  }
                 />
               ))
             )}
@@ -70,8 +74,22 @@ export default function ProcessesPage() {
           )}
           {sheetState.type === 'sub-status' && (
             <ProcessTypeSubStatusSheet
-              subStatusId={sheetState.subStatusId}
+              mode={{ type: 'edit', subStatusId: sheetState.subStatusId }}
               onClose={() => setSheetState({ type: 'closed' })}
+            />
+          )}
+          {sheetState.type === 'sub-status-create' && (
+            <ProcessTypeSubStatusSheet
+              mode={{
+                type: 'create',
+                processTypeId: sheetState.processTypeId,
+                processTypeName: sheetState.processTypeName,
+                existing: allSubStatuses.filter(
+                  (s) => s.processTypeId === sheetState.processTypeId
+                ),
+              }}
+              onClose={() => setSheetState({ type: 'closed' })}
+              onCreated={(newId) => setSheetState({ type: 'sub-status', subStatusId: newId })}
             />
           )}
           {sheetState.type === 'process-type' && (

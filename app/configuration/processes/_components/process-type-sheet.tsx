@@ -68,8 +68,8 @@ export function ProcessTypeSheet({ processTypeId, onClose }: ProcessTypeSheetPro
             <ProcessTypeChip
               processType={processType.processName as ProcessTypeKey}
               size="lg"
+              abbreviate={false}
             />
-            <span className="text-sm font-medium truncate">{processType.processName}</span>
             <Switch checked={processType.isActive} disabled />
           </div>
           <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0">

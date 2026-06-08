@@ -10,7 +10,6 @@ import { useUpdateProcessTypeSubStatus, type ProcessTypeSubStatusRow } from '@/l
 import type { ProcessTypeRow } from '@/lib/api/process-types';
 import type { ProcessTypeKey } from '@/lib/process-types';
 import ProcessTypeChip from '@/components/process-type-chip';
-import { CreateSubStatusModal } from './create-sub-status-modal';
 
 interface ProcessTypeSectionProps {
   processType: ProcessTypeRow;
@@ -18,6 +17,7 @@ interface ProcessTypeSectionProps {
   selectedSubStatusId: number | null;
   onSelectSubStatus: (id: number) => void;
   onSelectProcessType: (id: number) => void;
+  onCreateSubStatus: (processTypeId: number, processTypeName: string) => void;
 }
 
 export function ProcessTypeSection({
@@ -26,9 +26,8 @@ export function ProcessTypeSection({
   selectedSubStatusId,
   onSelectSubStatus,
   onSelectProcessType,
+  onCreateSubStatus,
 }: ProcessTypeSectionProps) {
-  const [createModalOpen, setCreateModalOpen] = useState(false);
-
   const sortedSubStatuses = useMemo(
     () =>
       [...subStatuses].sort((a, b) => {
@@ -58,7 +57,14 @@ export function ProcessTypeSection({
             {subStatuses.length} {subStatuses.length === 1 ? 'sub-status' : 'sub-statuses'}
           </span>
         </div>
-        <Button size="sm" variant="outline" onClick={() => setCreateModalOpen(true)}>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={(e) => {
+            e.stopPropagation();
+            onCreateSubStatus(processType.processTypeId, processType.processName);
+          }}
+        >
           <Plus className="h-3 w-3 mr-1" />
           Add Sub-Status
         </Button>
@@ -80,18 +86,6 @@ export function ProcessTypeSection({
           ))}
         </div>
       )}
-
-      <CreateSubStatusModal
-        open={createModalOpen}
-        processTypeId={processType.processTypeId}
-        processTypeName={processType.processName}
-        existing={subStatuses}
-        onClose={() => setCreateModalOpen(false)}
-        onCreated={(newId) => {
-          setCreateModalOpen(false);
-          onSelectSubStatus(newId);
-        }}
-      />
     </section>
   );
 }
