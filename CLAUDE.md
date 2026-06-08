@@ -421,6 +421,21 @@ the Sheet to edit mode for the new record. This pattern was established
 on Parts Master Sheet and Users Sheet; adopt for future configuration
 surfaces.
 
+### Production vs Configuration (nav categorization)
+
+**Configuration surfaces** define entities — Parts, BOM Editor, Routing
+Templates, Vendors, Material Specs, Users, Processes, Procurement
+Categories. They describe *what could happen*.
+
+**Production surfaces** execute work using those definitions — the Phase
+3+ execution lenses (Operations, Machining, Assembly, Distribution,
+Purchasing, Receiving). They describe *what is happening*.
+
+All current Rev 1 surfaces are Configuration. Production Views is empty
+in Rev 1; it will populate as Phase 3+ lenses land. The Production
+category remains visible in the nav with a placeholder dropdown so the
+roadmap is communicated to users.
+
 ---
 
 ## Patterns to Follow

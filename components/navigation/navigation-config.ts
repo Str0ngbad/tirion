@@ -14,16 +14,15 @@ export const NAV_CATEGORIES: NavCategory[] = [
   {
     id: 'production',
     label: 'Production Views',
-    surfaces: [
-      { slug: 'parts', label: 'Parts', href: '/parts' },
-      { slug: 'bom-editor', label: 'BOM Editor', href: '/bom-editor' },
-      { slug: 'routing-templates', label: 'Routing Templates', href: '/routing-templates' },
-    ],
+    surfaces: [],
   },
   {
     id: 'configuration',
     label: 'Configuration Views',
     surfaces: [
+      { slug: 'parts', label: 'Parts', href: '/parts' },
+      { slug: 'bom-editor', label: 'BOM Editor', href: '/bom-editor' },
+      { slug: 'routing-templates', label: 'Routing Templates', href: '/routing-templates' },
       { slug: 'vendors', label: 'Vendors', href: '/configuration/vendors' },
       { slug: 'material-specs', label: 'Material Specs', href: '/configuration/material-specs' },
       { slug: 'users', label: 'Users', href: '/configuration/users' },
