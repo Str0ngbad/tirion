@@ -22,7 +22,6 @@ export default function ProcessesPage() {
     active: showInactive ? 'all' : 'true',
   });
 
-  const sheetOpen = sheetState.type !== 'closed';
   const selectedSubStatusId =
     sheetState.type === 'sub-status' ? sheetState.subStatusId : null;
 
@@ -33,10 +32,10 @@ export default function ProcessesPage() {
       showInactive={showInactive}
       onShowInactiveChange={setShowInactive}
     >
+      {/* Always render both columns so the scrollbar position never shifts.
+          The panel slot holds a placeholder when no item is selected. */}
       <div className="flex h-full min-h-0">
-        <div
-          className={sheetOpen ? 'w-[calc(100%-400px)] shrink-0 overflow-auto' : 'w-full overflow-auto'}
-        >
+        <div className="w-[calc(100%-400px)] shrink-0 overflow-auto">
           <div className="max-w-4xl px-4 py-4 space-y-6">
             {processTypes.length === 0 ? (
               <div className="text-sm text-muted-foreground italic text-center py-12">
@@ -63,22 +62,25 @@ export default function ProcessesPage() {
           </div>
         </div>
 
-        {sheetOpen && (
-          <div className="w-[400px] shrink-0 border-l border-border overflow-hidden">
-            {sheetState.type === 'sub-status' && (
-              <ProcessTypeSubStatusSheet
-                subStatusId={sheetState.subStatusId}
-                onClose={() => setSheetState({ type: 'closed' })}
-              />
-            )}
-            {sheetState.type === 'process-type' && (
-              <ProcessTypeSheet
-                processTypeId={sheetState.processTypeId}
-                onClose={() => setSheetState({ type: 'closed' })}
-              />
-            )}
-          </div>
-        )}
+        <div className="w-[400px] shrink-0 border-l border-border h-full flex flex-col overflow-hidden">
+          {sheetState.type === 'closed' && (
+            <div className="flex h-full items-center justify-center">
+              <p className="text-sm text-muted-foreground">Select an item to view details</p>
+            </div>
+          )}
+          {sheetState.type === 'sub-status' && (
+            <ProcessTypeSubStatusSheet
+              subStatusId={sheetState.subStatusId}
+              onClose={() => setSheetState({ type: 'closed' })}
+            />
+          )}
+          {sheetState.type === 'process-type' && (
+            <ProcessTypeSheet
+              processTypeId={sheetState.processTypeId}
+              onClose={() => setSheetState({ type: 'closed' })}
+            />
+          )}
+        </div>
       </div>
     </ConfigurationPageChrome>
   );

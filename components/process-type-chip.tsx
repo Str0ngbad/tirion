@@ -6,18 +6,23 @@ type Props = {
   processType: ProcessTypeKey;
   compact?: boolean;
   size?: ProcessTypeChipSize;
+  /** When false, renders the full process type name instead of the abbreviated meta label.
+   *  Useful for lg-size chips in section headers where space permits the full name.
+   *  Defaults to true (abbreviated). */
+  abbreviate?: boolean;
 };
 
-export default function ProcessTypeChip({ processType, compact = false, size = "sm" }: Props) {
+export default function ProcessTypeChip({ processType, compact = false, size = "sm", abbreviate = true }: Props) {
   const meta = PROCESS_TYPE_META[processType];
+  const label = abbreviate ? meta.label : processType;
 
   if (compact) {
     return (
       <span
         className="inline-block h-5 w-[16px] shrink-0 rounded-sm"
         style={{ backgroundColor: `var(${meta.cssVar})` }}
-        title={meta.label}
-        aria-label={meta.label}
+        title={label}
+        aria-label={label}
       />
     );
   }
@@ -44,7 +49,7 @@ export default function ProcessTypeChip({ processType, compact = false, size = "
         style={{ backgroundColor: `var(${meta.cssVar})` }}
       />
       <span className={`absolute inset-0 ${stripeOffset} rounded-l-sm bg-card`} />
-      <span className={labelClasses}>{meta.label}</span>
+      <span className={labelClasses}>{label}</span>
     </span>
   );
 }

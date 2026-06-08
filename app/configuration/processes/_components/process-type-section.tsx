@@ -52,6 +52,7 @@ export function ProcessTypeSection({
           <ProcessTypeChip
             processType={processType.processName as ProcessTypeKey}
             size="lg"
+            abbreviate={false}
           />
           <span className="text-xs text-muted-foreground">
             {subStatuses.length} {subStatuses.length === 1 ? 'sub-status' : 'sub-statuses'}
