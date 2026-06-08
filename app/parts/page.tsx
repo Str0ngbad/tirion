@@ -33,6 +33,7 @@ import ActiveSortsChrome from "./_components/active-sorts-chrome";
 import PartFormSheet, { SECTION_IDS, type SectionId } from "./_components/part-form-sheet";
 import {
   applyClientSorts,
+  ALL_COLUMNS,
   type ColumnId,
 } from "./_lib/columns";
 import type { FilterObject, SortSpec } from "@/lib/views/types";
@@ -369,22 +370,17 @@ function PartsPageInner() {
     }
   }, [effectiveSorts]);
 
+  // Always-additive sort: append if new, no-op if same direction already active,
+  // update direction if column exists with the opposite direction.
   const handleSortSet = useCallback((columnId: ColumnId, direction: "asc" | "desc") => {
-    setDraftSorts([{ column: columnId, direction }]);
-  }, []);
-
-  const handleAddToSort = useCallback((columnId: ColumnId) => {
     setDraftSorts((current) => {
       const base = current ?? effectiveSorts;
       const existing = base.find((s) => s.column === columnId);
       if (existing) {
-        return base.map((s) =>
-          s.column === columnId
-            ? { ...s, direction: s.direction === "asc" ? "desc" : "asc" }
-            : s
-        );
+        if (existing.direction === direction) return base; // no-op
+        return base.map((s) => s.column === columnId ? { ...s, direction } : s);
       }
-      return [...base, { column: columnId, direction: "asc" }];
+      return [...base, { column: columnId, direction }];
     });
   }, [effectiveSorts]);
 
@@ -395,7 +391,19 @@ function PartsPageInner() {
     });
   }, [effectiveSorts]);
 
+  // Header drag provides only visible column IDs — merge hidden columns back in
+  // at the end in their relative saved order so columnOrder covers all columns.
   const handleColumnReorder = useCallback((newOrder: string[]) => {
+    setDraftColumnOrder((current) => {
+      const fullOrder = current ?? activeView?.columnOrder ?? ALL_COLUMNS.map((c) => c.id);
+      const newVisibleSet = new Set(newOrder);
+      const hidden = fullOrder.filter((id) => !newVisibleSet.has(id));
+      return [...newOrder, ...hidden];
+    });
+  }, [activeView]);
+
+  // Selector drag provides full column order (all columns) — set directly.
+  const handleSelectorReorder = useCallback((newOrder: string[]) => {
     setDraftColumnOrder(newOrder);
   }, []);
 
@@ -425,8 +433,7 @@ function PartsPageInner() {
     setDraftVisibleColumns((current) => {
       const base = current ?? effectiveVisibleColumns;
       if (visible) {
-        const allIds = ["partNumber","partName","partType","procurementCategory","material","materialForm","vendor","vendorPartNumber","routing","buildableCount","stockCount","inventoryLocation","stockSize","blankLength","partCost","partCostUpdatedAt","assembliesUsedInCount","machineCycleTime","numberOfSetups","isActive"];
-        return allIds.filter((id) => id === columnId || base.includes(id));
+        return base.includes(columnId) ? base : [...base, columnId];
       }
       return base.filter((id) => id !== columnId);
     });
@@ -653,8 +660,10 @@ function PartsPageInner() {
           <div className="shrink-0 flex items-center gap-2 ml-auto pt-0.5">
             <ColumnsButton
               visibleColumns={effectiveVisibleColumns}
+              columnOrder={effectiveColumnOrder}
               activeFilters={effectiveFilters}
               onChange={handleColumnToggle}
+              onReorder={handleSelectorReorder}
             />
           </div>
 
@@ -718,7 +727,6 @@ function PartsPageInner() {
                 onInventoryLocationChange={handleInventoryLocationChange}
                 onColumnReorder={handleColumnReorder}
                 onSortSet={handleSortSet}
-                onAddToSort={handleAddToSort}
                 onClearThisSort={handleClearThisSort}
                 onHideColumn={handleHideColumn}
                 onApplyFilter={handleApplyFilter}

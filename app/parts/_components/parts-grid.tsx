@@ -278,7 +278,6 @@ type SortableColumnHeaderProps = {
   filterByColumn: Map<string, FilterObject>;
   sorts: SortSpec[];
   onSortSet: (columnId: ColumnId, direction: "asc" | "desc") => void;
-  onAddToSort: (columnId: ColumnId) => void;
   onClearThisSort: (columnId: ColumnId) => void;
   onHideColumn: (columnId: ColumnId) => void;
   onApplyFilter: (filter: FilterObject) => void;
@@ -293,7 +292,6 @@ function SortableColumnHeader({
   filterByColumn,
   sorts,
   onSortSet,
-  onAddToSort,
   onClearThisSort,
   onHideColumn,
   onApplyFilter,
@@ -357,7 +355,6 @@ function SortableColumnHeader({
             existingFilter={filterByColumn.get(col.id) ?? null}
             onSortAsc={() => onSortSet(col.id, "asc")}
             onSortDesc={() => onSortSet(col.id, "desc")}
-            onAddToSort={() => onAddToSort(col.id)}
             onClearThisSort={() => onClearThisSort(col.id)}
             onHideColumn={() => onHideColumn(col.id)}
             onApplyFilter={onApplyFilter}
@@ -385,7 +382,6 @@ type Props = {
   onInventoryLocationChange: (partId: number, value: string | null) => void | Promise<void>;
   onColumnReorder: (newOrder: string[]) => void;
   onSortSet: (columnId: ColumnId, direction: "asc" | "desc") => void;
-  onAddToSort: (columnId: ColumnId) => void;
   onClearThisSort: (columnId: ColumnId) => void;
   onHideColumn: (columnId: ColumnId) => void;
   onApplyFilter: (filter: FilterObject) => void;
@@ -408,7 +404,6 @@ export default function PartsGrid({
   onInventoryLocationChange,
   onColumnReorder,
   onSortSet,
-  onAddToSort,
   onClearThisSort,
   onHideColumn,
   onApplyFilter,
@@ -507,7 +502,6 @@ export default function PartsGrid({
                       filterByColumn={filterByColumn}
                       sorts={sorts}
                       onSortSet={onSortSet}
-                      onAddToSort={onAddToSort}
                       onClearThisSort={onClearThisSort}
                       onHideColumn={onHideColumn}
                       onApplyFilter={onApplyFilter}

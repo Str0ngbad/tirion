@@ -31,7 +31,6 @@ type Props = {
   existingFilter: FilterObject | null;
   onSortAsc: () => void;
   onSortDesc: () => void;
-  onAddToSort: () => void;
   onClearThisSort: () => void;
   onHideColumn: () => void;
   onApplyFilter: (filter: FilterObject) => void;
@@ -48,7 +47,6 @@ export default function ColumnHeaderMenu({
   existingFilter,
   onSortAsc,
   onSortDesc,
-  onAddToSort,
   onClearThisSort,
   onHideColumn,
   onApplyFilter,
@@ -98,16 +96,12 @@ export default function ColumnHeaderMenu({
               {sortable && (
                 <>
                   <DropdownMenuItem onClick={onSortAsc} className="gap-2 text-sm">
-                    <span className="w-3 text-center">{isSortedAsc && sorts.length === 1 ? "✓" : ""}</span>
+                    <span className="w-3 text-center">{isSortedAsc ? "✓" : ""}</span>
                     Sort ascending
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={onSortDesc} className="gap-2 text-sm">
-                    <span className="w-3 text-center">{isSortedDesc && sorts.length === 1 ? "✓" : ""}</span>
+                    <span className="w-3 text-center">{isSortedDesc ? "✓" : ""}</span>
                     Sort descending
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={onAddToSort} className="gap-2 text-sm">
-                    <span className="w-3 text-center">{isInStack && sorts.length > 1 ? "✓" : ""}</span>
-                    Add to sort
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={onClearThisSort}
