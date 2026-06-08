@@ -127,13 +127,28 @@ function PartsPageInner() {
     const currentSorts = draftSorts ?? activeView.defaultSort;
     const currentFilters = draftFilters ?? activeView.filters;
     const currentColumns = draftVisibleColumns ?? activeView.visibleColumns;
-    const currentOrder = draftColumnOrder ?? activeView.columnOrder ?? [];
-    return (
-      !sortSpecsEqual(currentSorts, activeView.defaultSort) ||
-      !filterObjectsEqual(currentFilters, activeView.filters) ||
-      !columnsEqual(currentColumns, activeView.visibleColumns) ||
-      !columnsEqual(currentOrder, activeView.columnOrder ?? [])
-    );
+
+    if (!sortSpecsEqual(currentSorts, activeView.defaultSort)) return true;
+    if (!filterObjectsEqual(currentFilters, activeView.filters)) return true;
+    if (!columnsEqual(currentColumns, activeView.visibleColumns)) return true;
+
+    // Column order: draftColumnOrder stores all column IDs (visible + hidden) while
+    // activeView.columnOrder may store only visible IDs or be null. Compare only the
+    // visible-column subsequence of each order; null draft means no change → not dirty.
+    if (draftColumnOrder !== null) {
+      const visSet = new Set(currentColumns);
+      const currentVisibleOrder = draftColumnOrder.filter((id) => visSet.has(id));
+      const savedOrder = activeView.columnOrder ?? [];
+      const savedVisibleOrder = savedOrder.filter((id) => visSet.has(id));
+      // When the view has no saved order, treat canonical ALL_COLUMNS order as baseline.
+      const effectiveSaved =
+        savedVisibleOrder.length > 0
+          ? savedVisibleOrder
+          : ALL_COLUMNS.map((c) => c.id).filter((id) => visSet.has(id));
+      if (!columnsEqual(currentVisibleOrder, effectiveSaved)) return true;
+    }
+
+    return false;
   }, [activeView, draftSorts, draftFilters, draftVisibleColumns, draftColumnOrder]);
 
   const effectiveVisibleColumns = useMemo<string[]>(
