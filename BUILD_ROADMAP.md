@@ -617,19 +617,24 @@ Update this section as phases complete.
 
 | Phase | Status | Notes |
 |-------|--------|-------|
-| Phase 0 | Done | Initial scaffolding complete |
-| Phase 0a | Done | Tooling, hooks, ADRs, Playwright, commitlint |
-| Phase 1A | Backend complete; UI deferred | Five configuration entity backends shipped; configuration UI deferred to Phase 1B+; Open WOs Summary deferred to Phase 1C+ |
-| Phase 1B | Not started | |
-| Phase 1C | Not started | |
-| Phase 1D | Not started | |
-| Phase 2 | Not started | |
-| Phase 3 | Not started | |
-| Phase 4 | Not started | |
-| Phase 5 | Not started | |
-| Phase 6A | Not started | |
-| Phase 6B | Not started | |
-| Phase 7 | Not started | |
-| Phase 8 | Not started | |
-| Phase 9 | Not started | |
-| Phase 10 | Not started | |
+| Phase 0 | ✅ Done | Initial scaffolding complete |
+| Phase 0a | ✅ Done | Tooling, hooks, ADRs, Playwright, commitlint |
+| Phase 1 | ✅ Done | All configuration surfaces (Parts, BOM Editor, Routing Templates, Vendors, Material Specs, Users, Processes, Procurement Categories) with consistent design vocabulary; saved views; cross-surface integration; audit infrastructure |
+| Phase 2 | ✅ Done | Real shop data imported; folded into Phase 1 flow rather than executed as separate phase |
+| Phase 3 | Not started | Project Creation — next true phase |
+| Phase 4 | Not started | Stock Fulfillment |
+| Phase 5 | Not started | Batching Lens |
+| Phase 6A | Not started | First execution lens + shared infrastructure |
+| Phase 6B | Not started | Remaining per-process execution lenses |
+| Phase 7 | Not started | Operations Lens |
+| Phase 8 | Not started | Project View + Active Project Management |
+| Phase 9 | Not started | Blockers |
+| Phase 10 | Not started | Polish and Acceptance |
+
+---
+
+## See Also
+
+- [`spec/state_of_spec_brief_2026-06-08.md`](spec/state_of_spec_brief_2026-06-08.md) — Phase 1 completion snapshot with deviations and design vocabulary established
+- [`DEVIATIONS.md`](DEVIATIONS.md) — running log of build-time decisions that diverged from spec
+- [`CLAUDE.md`](CLAUDE.md) — workflow practices and design vocabulary in effect for Phase 3+
