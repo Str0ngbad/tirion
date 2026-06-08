@@ -2,8 +2,9 @@
 
 import { useState, useMemo } from 'react';
 import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import ProcessTypeChip from '@/components/process-type-chip';
+import type { ProcessTypeKey } from '@/lib/process-types';
 import type { UserRow, UserRole } from '@/lib/api/users';
 
 interface UserGridProps {
@@ -22,39 +23,6 @@ const ROLE_ORDER: Record<UserRole, number> = {
   Lead: 2,
   Operator: 3,
 };
-
-function roleBadgeClass(role: UserRole): string {
-  switch (role) {
-    case 'Admin':
-      return 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800';
-    case 'Manager':
-      return 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800';
-    case 'Lead':
-      return 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-600';
-    case 'Operator':
-      return '';
-  }
-}
-
-function ProcessTypeChips({ pts }: { pts: UserRow['assignedProcessTypes'] }) {
-  if (pts.length === 0) return <span className="text-muted-foreground">—</span>;
-  const visible = pts.slice(0, 3);
-  const overflow = pts.length - 3;
-  return (
-    <div className="flex flex-wrap gap-1">
-      {visible.map((pt) => (
-        <Badge key={pt.processTypeId} variant="outline" className="font-mono text-xs px-1.5 py-0">
-          {pt.processCode}
-        </Badge>
-      ))}
-      {overflow > 0 && (
-        <Badge variant="outline" className="text-xs px-1.5 py-0">
-          +{overflow}
-        </Badge>
-      )}
-    </div>
-  );
-}
 
 export function UserGrid({ users, selectedId, showInactive, onSelectUser }: UserGridProps) {
   const [sortKey, setSortKey] = useState<SortKey>('userName');
@@ -93,38 +61,38 @@ export function UserGrid({ users, selectedId, showInactive, onSelectUser }: User
       <table className="w-full text-sm border-collapse">
         <thead className="sticky top-0 bg-background border-b">
           <tr>
-            <th className="px-4 py-2 text-left font-medium text-muted-foreground w-36">
+            <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground w-36">
               <button
-                className="flex items-center hover:text-foreground"
+                className="flex items-center hover:text-foreground transition-colors"
                 onClick={() => handleSort('userName')}
               >
                 Username <SortIcon col="userName" />
               </button>
             </th>
-            <th className="px-4 py-2 text-left font-medium text-muted-foreground w-40">
+            <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground w-40">
               <button
-                className="flex items-center hover:text-foreground"
+                className="flex items-center hover:text-foreground transition-colors"
                 onClick={() => handleSort('displayName')}
               >
                 Display Name <SortIcon col="displayName" />
               </button>
             </th>
-            <th className="px-4 py-2 text-left font-medium text-muted-foreground w-28">
+            <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground w-28">
               <button
-                className="flex items-center hover:text-foreground"
+                className="flex items-center hover:text-foreground transition-colors"
                 onClick={() => handleSort('role')}
               >
                 Role <SortIcon col="role" />
               </button>
             </th>
-            <th className="px-4 py-2 text-left font-medium text-muted-foreground">
+            <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Process Types
             </th>
-            <th className="px-4 py-2 text-left font-medium text-muted-foreground w-36">
+            <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground w-36">
               Default Station
             </th>
             {showInactive && (
-              <th className="px-4 py-2 text-left font-medium text-muted-foreground w-20">
+              <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground w-20">
                 Status
               </th>
             )}
@@ -141,27 +109,31 @@ export function UserGrid({ users, selectedId, showInactive, onSelectUser }: User
               )}
               onClick={() => onSelectUser(user.userId)}
             >
-              <td className="px-4 py-2 font-mono font-medium">{user.userName}</td>
-              <td className="px-4 py-2">{user.displayName}</td>
-              <td className="px-4 py-2">
-                <Badge
-                  variant="outline"
-                  className={cn('text-xs', roleBadgeClass(user.role))}
-                >
-                  {user.role}
-                </Badge>
+              <td className="px-4 py-2.5 font-mono font-medium text-sm">{user.userName}</td>
+              <td className="px-4 py-2.5 text-sm">{user.displayName}</td>
+              <td className="px-4 py-2.5 text-sm text-muted-foreground">{user.role}</td>
+              <td className="px-4 py-2.5">
+                {user.role === 'Manager' || user.role === 'Admin' ? (
+                  <span className="text-xs text-muted-foreground">All</span>
+                ) : user.assignedProcessTypes.length === 0 ? (
+                  <span className="text-xs text-muted-foreground/40">—</span>
+                ) : (
+                  <div className="flex flex-wrap gap-1">
+                    {user.assignedProcessTypes.map((pt) => (
+                      <ProcessTypeChip
+                        key={pt.processTypeId}
+                        processType={pt.processName as ProcessTypeKey}
+                      />
+                    ))}
+                  </div>
+                )}
               </td>
-              <td className="px-4 py-2">
-                <ProcessTypeChips pts={user.assignedProcessTypes} />
-              </td>
-              <td className="px-4 py-2 text-muted-foreground">
-                {user.defaultStation ?? '—'}
+              <td className="px-4 py-2.5 text-xs text-muted-foreground">
+                {user.defaultStation ?? <span className="text-muted-foreground/40">—</span>}
               </td>
               {showInactive && (
-                <td className="px-4 py-2">
-                  {user.isActive ? null : (
-                    <Badge variant="outline" className="text-xs">Inactive</Badge>
-                  )}
+                <td className="px-4 py-2.5 text-xs text-muted-foreground">
+                  {user.isActive ? null : 'Inactive'}
                 </td>
               )}
             </tr>

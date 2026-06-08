@@ -25,10 +25,9 @@ export default function UsersPage() {
       addLabel="Add User"
       onAdd={() => setCreateModalOpen(true)}
     >
-      <div className="flex flex-1 min-h-0">
+      <div className="flex h-full min-h-0">
         <div
-          className={selectedId !== null ? 'w-[calc(100%-400px)]' : 'w-full'}
-          style={{ minWidth: 0 }}
+          className={selectedId !== null ? 'w-[calc(100%-400px)] shrink-0 overflow-auto' : 'w-full overflow-auto'}
         >
           <UserGrid
             users={users}
