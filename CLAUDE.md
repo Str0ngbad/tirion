@@ -43,6 +43,28 @@ should:
 Bias toward smaller commits. The user will review each diff for behavior;
 small diffs make this faster.
 
+### Post-commit working tree verification
+
+After every feature commit, run `git status` and report the result.
+
+If any files remain uncommitted that are part of the feature just committed
+(e.g., new files in `_components/` directories, helper modules, or new API
+routes), surface them explicitly. Either re-stage and amend the commit, or
+note the orphaned files so the user can decide whether to include them in a
+follow-up commit.
+
+This rule exists because earlier in the Tirion build, several real features
+had pieces missed during commits — components and helpers in nested directories
+were left untracked despite being part of the tested feature. The commit looked
+successful but the working tree retained substantial source files. Running
+`git status` after each commit and verifying nothing source-related is orphaned
+catches this immediately.
+
+Note: certain working-tree artifacts (Playwright screenshots, local CSVs, etc.)
+are intentionally not committed and should be gitignored. These are not
+"orphans" — they're detritus that should not enter git. The check is
+specifically for source code that belongs with the feature being committed.
+
 ### Never silently deviate from the spec
 
 If during implementation you discover that the spec is wrong, incomplete, or
