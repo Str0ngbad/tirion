@@ -6,24 +6,38 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import { AuditLogSection } from '@/components/configuration/audit-log-section';
 import { ReferenceList } from '@/components/configuration/reference-list';
 import { DeactivationDialog } from '@/components/configuration/deactivation-dialog';
 import {
   useVendor,
   useVendorAuditLog,
+  useCreateVendor,
   useUpdateVendor,
   useDeactivateVendor,
   useReactivateVendor,
 } from '@/lib/api/vendors';
+import { ApiError } from '@/lib/api/client-error';
+
+type VendorSheetMode =
+  | { type: 'create' }
+  | { type: 'edit'; vendorId: number };
 
 interface VendorSheetProps {
-  vendorId: number;
+  mode: VendorSheetMode;
   onClose: () => void;
+  onCreated?: (newVendorId: number) => void;
 }
 
-export function VendorSheet({ vendorId, onClose }: VendorSheetProps) {
+// ─── Edit mode ────────────────────────────────────────────────────────────────
+
+function EditSheet({
+  vendorId,
+  onClose,
+}: {
+  vendorId: number;
+  onClose: () => void;
+}) {
   const { data: vendor, isLoading } = useVendor(vendorId);
   const { data: auditEntries, isLoading: auditLoading } = useVendorAuditLog(vendorId, true);
 
@@ -104,10 +118,6 @@ export function VendorSheet({ vendorId, onClose }: VendorSheetProps) {
     });
   }
 
-  function handleReactivate() {
-    reactivate(vendorId);
-  }
-
   if (isLoading || !vendor) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
@@ -128,7 +138,6 @@ export function VendorSheet({ vendorId, onClose }: VendorSheetProps) {
 
       {/* Body */}
       <div className="flex-1 overflow-y-auto">
-        {/* Identity section */}
         <section className="border-b px-4 py-4 flex flex-col gap-3">
           <div>
             <Label className="text-xs">
@@ -140,15 +149,8 @@ export function VendorSheet({ vendorId, onClose }: VendorSheetProps) {
               className="mt-1"
             />
           </div>
-          <div className="flex items-center gap-2">
-            <Switch id={`active-${vendorId}`} checked={vendor.isActive} disabled />
-            <label htmlFor={`active-${vendorId}`} className="text-xs text-muted-foreground">
-              {vendor.isActive ? 'Active' : 'Inactive'}
-            </label>
-          </div>
         </section>
 
-        {/* Contact Info section */}
         <section className="border-b px-4 py-4 flex flex-col gap-3">
           <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium">
             Contact Info
@@ -193,7 +195,6 @@ export function VendorSheet({ vendorId, onClose }: VendorSheetProps) {
           </div>
         </section>
 
-        {/* Notes */}
         <section className="border-b px-4 py-4">
           <Label className="text-xs">Notes</Label>
           <Textarea
@@ -205,7 +206,6 @@ export function VendorSheet({ vendorId, onClose }: VendorSheetProps) {
           />
         </section>
 
-        {/* Default Vendor For */}
         <section className="border-b px-4 py-4">
           <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium mb-2">
             Default Vendor For ({vendor.defaultVendorForCount} active{' '}
@@ -222,7 +222,6 @@ export function VendorSheet({ vendorId, onClose }: VendorSheetProps) {
           />
         </section>
 
-        {/* Open Supply Orders */}
         <section className="border-b px-4 py-4">
           <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium mb-1">
             Open Supply Orders
@@ -234,7 +233,6 @@ export function VendorSheet({ vendorId, onClose }: VendorSheetProps) {
           </p>
         </section>
 
-        {/* Audit Log */}
         <AuditLogSection entries={auditEntries} isLoading={auditLoading} />
       </div>
 
@@ -253,7 +251,7 @@ export function VendorSheet({ vendorId, onClose }: VendorSheetProps) {
           <Button
             variant="outline"
             size="sm"
-            onClick={handleReactivate}
+            onClick={() => reactivate(vendorId)}
             disabled={isReactivating}
           >
             {isReactivating ? 'Activating…' : 'Activate'}
@@ -288,4 +286,163 @@ export function VendorSheet({ vendorId, onClose }: VendorSheetProps) {
       )}
     </div>
   );
+}
+
+// ─── Create mode ─────────────────────────────────────────────────────────────
+
+function CreateSheet({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: (newVendorId: number) => void;
+}) {
+  const { mutate: create, isPending } = useCreateVendor();
+
+  const [vendorName, setVendorName] = useState('');
+  const [contactInfo, setContactInfo] = useState('');
+  const [location, setLocation] = useState('');
+  const [website, setWebsite] = useState('');
+  const [leadTimeDays, setLeadTimeDays] = useState('');
+  const [notes, setNotes] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  function handleCreate() {
+    const errors: Record<string, string> = {};
+    if (!vendorName.trim()) errors.vendorName = 'Name is required';
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+
+    const days = leadTimeDays.trim() === '' ? null : parseInt(leadTimeDays, 10);
+
+    create(
+      {
+        vendorName: vendorName.trim(),
+        contactInfo: contactInfo.trim() || null,
+        location: location.trim() || null,
+        website: website.trim() || null,
+        leadTimeDays: days !== null && !isNaN(days) ? days : null,
+        notes: notes.trim() || null,
+      },
+      {
+        onSuccess: (created) => {
+          onCreated(created.vendorId);
+        },
+        onError: (err) => {
+          if (err instanceof ApiError && err.errorCode === 'VENDOR_NAME_COLLISION') {
+            setFieldErrors({ vendorName: 'A vendor with this name already exists' });
+          }
+        },
+      }
+    );
+  }
+
+  return (
+    <div className="flex h-full flex-col overflow-hidden">
+      {/* Header */}
+      <div className="border-b px-4 py-3 shrink-0">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="flex-1 min-w-0">
+            <Input
+              value={vendorName}
+              onChange={(e) => {
+                setVendorName(e.target.value);
+                setFieldErrors((p) => ({ ...p, vendorName: '' }));
+              }}
+              className="font-medium border-0 px-0 h-7 focus-visible:ring-0"
+              placeholder="Vendor name"
+              autoFocus
+            />
+            {fieldErrors.vendorName && (
+              <p className="text-xs text-destructive mt-0.5">{fieldErrors.vendorName}</p>
+            )}
+          </div>
+          <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0">
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Body */}
+      <div className="flex-1 overflow-y-auto">
+        <section className="border-b px-4 py-4 flex flex-col gap-3">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium">
+            Contact Info
+          </p>
+          <div>
+            <Label className="text-xs">Contact</Label>
+            <Input
+              value={contactInfo}
+              onChange={(e) => setContactInfo(e.target.value)}
+              placeholder="Name, phone, email…"
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label className="text-xs">Location</Label>
+            <Input
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="City, State or full address"
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label className="text-xs">Website</Label>
+            <Input
+              value={website}
+              onChange={(e) => setWebsite(e.target.value)}
+              placeholder="https://…"
+              className="mt-1"
+            />
+          </div>
+          <div className="w-36">
+            <Label className="text-xs">Lead Time (days)</Label>
+            <Input
+              type="number"
+              min={0}
+              value={leadTimeDays}
+              onChange={(e) => setLeadTimeDays(e.target.value)}
+              placeholder="—"
+              className="mt-1"
+            />
+          </div>
+        </section>
+
+        <section className="border-b px-4 py-4">
+          <Label className="text-xs">Notes</Label>
+          <Textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={3}
+            className="mt-1 resize-none"
+            placeholder="Optional notes"
+          />
+        </section>
+      </div>
+
+      {/* Footer */}
+      <div className="flex items-center justify-end border-t px-4 py-3 shrink-0">
+        <Button size="sm" onClick={handleCreate} disabled={isPending || !vendorName.trim()}>
+          {isPending ? 'Creating…' : 'Create'}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Public component ─────────────────────────────────────────────────────────
+
+export function VendorSheet({ mode, onClose, onCreated }: VendorSheetProps) {
+  if (mode.type === 'create') {
+    return (
+      <CreateSheet
+        onClose={onClose}
+        onCreated={(id) => onCreated?.(id)}
+      />
+    );
+  }
+  return <EditSheet vendorId={mode.vendorId} onClose={onClose} />;
 }

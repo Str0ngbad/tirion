@@ -1,10 +1,10 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
+import { ActiveIndicator } from '@/components/ui/active-indicator';
 import type { VendorRow } from '@/lib/api/vendors';
 
-type SortKey = 'vendorName' | 'location' | 'leadTimeDays' | 'defaultVendorForCount' | 'openSupplyOrderCount';
+type SortKey = 'isActive' | 'vendorName' | 'location' | 'leadTimeDays' | 'defaultVendorForCount' | 'openSupplyOrderCount';
 
 interface VendorGridProps {
   vendors: VendorRow[];
@@ -78,6 +78,15 @@ export function VendorGrid({
     <div className="h-full flex flex-col">
       {/* Header */}
       <div className="flex items-center gap-3 border-b bg-muted/30 px-4 py-2 shrink-0">
+        <div className="w-14 shrink-0">
+          <SortHeader
+            label="Active"
+            sortKey="isActive"
+            activeSortKey={sortKey}
+            sortDir={sortDir}
+            onSort={onSort}
+          />
+        </div>
         <div className="flex-1 min-w-0">
           <SortHeader
             label="Name"
@@ -140,13 +149,11 @@ export function VendorGrid({
               !vendor.isActive && 'opacity-40 hover:opacity-60'
             )}
           >
-            <div className="flex-1 min-w-0 flex items-center gap-2">
+            <div className="w-14 shrink-0 flex items-center justify-center">
+              <ActiveIndicator active={vendor.isActive} />
+            </div>
+            <div className="flex-1 min-w-0">
               <span className="truncate font-medium">{vendor.vendorName}</span>
-              {!vendor.isActive && (
-                <Badge variant="secondary" className="shrink-0 text-[10px] px-1 py-0">
-                  Inactive
-                </Badge>
-              )}
             </div>
             <div className="w-36 shrink-0 hidden md:block text-muted-foreground text-xs truncate">
               {vendor.location ?? ''}
