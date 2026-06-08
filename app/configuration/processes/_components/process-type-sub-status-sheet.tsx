@@ -113,7 +113,7 @@ export function ProcessTypeSubStatusSheet({
       </div>
 
       {/* Body */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto min-h-0">
         {/* Description + display order */}
         <section className="border-b px-4 py-4 flex flex-col gap-3">
           <div>

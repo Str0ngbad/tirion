@@ -196,6 +196,7 @@ async function seedAuditActions() {
     { actionName: "UserUpdated", category: "Configuration", description: "User attribute fields or role edited" },
     { actionName: "UserDeactivated", category: "Configuration", description: "User isActive set to false" },
     { actionName: "UserReactivated", category: "Configuration", description: "User isActive restored to true" },
+    { actionName: "ProcessTypeUpdated", category: "Configuration", description: "ProcessType description edited" },
     { actionName: "ProcessTypeSubStatusCreated", category: "Configuration", description: "New ProcessTypeSubStatus record created" },
     { actionName: "ProcessTypeSubStatusUpdated", category: "Configuration", description: "ProcessTypeSubStatus attribute fields edited" },
     { actionName: "ProcessTypeSubStatusDeactivated", category: "Configuration", description: "ProcessTypeSubStatus isActive set to false" },

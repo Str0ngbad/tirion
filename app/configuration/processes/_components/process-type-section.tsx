@@ -8,20 +8,24 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useUpdateProcessTypeSubStatus, type ProcessTypeSubStatusRow } from '@/lib/api/process-type-sub-statuses';
 import type { ProcessTypeRow } from '@/lib/api/process-types';
+import type { ProcessTypeKey } from '@/lib/process-types';
+import ProcessTypeChip from '@/components/process-type-chip';
 import { CreateSubStatusModal } from './create-sub-status-modal';
 
 interface ProcessTypeSectionProps {
   processType: ProcessTypeRow;
   subStatuses: ProcessTypeSubStatusRow[];
-  selectedId: number | null;
+  selectedSubStatusId: number | null;
   onSelectSubStatus: (id: number) => void;
+  onSelectProcessType: (id: number) => void;
 }
 
 export function ProcessTypeSection({
   processType,
   subStatuses,
-  selectedId,
+  selectedSubStatusId,
   onSelectSubStatus,
+  onSelectProcessType,
 }: ProcessTypeSectionProps) {
   const [createModalOpen, setCreateModalOpen] = useState(false);
 
@@ -36,9 +40,19 @@ export function ProcessTypeSection({
 
   return (
     <section className="border rounded-md">
-      <div className="border-b px-4 py-3 flex items-center justify-between bg-muted/30">
-        <div className="flex items-center gap-2">
-          <h2 className="text-sm font-semibold">{processType.processName}</h2>
+      {/* Clickable header — click anywhere except the Add Sub-Status button */}
+      <div
+        className="border-b px-4 py-3 flex items-center justify-between bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
+        onClick={(e) => {
+          if ((e.target as HTMLElement).closest('button')) return;
+          onSelectProcessType(processType.processTypeId);
+        }}
+      >
+        <div className="flex items-center gap-3">
+          <ProcessTypeChip
+            processType={processType.processName as ProcessTypeKey}
+            size="lg"
+          />
           <span className="text-xs text-muted-foreground">
             {subStatuses.length} {subStatuses.length === 1 ? 'sub-status' : 'sub-statuses'}
           </span>
@@ -59,7 +73,7 @@ export function ProcessTypeSection({
             <SubStatusRow
               key={subStatus.processTypeSubStatusId}
               subStatus={subStatus}
-              isSelected={subStatus.processTypeSubStatusId === selectedId}
+              isSelected={subStatus.processTypeSubStatusId === selectedSubStatusId}
               onClick={() => onSelectSubStatus(subStatus.processTypeSubStatusId)}
             />
           ))}

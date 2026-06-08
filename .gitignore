@@ -77,3 +77,9 @@ next-env.d.ts
 
 # Data import session reports (timestamped log files)
 data-import/import-report-*.txt
+
+# Database dumps and ad-hoc SQL exports
+*.sql
+
+# But keep migration files
+!prisma/migrations/**/*.sql

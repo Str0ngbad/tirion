@@ -31,6 +31,7 @@
 - app/api/v1/parts/distinct-values/route.ts — route handlers: GET
 - app/api/v1/parts/grid/route.ts — route handlers: POST
 - app/api/v1/parts/route.ts — route handlers: GET,POST
+- app/api/v1/process-type-sub-statuses/[id]/audit-log/route.ts — route handlers: GET
 - app/api/v1/process-type-sub-statuses/[id]/deactivate/route.ts — route handlers: POST
 - app/api/v1/process-type-sub-statuses/[id]/reactivate/route.ts — route handlers: POST
 - app/api/v1/process-type-sub-statuses/[id]/route.ts — route handlers: GET,PATCH
@@ -45,6 +46,7 @@
 - app/api/v1/routing-templates/[id]/reactivate/route.ts — route handlers: POST
 - app/api/v1/routing-templates/[id]/route.ts — route handlers: GET,PATCH
 - app/api/v1/routing-templates/route.ts — route handlers: GET,POST
+- app/api/v1/users/[id]/audit-log/route.ts — route handlers: GET
 - app/api/v1/users/[id]/deactivate/route.ts — route handlers: POST
 - app/api/v1/users/[id]/reactivate/route.ts — route handlers: POST
 - app/api/v1/users/[id]/route.ts — route handlers: GET,PATCH
@@ -77,12 +79,18 @@
 - app/configuration/material-specs/_components/material-spec-sheet.tsx — exports: MaterialSpecSheet
 - app/configuration/material-specs/page.tsx — default export
 - app/configuration/page.tsx — default export
+- app/configuration/process-type-sub-statuses/_components/create-sub-status-modal.tsx — exports: CreateSubStatusModal
+- app/configuration/process-type-sub-statuses/_components/process-type-section.tsx — exports: ProcessTypeSection
+- app/configuration/process-type-sub-statuses/_components/process-type-sub-status-sheet.tsx — exports: ProcessTypeSubStatusSheet
 - app/configuration/process-type-sub-statuses/page.tsx — default export
 - app/configuration/process-types/page.tsx — default export
 - app/configuration/procurement-categories/_components/procurement-category-create-modal.tsx — exports: ProcurementCategoryCreateModal
 - app/configuration/procurement-categories/_components/procurement-category-grid.tsx — exports: ProcurementCategoryGrid
 - app/configuration/procurement-categories/_components/procurement-category-sheet.tsx — exports: ProcurementCategorySheet
 - app/configuration/procurement-categories/page.tsx — default export
+- app/configuration/users/_components/process-type-multi-select.tsx — exports: ProcessTypeMultiSelect
+- app/configuration/users/_components/user-grid.tsx — exports: UserGrid
+- app/configuration/users/_components/user-sheet.tsx — exports: UserSheet
 - app/configuration/users/page.tsx — default export
 - app/configuration/vendors/_components/vendor-create-modal.tsx — exports: VendorCreateModal
 - app/configuration/vendors/_components/vendor-grid.tsx — exports: VendorGrid
@@ -228,9 +236,12 @@
 - lib/api/errors.ts — exports: handleApiError
 - lib/api/material-specs.ts — exports: useCreateMaterialSpec,useDeactivateMaterialSpec,useMaterialSpec,useMaterialSpecAuditLog,useMaterialSpecs,useReactivateMaterialSpec,useUpdateMaterialSpec
 - lib/api/parts.ts — exports: useAllActiveParts,useAssemblies,useBomChildren,useBomParents,useCreatePart,useDistinctValues,usePart,usePartAuditLog,usePartOpenWos,usePartsGrid,useProcessTypes,useSetPartActive,useUpdateInventoryLocation,useUpdatePart,useUpdateStockCount
+- lib/api/process-type-sub-statuses.ts — exports: useCreateProcessTypeSubStatus,useDeactivateProcessTypeSubStatus,useProcessTypeSubStatus,useProcessTypeSubStatusAuditLog,useProcessTypeSubStatuses,useReactivateProcessTypeSubStatus,useUpdateProcessTypeSubStatus
+- lib/api/process-types.ts — exports: useProcessTypes
 - lib/api/procurement-categories.ts — exports: useCreateProcurementCategory,useDeactivateProcurementCategory,useProcurementCategories,useProcurementCategory,useProcurementCategoryAuditLog,useReactivateProcurementCategory,useUpdateProcurementCategory
 - lib/api/query-client.ts — exports: makeQueryClient
 - lib/api/routing-templates.ts — exports: useCreateRoutingTemplate,useDeactivateRoutingTemplate,useProcessTypes,useReactivateRoutingTemplate,useRoutingTemplate,useRoutingTemplates,useUpdateRoutingTemplate
+- lib/api/users.ts — exports: useCreateUser,useDeactivateUser,useReactivateUser,useUpdateUser,useUser,useUserAuditLog,useUsers
 - lib/api/vendors.ts — exports: useCreateVendor,useDeactivateVendor,useReactivateVendor,useUpdateVendor,useVendor,useVendorAuditLog,useVendors
 - lib/api/views.ts — exports: useCreateView,useDeleteView,useUpdateView,useViews
 - lib/audit/mutateWithAudit.ts — exports: mutateWithAudit
@@ -303,6 +314,7 @@
 - components/query-provider.tsx — exports: QueryProvider
 - components/theme-provider.tsx — exports: ThemeProvider
 - components/theme-toggle.tsx — exports: ThemeToggle
+- components/ui/active-indicator.tsx — exports: ActiveIndicator
 - components/ui/badge.tsx
 - components/ui/button.tsx
 - components/ui/card.tsx

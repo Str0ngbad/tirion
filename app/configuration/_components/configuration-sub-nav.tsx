@@ -8,8 +8,7 @@ const SURFACES = [
   { slug: 'vendors', label: 'Vendors' },
   { slug: 'material-specs', label: 'Material Specs' },
   { slug: 'users', label: 'Users' },
-  { slug: 'process-types', label: 'Process Types' },
-  { slug: 'process-type-sub-statuses', label: 'Sub-Statuses' },
+  { slug: 'processes', label: 'Processes' },
   { slug: 'procurement-categories', label: 'Procurement Categories' },
 ] as const;
 

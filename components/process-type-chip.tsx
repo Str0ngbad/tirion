@@ -1,11 +1,14 @@
 import { PROCESS_TYPE_META, type ProcessTypeKey } from "@/lib/process-types";
 
+type ProcessTypeChipSize = "sm" | "lg";
+
 type Props = {
   processType: ProcessTypeKey;
   compact?: boolean;
+  size?: ProcessTypeChipSize;
 };
 
-export default function ProcessTypeChip({ processType, compact = false }: Props) {
+export default function ProcessTypeChip({ processType, compact = false, size = "sm" }: Props) {
   const meta = PROCESS_TYPE_META[processType];
 
   if (compact) {
@@ -19,14 +22,29 @@ export default function ProcessTypeChip({ processType, compact = false }: Props)
     );
   }
 
+  // Size-dependent classes
+  // sm (default): existing inline treatment
+  // lg: slightly more padding for section header use
+  const labelClasses =
+    size === "lg"
+      ? "relative pl-3 pr-2 py-1 leading-none font-medium"
+      : "relative pl-2.5 pr-1.5 py-0.5 leading-none";
+
+  // The colored stripe width scales with size
+  const stripeOffset = size === "lg" ? "left-[6px]" : "left-[5px]";
+
+  const textClass = size === "lg" ? "text-sm" : "text-sm";
+
   return (
-    <span className="relative inline-flex shrink-0 items-center overflow-hidden rounded-sm border border-border/50 bg-card text-sm text-foreground">
+    <span
+      className={`relative inline-flex shrink-0 items-center overflow-hidden rounded-sm border border-border/50 bg-card ${textClass} text-foreground`}
+    >
       <span
         className="absolute inset-0"
         style={{ backgroundColor: `var(${meta.cssVar})` }}
       />
-      <span className="absolute inset-0 left-[5px] rounded-l-sm bg-card" />
-      <span className="relative pl-2.5 pr-1.5 py-0.5 leading-none">{meta.label}</span>
+      <span className={`absolute inset-0 ${stripeOffset} rounded-l-sm bg-card`} />
+      <span className={labelClasses}>{meta.label}</span>
     </span>
   );
 }
