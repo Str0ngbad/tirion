@@ -95,36 +95,65 @@ export const MOCK_PROJECT_ROUTING_TEMPLATES: MockProjectRoutingTemplate[] = [
 // Override map: partId → templateId | null
 // null = explicitly no template (overrides part's real routingTemplate)
 // templateId = use this mock template instead of the part's real one
-// Not in map = use the part's real routingTemplate (converted to a mock template or null if unset)
+// Not in map = fall through to default logic
 const TEMPLATE_OVERRIDE_MAP = new Map<number, number | null>([
   // 22-06-0-00 (Bridgeport Upgrade Assembly) — assigned to inactive template 103
   [2165, 103],
-  // A few specific sub-parts of 22-06-0-00 with real templates → force to null for variety
-  [2166, null], // 22-06-1-00 Bridgeport Drive Assembly — no template
-  [2167, null], // 22-06-2-00 Bridgeport Table Mount Encoder — no template
+  // Two sub-assemblies in 22-06-0-00's tree explicitly forced to null (no template)
+  [2166, null], // 22-06-1-00 Bridgeport Drive Assembly
+  [2167, null], // 22-06-2-00 Bridgeport Table Mount Encoder
 ]);
+
+// "Always-assign" set: partIds in clean-compile trees (17559, 10256) and Active projects
+// (10121, 10030). Parts in these trees always get a mock template even when the real data
+// has routingTemplate: null. This is what makes those projects compile cleanly.
+// Built at module init by walking the BOM trees.
+function collectPartIds(partId: number, visited: Set<number>): void {
+  if (visited.has(partId)) return;
+  visited.add(partId);
+  const part = MOCK_PARTS.find((p) => p.partId === partId);
+  if (!part) return;
+  if (part.childParts) {
+    for (const child of part.childParts) {
+      collectPartIds(child.childPartId, visited);
+    }
+  }
+}
+
+const ALWAYS_ASSIGN_PARTS = new Set<number>();
+// Clean-compile draft projects: 17559 (19-08-0-00 = 1924), 10256 (22-15-0-00 = 2254)
+[1924, 2254].forEach((id) => collectPartIds(id, ALWAYS_ASSIGN_PARTS));
+// Active projects tops
+[1908, 1922, 2035, 1942, 1929, 1967, 1951, 1954, 2219, 1943, 1958, 2063, 2066, 1948].forEach(
+  (id) => collectPartIds(id, ALWAYS_ASSIGN_PARTS)
+);
 
 // Resolve the routing template for a given partId in the project-creation mockup context.
 // Returns { templateId, templateName, isActive } | null
 export function resolvePartTemplate(
   partId: number
 ): MockProjectRoutingTemplate | null {
+  // Explicit override takes priority
   if (TEMPLATE_OVERRIDE_MAP.has(partId)) {
     const overrideId = TEMPLATE_OVERRIDE_MAP.get(partId)!;
     if (overrideId === null) return null;
     return MOCK_PROJECT_ROUTING_TEMPLATES.find((t) => t.templateId === overrideId) ?? null;
   }
 
-  // Fall back to the part's real routingTemplate
   const part = MOCK_PARTS.find((p) => p.partId === partId);
-  if (!part || !part.routingTemplate) return null;
+  if (!part) return null;
 
-  // Map the real template to a mock template (use active mock templates)
-  // Real templates are all active; map them to templateId 101 or 102 based on part type
-  const tpl = MOCK_PROJECT_ROUTING_TEMPLATES.find(
-    (t) => t.isActive && t.templateId === (part.partType === "Assembly" ? 102 : 101)
-  );
-  return tpl ?? null;
+  // Parts in always-assign trees always get a template (even when real data has none)
+  if (ALWAYS_ASSIGN_PARTS.has(partId)) {
+    const templateId = part.partType === "Assembly" ? 102 : 101;
+    return MOCK_PROJECT_ROUTING_TEMPLATES.find((t) => t.templateId === templateId) ?? null;
+  }
+
+  // All other parts: use real routingTemplate (may be null → no-template failure)
+  if (!part.routingTemplate) return null;
+
+  const templateId = part.partType === "Assembly" ? 102 : 101;
+  return MOCK_PROJECT_ROUTING_TEMPLATES.find((t) => t.templateId === templateId) ?? null;
 }
 
 // ─── BOM tree walk + WO generation ───────────────────────────────────────────
