@@ -86,7 +86,7 @@ export default function MaterialSpecsPage() {
     >
       <div className="flex h-full min-h-0">
         <div className="w-[calc(100%-400px)] shrink-0 overflow-auto">
-          <div className="max-w-md h-full">
+          <div className="max-w-md ml-auto h-full">
             <MaterialSpecGrid
               specs={sorted}
               isLoading={isLoading}
