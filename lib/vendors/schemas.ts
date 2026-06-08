@@ -8,7 +8,7 @@ export const CreateVendorSchema = z.object({
   vendorName: z.string().min(1).max(100),
   contactInfo: z.string().max(500).nullable().optional(),
   location: z.string().max(200).nullable().optional(),
-  website: z.string().url("Website must be a valid URL").max(500).nullable().optional(),
+  website: z.string().max(500).nullable().optional(),
   leadTimeDays: z.number().int().min(0).max(365).nullable().optional(),
   notes: z.string().max(2000).nullable().optional(),
 });
@@ -18,7 +18,7 @@ export const UpdateVendorSchema = z
     vendorName: z.string().min(1).max(100).optional(),
     contactInfo: z.string().max(500).nullable().optional(),
     location: z.string().max(200).nullable().optional(),
-    website: z.string().url("Website must be a valid URL").max(500).nullable().optional(),
+    website: z.string().max(500).nullable().optional(),
     leadTimeDays: z.number().int().min(0).max(365).nullable().optional(),
     notes: z.string().max(2000).nullable().optional(),
   })
