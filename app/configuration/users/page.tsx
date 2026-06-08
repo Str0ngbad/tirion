@@ -5,16 +5,22 @@ import { ConfigurationPageChrome } from '@/components/configuration/configuratio
 import { useUsers } from '@/lib/api/users';
 import { UserGrid } from './_components/user-grid';
 import { UserSheet } from './_components/user-sheet';
-import { CreateUserModal } from './_components/create-user-modal';
+
+type SheetState =
+  | { type: 'closed' }
+  | { type: 'create' }
+  | { type: 'edit'; userId: number };
 
 export default function UsersPage() {
   const [showInactive, setShowInactive] = useState(false);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [sheetState, setSheetState] = useState<SheetState>({ type: 'closed' });
 
   const { data: users = [] } = useUsers({
     active: showInactive ? 'all' : 'true',
   });
+
+  const sheetOpen = sheetState.type !== 'closed';
+  const selectedId = sheetState.type === 'edit' ? sheetState.userId : null;
 
   return (
     <ConfigurationPageChrome
@@ -23,39 +29,37 @@ export default function UsersPage() {
       showInactive={showInactive}
       onShowInactiveChange={setShowInactive}
       addLabel="Add User"
-      onAdd={() => setCreateModalOpen(true)}
+      onAdd={() => setSheetState({ type: 'create' })}
     >
       <div className="flex h-full min-h-0">
-        <div
-          className={selectedId !== null ? 'w-[calc(100%-400px)] shrink-0 overflow-auto' : 'w-full overflow-auto'}
-        >
+        <div className={sheetOpen ? 'w-[calc(100%-400px)] shrink-0 overflow-auto' : 'w-full overflow-auto'}>
           <UserGrid
             users={users}
             selectedId={selectedId}
             showInactive={showInactive}
-            onSelectUser={setSelectedId}
+            onSelectUser={(id) => setSheetState({ type: 'edit', userId: id })}
           />
         </div>
 
-        {selectedId !== null && (
-          <div className="w-[400px] shrink-0 border-l border-border min-h-0 overflow-hidden flex flex-col">
-            <UserSheet
-              userId={selectedId}
-              allUsers={users}
-              onClose={() => setSelectedId(null)}
-            />
+        {sheetOpen && (
+          <div className="w-[400px] shrink-0 border-l border-border overflow-hidden">
+            {sheetState.type === 'create' ? (
+              <UserSheet
+                mode={{
+                  type: 'create',
+                  onCreated: (newId) => setSheetState({ type: 'edit', userId: newId }),
+                }}
+                onClose={() => setSheetState({ type: 'closed' })}
+              />
+            ) : sheetState.type === 'edit' ? (
+              <UserSheet
+                mode={{ type: 'edit', userId: sheetState.userId, allUsers: users }}
+                onClose={() => setSheetState({ type: 'closed' })}
+              />
+            ) : null}
           </div>
         )}
       </div>
-
-      <CreateUserModal
-        open={createModalOpen}
-        onClose={() => setCreateModalOpen(false)}
-        onCreated={(newId) => {
-          setCreateModalOpen(false);
-          setSelectedId(newId);
-        }}
-      />
     </ConfigurationPageChrome>
   );
 }

@@ -399,6 +399,30 @@ Solo developer reviewing own + Claude Code's commits:
 
 ---
 
+## Design Vocabulary
+
+### Active state indicator
+
+The canonical active-state indicator for entity rows across Tirion is
+a small colored dot: `h-2 w-2 rounded-full bg-emerald-500` for active,
+`bg-muted-foreground/30` for inactive. Established by Parts Grid; lives
+in `components/ui/active-indicator.tsx` as `<ActiveIndicator active={bool} />`.
+
+All configuration grids and entity lists must use this component when
+displaying active status. Do not reinvent the treatment per surface.
+
+### Create-via-Sheet pattern
+
+Configuration surfaces that have an edit Sheet use the same Sheet for
+create mode. Single Sheet component with a discriminated union prop
+(`mode: 'create' | 'edit'`). Create mode: empty fields, "Create" footer
+button, no audit log, no deactivate. On successful create, transition
+the Sheet to edit mode for the new record. This pattern was established
+on Parts Master Sheet and Users Sheet; adopt for future configuration
+surfaces.
+
+---
+
 ## Patterns to Follow
 
 ### State transitions

@@ -5,7 +5,6 @@ import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import {
   Select,
   SelectContent,
@@ -27,6 +26,7 @@ import { ProcessTypeMultiSelect } from './process-type-multi-select';
 import {
   useUser,
   useUserAuditLog,
+  useCreateUser,
   useUpdateUser,
   useDeactivateUser,
   useReactivateUser,
@@ -36,15 +36,28 @@ import {
 import { useProcessTypes } from '@/lib/api/process-types';
 import { ApiError } from '@/lib/api/client-error';
 
+type UserSheetMode =
+  | { type: 'create'; onCreated: (newUserId: number) => void }
+  | { type: 'edit'; userId: number; allUsers: UserRow[] };
+
 interface UserSheetProps {
-  userId: number;
-  allUsers: UserRow[];
+  mode: UserSheetMode;
   onClose: () => void;
 }
 
 const ROLES: UserRole[] = ['Operator', 'Lead', 'Manager', 'Admin'];
 
-export function UserSheet({ userId, allUsers, onClose }: UserSheetProps) {
+// ─── Edit mode ────────────────────────────────────────────────────────────────
+
+function EditSheet({
+  userId,
+  allUsers,
+  onClose,
+}: {
+  userId: number;
+  allUsers: UserRow[];
+  onClose: () => void;
+}) {
   const { data: user, isLoading } = useUser(userId);
   const { data: auditEntries, isLoading: auditLoading } = useUserAuditLog(userId, true);
   const { data: processTypes = [] } = useProcessTypes();
@@ -105,9 +118,6 @@ export function UserSheet({ userId, allUsers, onClose }: UserSheetProps) {
     if ((role === 'Operator' || role === 'Lead') && assignedProcessTypeIds.length === 0) {
       errors.assignedProcessTypes = 'At least one process type is required for this role';
     }
-    if (role === 'Operator' && !defaultStation.trim()) {
-      errors.defaultStation = 'Default station is required for Operator role';
-    }
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
   }
@@ -115,7 +125,6 @@ export function UserSheet({ userId, allUsers, onClose }: UserSheetProps) {
   function handleSave() {
     if (!user || !validate()) return;
 
-    // Lockout check: changing the last active Admin away from Admin
     if (user.role === 'Admin' && role !== 'Admin' && isLastActiveAdmin()) {
       setRoleLockoutDialogOpen(true);
       return;
@@ -175,7 +184,6 @@ export function UserSheet({ userId, allUsers, onClose }: UserSheetProps) {
   }
 
   const needsProcessTypes = role === 'Operator' || role === 'Lead';
-  const needsDefaultStation = role === 'Operator';
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -194,7 +202,6 @@ export function UserSheet({ userId, allUsers, onClose }: UserSheetProps) {
                 className="font-mono font-medium border-0 px-0 h-7 focus-visible:ring-0 w-auto min-w-0"
                 placeholder="username"
               />
-              <Switch checked={user.isActive} disabled />
             </div>
             <Input
               value={displayName}
@@ -220,7 +227,6 @@ export function UserSheet({ userId, allUsers, onClose }: UserSheetProps) {
 
       {/* Body */}
       <div className="flex-1 overflow-y-auto">
-        {/* Role */}
         <section className="border-b px-4 py-4">
           <Label className="text-xs">Role</Label>
           <Select value={role} onValueChange={(v) => handleRoleChange(v as UserRole)}>
@@ -235,7 +241,6 @@ export function UserSheet({ userId, allUsers, onClose }: UserSheetProps) {
           </Select>
         </section>
 
-        {/* Conditional: Assigned Process Types */}
         {needsProcessTypes && (
           <section className="border-b px-4 py-4">
             <Label className="text-xs">
@@ -258,29 +263,21 @@ export function UserSheet({ userId, allUsers, onClose }: UserSheetProps) {
           </section>
         )}
 
-        {/* Conditional: Default Station */}
-        {needsDefaultStation && (
+        {role === 'Operator' && (
           <section className="border-b px-4 py-4">
-            <Label className="text-xs">
-              Default Station <span className="text-destructive">*</span>
-            </Label>
+            <Label className="text-xs">Default Station</Label>
             <Input
               value={defaultStation}
               onChange={(e) => {
                 setDefaultStation(e.target.value);
                 markDirty();
-                setFieldErrors((p) => ({ ...p, defaultStation: '' }));
               }}
               placeholder="e.g., Line 1, Assembly Table A"
               className="mt-1"
             />
-            {fieldErrors.defaultStation && (
-              <p className="text-xs text-destructive mt-1">{fieldErrors.defaultStation}</p>
-            )}
           </section>
         )}
 
-        {/* Audit log */}
         <AuditLogSection entries={auditEntries} isLoading={auditLoading} />
       </div>
 
@@ -311,7 +308,6 @@ export function UserSheet({ userId, allUsers, onClose }: UserSheetProps) {
         </Button>
       </div>
 
-      {/* Deactivate dialog */}
       {deactivateDialogVariant === 'standard' && (
         <DeactivationDialog
           variant="standard"
@@ -331,7 +327,6 @@ export function UserSheet({ userId, allUsers, onClose }: UserSheetProps) {
         />
       )}
 
-      {/* Role-change lockout dialog */}
       <Dialog open={roleLockoutDialogOpen} onOpenChange={(o) => !o && setRoleLockoutDialogOpen(false)}>
         <DialogContent>
           <DialogHeader>
@@ -350,4 +345,182 @@ export function UserSheet({ userId, allUsers, onClose }: UserSheetProps) {
       </Dialog>
     </div>
   );
+}
+
+// ─── Create mode ─────────────────────────────────────────────────────────────
+
+function CreateSheet({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: (newUserId: number) => void;
+}) {
+  const { data: processTypes = [] } = useProcessTypes();
+  const { mutate: create, isPending } = useCreateUser();
+
+  const [userName, setUserName] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [role, setRole] = useState<UserRole>('Operator');
+  const [assignedProcessTypeIds, setAssignedProcessTypeIds] = useState<number[]>([]);
+  const [defaultStation, setDefaultStation] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  function handleRoleChange(newRole: UserRole) {
+    setRole(newRole);
+    if (newRole === 'Manager' || newRole === 'Admin') {
+      setAssignedProcessTypeIds([]);
+    }
+    if (newRole !== 'Operator') {
+      setDefaultStation('');
+    }
+    setFieldErrors({});
+  }
+
+  function validate(): boolean {
+    const errors: Record<string, string> = {};
+    if (!userName.trim()) errors.userName = 'Username is required';
+    if (!displayName.trim()) errors.displayName = 'Display name is required';
+    if ((role === 'Operator' || role === 'Lead') && assignedProcessTypeIds.length === 0) {
+      errors.assignedProcessTypes = 'At least one process type is required for this role';
+    }
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  }
+
+  function handleCreate() {
+    if (!validate()) return;
+
+    create(
+      {
+        userName: userName.trim(),
+        displayName: displayName.trim(),
+        role,
+        defaultStation: role === 'Operator' ? (defaultStation.trim() || null) : null,
+        assignedProcessTypeIds:
+          role === 'Manager' || role === 'Admin' ? [] : assignedProcessTypeIds,
+      },
+      {
+        onSuccess: (created) => {
+          onCreated(created.userId);
+        },
+        onError: (err) => {
+          if (err instanceof ApiError) {
+            if (err.errorCode === 'USER_NAME_COLLISION') {
+              setFieldErrors({ userName: 'This username is already in use' });
+            }
+          }
+        },
+      }
+    );
+  }
+
+  const needsProcessTypes = role === 'Operator' || role === 'Lead';
+
+  return (
+    <div className="flex h-full flex-col overflow-hidden">
+      {/* Header */}
+      <div className="border-b px-4 py-3 shrink-0">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <Input
+                value={userName}
+                onChange={(e) => {
+                  setUserName(e.target.value);
+                  setFieldErrors((p) => ({ ...p, userName: '' }));
+                }}
+                className="font-mono font-medium border-0 px-0 h-7 focus-visible:ring-0 w-auto min-w-0"
+                placeholder="username"
+                autoFocus
+              />
+            </div>
+            <Input
+              value={displayName}
+              onChange={(e) => {
+                setDisplayName(e.target.value);
+                setFieldErrors((p) => ({ ...p, displayName: '' }));
+              }}
+              className="text-xs text-muted-foreground border-0 px-0 h-6 focus-visible:ring-0 mt-0.5"
+              placeholder="Display name"
+            />
+          </div>
+          <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0">
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+        {(fieldErrors.userName || fieldErrors.displayName) && (
+          <p className="text-xs text-destructive mt-1">
+            {fieldErrors.userName || fieldErrors.displayName}
+          </p>
+        )}
+      </div>
+
+      {/* Body */}
+      <div className="flex-1 overflow-y-auto">
+        <section className="border-b px-4 py-4">
+          <Label className="text-xs">Role</Label>
+          <Select value={role} onValueChange={(v) => handleRoleChange(v as UserRole)}>
+            <SelectTrigger className="mt-1">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {ROLES.map((r) => (
+                <SelectItem key={r} value={r}>{r}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </section>
+
+        {needsProcessTypes && (
+          <section className="border-b px-4 py-4">
+            <Label className="text-xs">
+              Assigned Process Types <span className="text-destructive">*</span>
+            </Label>
+            <div className="mt-1">
+              <ProcessTypeMultiSelect
+                value={assignedProcessTypeIds}
+                onChange={(ids) => {
+                  setAssignedProcessTypeIds(ids);
+                  setFieldErrors((p) => ({ ...p, assignedProcessTypes: '' }));
+                }}
+                options={processTypes}
+              />
+            </div>
+            {fieldErrors.assignedProcessTypes && (
+              <p className="text-xs text-destructive mt-1">{fieldErrors.assignedProcessTypes}</p>
+            )}
+          </section>
+        )}
+
+        {role === 'Operator' && (
+          <section className="border-b px-4 py-4">
+            <Label className="text-xs">Default Station</Label>
+            <Input
+              value={defaultStation}
+              onChange={(e) => setDefaultStation(e.target.value)}
+              placeholder="e.g., Line 1, Assembly Table A"
+              className="mt-1"
+            />
+          </section>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="flex items-center justify-end border-t px-4 py-3 shrink-0">
+        <Button size="sm" onClick={handleCreate} disabled={isPending}>
+          {isPending ? 'Creating…' : 'Create'}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Public component ─────────────────────────────────────────────────────────
+
+export function UserSheet({ mode, onClose }: UserSheetProps) {
+  if (mode.type === 'create') {
+    return <CreateSheet onClose={onClose} onCreated={mode.onCreated} />;
+  }
+  return <EditSheet userId={mode.userId} allUsers={mode.allUsers} onClose={onClose} />;
 }

@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ProcessTypeChip from '@/components/process-type-chip';
+import { ActiveIndicator } from '@/components/ui/active-indicator';
 import type { ProcessTypeKey } from '@/lib/process-types';
 import type { UserRow, UserRole } from '@/lib/api/users';
 
@@ -47,99 +47,94 @@ export function UserGrid({ users, selectedId, showInactive, onSelectUser }: User
     });
   }, [users, sortKey, sortDir]);
 
-  function SortIcon({ col }: { col: SortKey }) {
-    if (col !== sortKey) return <ArrowUpDown className="ml-1 h-3 w-3 opacity-40" />;
-    return sortDir === 'asc' ? (
-      <ArrowUp className="ml-1 h-3 w-3" />
-    ) : (
-      <ArrowDown className="ml-1 h-3 w-3" />
-    );
+  function SortMark({ col }: { col: SortKey }) {
+    if (col !== sortKey) return <span className="text-[10px] text-muted-foreground/30">↕</span>;
+    return <span className="text-[10px]">{sortDir === 'asc' ? '↑' : '↓'}</span>;
   }
 
+  const colHead =
+    'text-xs font-medium uppercase tracking-wide text-muted-foreground select-none flex items-center gap-1';
+
   return (
-    <div className="overflow-auto h-full">
-      <table className="w-full text-sm border-collapse">
-        <thead className="sticky top-0 bg-background border-b">
-          <tr>
-            <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground w-36">
-              <button
-                className="flex items-center hover:text-foreground transition-colors"
-                onClick={() => handleSort('userName')}
-              >
-                Username <SortIcon col="userName" />
-              </button>
-            </th>
-            <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground w-40">
-              <button
-                className="flex items-center hover:text-foreground transition-colors"
-                onClick={() => handleSort('displayName')}
-              >
-                Display Name <SortIcon col="displayName" />
-              </button>
-            </th>
-            <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground w-28">
-              <button
-                className="flex items-center hover:text-foreground transition-colors"
-                onClick={() => handleSort('role')}
-              >
-                Role <SortIcon col="role" />
-              </button>
-            </th>
-            <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Process Types
-            </th>
-            <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground w-36">
-              Default Station
-            </th>
-            {showInactive && (
-              <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground w-20">
-                Status
-              </th>
+    <div className="h-full flex flex-col min-w-0">
+      {/* Header */}
+      <div className="flex items-center gap-3 border-b bg-muted/30 px-3 py-2 shrink-0">
+        <div className="w-8 shrink-0 flex justify-center">
+          <span className={colHead}>
+            <span className="sr-only">Active</span>
+            <span aria-hidden>●</span>
+          </span>
+        </div>
+        <div className="w-32 shrink-0">
+          <button className={colHead} onClick={() => handleSort('userName')}>
+            Username <SortMark col="userName" />
+          </button>
+        </div>
+        <div className="w-40 shrink-0">
+          <button className={colHead} onClick={() => handleSort('displayName')}>
+            Display Name <SortMark col="displayName" />
+          </button>
+        </div>
+        <div className="w-24 shrink-0">
+          <button className={colHead} onClick={() => handleSort('role')}>
+            Role <SortMark col="role" />
+          </button>
+        </div>
+        <div className="w-28 shrink-0">
+          <span className={colHead}>Station</span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <span className={colHead}>Process Types</span>
+        </div>
+      </div>
+
+      {/* Rows */}
+      <div className="flex-1 overflow-y-auto">
+        {sorted.length === 0 && (
+          <div className="flex h-32 items-center justify-center text-sm text-muted-foreground italic">
+            No users found.
+          </div>
+        )}
+        {sorted.map((user) => (
+          <button
+            key={user.userId}
+            onClick={() => onSelectUser(user.userId)}
+            className={cn(
+              'flex w-full items-center gap-3 border-b px-3 py-2.5 text-sm hover:bg-muted/50 transition-colors text-left',
+              selectedId === user.userId && 'bg-muted/70',
+              !user.isActive && 'opacity-40 hover:opacity-60'
             )}
-          </tr>
-        </thead>
-        <tbody className="divide-y">
-          {sorted.map((user) => (
-            <tr
-              key={user.userId}
-              className={cn(
-                'cursor-pointer hover:bg-muted/40',
-                selectedId === user.userId && 'bg-muted/60',
-                !user.isActive && 'opacity-50'
+          >
+            <div className="w-8 shrink-0 flex justify-center">
+              <ActiveIndicator active={user.isActive} />
+            </div>
+            <div className="w-32 shrink-0 font-mono font-medium truncate">
+              {user.userName}
+            </div>
+            <div className="w-40 shrink-0 truncate">{user.displayName}</div>
+            <div className="w-24 shrink-0 text-muted-foreground truncate">{user.role}</div>
+            <div className="w-28 shrink-0 text-xs text-muted-foreground truncate">
+              {user.defaultStation ?? <span className="text-muted-foreground/40">—</span>}
+            </div>
+            <div className="flex-1 min-w-0">
+              {user.role === 'Manager' || user.role === 'Admin' ? (
+                <span className="text-xs text-muted-foreground">All</span>
+              ) : user.assignedProcessTypes.length === 0 ? (
+                <span className="text-xs text-muted-foreground/40">—</span>
+              ) : (
+                <div className="flex flex-wrap gap-1">
+                  {user.assignedProcessTypes.map((pt) => (
+                    <ProcessTypeChip
+                      key={pt.processTypeId}
+                      processType={pt.processName as ProcessTypeKey}
+                    />
+                  ))}
+                </div>
               )}
-              onClick={() => onSelectUser(user.userId)}
-            >
-              <td className="px-4 py-2.5 font-mono font-medium text-sm">{user.userName}</td>
-              <td className="px-4 py-2.5 text-sm">{user.displayName}</td>
-              <td className="px-4 py-2.5 text-sm text-muted-foreground">{user.role}</td>
-              <td className="px-4 py-2.5">
-                {user.role === 'Manager' || user.role === 'Admin' ? (
-                  <span className="text-xs text-muted-foreground">All</span>
-                ) : user.assignedProcessTypes.length === 0 ? (
-                  <span className="text-xs text-muted-foreground/40">—</span>
-                ) : (
-                  <div className="flex flex-wrap gap-1">
-                    {user.assignedProcessTypes.map((pt) => (
-                      <ProcessTypeChip
-                        key={pt.processTypeId}
-                        processType={pt.processName as ProcessTypeKey}
-                      />
-                    ))}
-                  </div>
-                )}
-              </td>
-              <td className="px-4 py-2.5 text-xs text-muted-foreground">
-                {user.defaultStation ?? <span className="text-muted-foreground/40">—</span>}
-              </td>
-              {showInactive && (
-                <td className="px-4 py-2.5 text-xs text-muted-foreground">
-                  {user.isActive ? null : 'Inactive'}
-                </td>
-              )}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+            </div>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
