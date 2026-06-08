@@ -35,12 +35,16 @@
 - app/api/v1/process-type-sub-statuses/[id]/deactivate/route.ts — route handlers: POST
 - app/api/v1/process-type-sub-statuses/[id]/reactivate/route.ts — route handlers: POST
 - app/api/v1/process-type-sub-statuses/[id]/route.ts — route handlers: GET,PATCH
+- app/api/v1/process-type-sub-statuses/reorder/route.ts — route handlers: POST
 - app/api/v1/process-type-sub-statuses/route.ts — route handlers: GET,POST
+- app/api/v1/process-types/[id]/audit-log/route.ts — route handlers: GET
+- app/api/v1/process-types/[id]/route.ts — route handlers: GET,PATCH
 - app/api/v1/process-types/route.ts — route handlers: GET
 - app/api/v1/procurement-categories/[id]/audit-log/route.ts — route handlers: GET
 - app/api/v1/procurement-categories/[id]/deactivate/route.ts — route handlers: POST
 - app/api/v1/procurement-categories/[id]/reactivate/route.ts — route handlers: POST
 - app/api/v1/procurement-categories/[id]/route.ts — route handlers: GET,PATCH
+- app/api/v1/procurement-categories/reorder/route.ts — route handlers: POST
 - app/api/v1/procurement-categories/route.ts — route handlers: GET,POST
 - app/api/v1/routing-templates/[id]/deactivate/route.ts — route handlers: POST
 - app/api/v1/routing-templates/[id]/reactivate/route.ts — route handlers: POST
@@ -73,18 +77,17 @@
 - app/bom-editor/_components/qty-edit-cell.tsx — exports: QtyEditCell
 - app/bom-editor/_components/remove-children-confirm-dialog.tsx — exports: RemoveChildrenConfirmDialog
 - app/bom-editor/page.tsx — default export
-- app/configuration/_components/configuration-sub-nav.tsx — exports: ConfigurationSubNav
 - app/configuration/layout.tsx — default export
 - app/configuration/material-specs/_components/material-spec-grid.tsx — exports: MaterialSpecGrid
 - app/configuration/material-specs/_components/material-spec-sheet.tsx — exports: MaterialSpecSheet
+- app/configuration/material-specs/_components/roadmap-card.tsx — exports: RoadmapCard
 - app/configuration/material-specs/page.tsx — default export
 - app/configuration/page.tsx — default export
-- app/configuration/process-type-sub-statuses/_components/create-sub-status-modal.tsx — exports: CreateSubStatusModal
-- app/configuration/process-type-sub-statuses/_components/process-type-section.tsx — exports: ProcessTypeSection
-- app/configuration/process-type-sub-statuses/_components/process-type-sub-status-sheet.tsx — exports: ProcessTypeSubStatusSheet
-- app/configuration/process-type-sub-statuses/page.tsx — default export
 - app/configuration/process-types/page.tsx — default export
-- app/configuration/procurement-categories/_components/procurement-category-create-modal.tsx — exports: ProcurementCategoryCreateModal
+- app/configuration/processes/_components/process-type-section.tsx — exports: ProcessTypeSection
+- app/configuration/processes/_components/process-type-sheet.tsx — exports: ProcessTypeSheet
+- app/configuration/processes/_components/process-type-sub-status-sheet.tsx — exports: ProcessTypeSubStatusSheet
+- app/configuration/processes/page.tsx — default export
 - app/configuration/procurement-categories/_components/procurement-category-grid.tsx — exports: ProcurementCategoryGrid
 - app/configuration/procurement-categories/_components/procurement-category-sheet.tsx — exports: ProcurementCategorySheet
 - app/configuration/procurement-categories/page.tsx — default export
@@ -92,7 +95,6 @@
 - app/configuration/users/_components/user-grid.tsx — exports: UserGrid
 - app/configuration/users/_components/user-sheet.tsx — exports: UserSheet
 - app/configuration/users/page.tsx — default export
-- app/configuration/vendors/_components/vendor-create-modal.tsx — exports: VendorCreateModal
 - app/configuration/vendors/_components/vendor-grid.tsx — exports: VendorGrid
 - app/configuration/vendors/_components/vendor-sheet.tsx — exports: VendorSheet
 - app/configuration/vendors/page.tsx — default export
@@ -236,9 +238,9 @@
 - lib/api/errors.ts — exports: handleApiError
 - lib/api/material-specs.ts — exports: useCreateMaterialSpec,useDeactivateMaterialSpec,useMaterialSpec,useMaterialSpecAuditLog,useMaterialSpecs,useReactivateMaterialSpec,useUpdateMaterialSpec
 - lib/api/parts.ts — exports: useAllActiveParts,useAssemblies,useBomChildren,useBomParents,useCreatePart,useDistinctValues,usePart,usePartAuditLog,usePartOpenWos,usePartsGrid,useProcessTypes,useSetPartActive,useUpdateInventoryLocation,useUpdatePart,useUpdateStockCount
-- lib/api/process-type-sub-statuses.ts — exports: useCreateProcessTypeSubStatus,useDeactivateProcessTypeSubStatus,useProcessTypeSubStatus,useProcessTypeSubStatusAuditLog,useProcessTypeSubStatuses,useReactivateProcessTypeSubStatus,useUpdateProcessTypeSubStatus
-- lib/api/process-types.ts — exports: useProcessTypes
-- lib/api/procurement-categories.ts — exports: useCreateProcurementCategory,useDeactivateProcurementCategory,useProcurementCategories,useProcurementCategory,useProcurementCategoryAuditLog,useReactivateProcurementCategory,useUpdateProcurementCategory
+- lib/api/process-type-sub-statuses.ts — exports: useCreateProcessTypeSubStatus,useDeactivateProcessTypeSubStatus,useProcessTypeSubStatus,useProcessTypeSubStatusAuditLog,useProcessTypeSubStatuses,useReactivateProcessTypeSubStatus,useReorderProcessTypeSubStatuses,useUpdateProcessTypeSubStatus
+- lib/api/process-types.ts — exports: useProcessTypeAuditLog,useProcessTypeDetail,useProcessTypes,useUpdateProcessType
+- lib/api/procurement-categories.ts — exports: useCreateProcurementCategory,useDeactivateProcurementCategory,useProcurementCategories,useProcurementCategory,useProcurementCategoryAuditLog,useReactivateProcurementCategory,useReorderProcurementCategories,useUpdateProcurementCategory
 - lib/api/query-client.ts — exports: makeQueryClient
 - lib/api/routing-templates.ts — exports: useCreateRoutingTemplate,useDeactivateRoutingTemplate,useProcessTypes,useReactivateRoutingTemplate,useRoutingTemplate,useRoutingTemplates,useUpdateRoutingTemplate
 - lib/api/users.ts — exports: useCreateUser,useDeactivateUser,useReactivateUser,useUpdateUser,useUser,useUserAuditLog,useUsers
@@ -281,11 +283,12 @@
 - lib/parts/service.ts — exports: createPart,deactivatePart,getPart,listParts,queryPartsGrid,reactivatePart,updateInventoryLocation,updatePart,updateStockCount
 - lib/parts/types.ts
 - lib/process-type-sub-statuses/schemas.ts — exports: CreateProcessTypeSubStatusSchema,ListProcessTypeSubStatusesQuerySchema,ProcessTypeSubStatusSchema,UpdateProcessTypeSubStatusSchema
-- lib/process-type-sub-statuses/service.ts — exports: createProcessTypeSubStatus,deactivateProcessTypeSubStatus,getProcessTypeSubStatus,listProcessTypeSubStatuses,reactivateProcessTypeSubStatus,updateProcessTypeSubStatus
+- lib/process-type-sub-statuses/service.ts — exports: createProcessTypeSubStatus,deactivateProcessTypeSubStatus,getProcessTypeSubStatus,listProcessTypeSubStatuses,reactivateProcessTypeSubStatus,reorderProcessTypeSubStatuses,updateProcessTypeSubStatus
 - lib/process-type-sub-statuses/types.ts
 - lib/process-types.ts — exports: ALL_PROCESS_TYPES,PROCESS_TYPE_META
+- lib/process-types/service.ts — exports: getProcessTypeDetail,updateProcessType
 - lib/procurement-categories/schemas.ts — exports: CreateProcurementCategorySchema,ListProcurementCategoriesQuerySchema,ProcurementCategoryWithCountsSchema,ProcurementCategoryWithPartsSchema,UpdateProcurementCategorySchema
-- lib/procurement-categories/service.ts — exports: createProcurementCategory,deactivateProcurementCategory,getProcurementCategory,listProcurementCategories,reactivateProcurementCategory,updateProcurementCategory
+- lib/procurement-categories/service.ts — exports: createProcurementCategory,deactivateProcurementCategory,getProcurementCategory,listProcurementCategories,reactivateProcurementCategory,reorderProcurementCategories,updateProcurementCategory
 - lib/procurement-categories/types.ts
 - lib/routing-templates/schemas.ts — exports: CreateRoutingTemplateSchema,ListRoutingTemplatesQuerySchema,RoutingTemplateStepInputSchema,UpdateRoutingTemplateSchema
 - lib/routing-templates/service.ts — exports: createRoutingTemplate,deactivateRoutingTemplate,getRoutingTemplate,listRoutingTemplates,reactivateRoutingTemplate,updateRoutingTemplate
@@ -310,6 +313,8 @@
 - components/configuration/deactivation-dialog.tsx — exports: DeactivationDialog
 - components/configuration/reference-list.tsx — exports: ReferenceList
 - components/material-specs/material-spec-cascade-modal.tsx — exports: MaterialSpecCascadeModal
+- components/navigation/global-nav.tsx — exports: GlobalNav
+- components/navigation/navigation-config.ts — exports: NAV_CATEGORIES
 - components/process-type-chip.tsx — default export
 - components/query-provider.tsx — exports: QueryProvider
 - components/theme-provider.tsx — exports: ThemeProvider
@@ -321,6 +326,7 @@
 - components/ui/checkbox.tsx
 - components/ui/command.tsx
 - components/ui/dialog.tsx
+- components/ui/drag-handle.tsx — exports: DragHandle
 - components/ui/dropdown-menu.tsx
 - components/ui/input-group.tsx
 - components/ui/input.tsx
@@ -355,6 +361,9 @@
 - prisma/migrations/20260603023424_drop_bom_display_order/migration.sql — migration SQL
 - prisma/migrations/20260603202537_relax_part_inventory_location_unique/migration.sql — migration SQL
 - prisma/migrations/20260606000001_add_bom_unique_constraint/migration.sql — migration SQL
+- prisma/migrations/20260608000001_add_sub_status_reorder_audit_action/migration.sql — migration SQL
+- prisma/migrations/20260608000002_add_procurement_categories_reorder_audit_action/migration.sql — migration SQL
+- prisma/migrations/20260608193003_add_view_column_order/migration.sql — migration SQL
 - prisma/migrations/migration_lock.toml
 - prisma/seed.ts
 
@@ -383,6 +392,7 @@
 - spec/seed_data_spec.md — Tirion — Seed Data Spec
 - spec/state_model.md — Tirion — State Model
 - spec/state_of_spec_brief_2026-05-07.md — Tirion — State of the Spec (Re-Entry Brief)
+- spec/state_of_spec_brief_2026-06-08.md — State of Spec — Phase 1 Complete
 - spec/stock_fulfillment_view_spec.md — Tirion — Stock Fulfillment View Spec
 - spec/system_intent_and_rules.md — Tirion — System Intent and Rules
 - spec/terminology_lock.md — Tirion — Terminology Lock
