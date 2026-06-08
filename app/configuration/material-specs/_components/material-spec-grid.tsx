@@ -1,10 +1,10 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
+import { ActiveIndicator } from '@/components/ui/active-indicator';
 import type { MaterialSpecRow } from '@/lib/api/material-specs';
 
-export type SortKey = 'materialName' | 'form' | 'usedByCount';
+export type SortKey = 'isActive' | 'materialName' | 'form' | 'usedByCount';
 
 interface MaterialSpecGridProps {
   specs: MaterialSpecRow[];
@@ -78,6 +78,15 @@ export function MaterialSpecGrid({
     <div className="h-full flex flex-col">
       {/* Header */}
       <div className="flex items-center gap-3 border-b bg-muted/30 px-4 py-2 shrink-0">
+        <div className="w-14 shrink-0 flex justify-center">
+          <SortHeader
+            label="Active"
+            sortKey="isActive"
+            activeSortKey={sortKey}
+            sortDir={sortDir}
+            onSort={onSort}
+          />
+        </div>
         <div className="flex-1 min-w-0">
           <SortHeader
             label="Material"
@@ -87,7 +96,7 @@ export function MaterialSpecGrid({
             onSort={onSort}
           />
         </div>
-        <div className="w-40 shrink-0">
+        <div className="w-32 shrink-0">
           <SortHeader
             label="Form"
             sortKey="form"
@@ -96,7 +105,7 @@ export function MaterialSpecGrid({
             onSort={onSort}
           />
         </div>
-        <div className="w-24 shrink-0">
+        <div className="w-20 shrink-0">
           <SortHeader
             label="Used By"
             sortKey="usedByCount"
@@ -115,23 +124,21 @@ export function MaterialSpecGrid({
             key={spec.materialSpecId}
             onClick={() => onSelect(spec.materialSpecId)}
             className={cn(
-              'flex w-full items-start gap-3 border-b px-4 py-2.5 text-sm hover:bg-muted/50 transition-colors text-left',
+              'flex w-full items-center gap-3 border-b px-4 py-2.5 text-sm hover:bg-muted/50 transition-colors text-left',
               selectedId === spec.materialSpecId && 'bg-muted/70',
               !spec.isActive && 'opacity-40 hover:opacity-60'
             )}
           >
-            <div className="flex-1 min-w-0 flex items-center gap-2">
-              <span className="truncate font-medium">{spec.materialName}</span>
-              {!spec.isActive && (
-                <Badge variant="secondary" className="shrink-0 text-[10px] px-1 py-0">
-                  Inactive
-                </Badge>
-              )}
+            <div className="w-14 shrink-0 flex justify-center">
+              <ActiveIndicator active={spec.isActive} />
             </div>
-            <div className="w-40 shrink-0 text-muted-foreground text-xs truncate">
+            <div className="flex-1 min-w-0">
+              <span className="truncate font-medium">{spec.materialName}</span>
+            </div>
+            <div className="w-32 shrink-0 text-muted-foreground text-xs truncate">
               {spec.form}
             </div>
-            <div className="w-24 shrink-0 text-right text-muted-foreground text-xs">
+            <div className="w-20 shrink-0 text-right text-muted-foreground text-xs">
               {spec.usedByCount}
             </div>
           </button>

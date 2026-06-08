@@ -14,6 +14,8 @@ function sortSpecs(specs: MaterialSpecRow[], key: SortKey, dir: 'asc' | 'desc'):
     let cmp: number;
     if (key === 'usedByCount') {
       cmp = a.usedByCount - b.usedByCount;
+    } else if (key === 'isActive') {
+      cmp = (a.isActive === b.isActive ? 0 : a.isActive ? -1 : 1);
     } else {
       cmp = a[key].localeCompare(b[key]);
     }
@@ -84,7 +86,7 @@ export default function MaterialSpecsPage() {
     >
       <div className="flex h-full min-h-0">
         <div className="w-[calc(100%-400px)] shrink-0 overflow-auto">
-          <div className="max-w-4xl h-full">
+          <div className="max-w-md h-full">
             <MaterialSpecGrid
               specs={sorted}
               isLoading={isLoading}
@@ -97,14 +99,18 @@ export default function MaterialSpecsPage() {
           </div>
         </div>
 
-        {selectedId !== null && (
-          <div className="w-[400px] shrink-0 border-l border-border overflow-hidden">
+        <div className="w-[400px] shrink-0 border-l border-border h-full flex flex-col overflow-hidden">
+          {selectedId === null ? (
+            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+              Select a row to view details
+            </div>
+          ) : (
             <MaterialSpecSheet
               materialSpecId={selectedId}
               onClose={() => setSelectedId(null)}
             />
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {createModalOpen && (
