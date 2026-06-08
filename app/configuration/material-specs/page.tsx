@@ -6,6 +6,7 @@ import { useMaterialSpecs, useCreateMaterialSpec } from '@/lib/api/material-spec
 import { MaterialSpecGrid, type SortKey } from './_components/material-spec-grid';
 import { MaterialSpecSheet } from './_components/material-spec-sheet';
 import { MaterialSpecCascadeModal } from '@/components/material-specs/material-spec-cascade-modal';
+import { RoadmapCard } from './_components/roadmap-card';
 import type { MaterialSpecRow } from '@/lib/api/material-specs';
 import { ApiError } from '@/lib/api/client-error';
 
@@ -85,8 +86,11 @@ export default function MaterialSpecsPage() {
       onAdd={() => setCreateModalOpen(true)}
     >
       <div className="flex h-full min-h-0">
-        <div className="w-[calc(100%-400px)] shrink-0 overflow-auto">
-          <div className="max-w-md ml-auto h-full">
+        <div className="w-[calc(100%-400px)] shrink-0 flex h-full min-h-0">
+          <div className="flex-1 min-w-0 flex items-center justify-center p-8">
+            <RoadmapCard />
+          </div>
+          <div className="max-w-md h-full border-l border-border overflow-auto">
             <MaterialSpecGrid
               specs={sorted}
               isLoading={isLoading}
