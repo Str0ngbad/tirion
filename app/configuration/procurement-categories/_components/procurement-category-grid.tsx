@@ -22,49 +22,11 @@ import { DragHandle } from '@/components/ui/drag-handle';
 import { ActiveIndicator } from '@/components/ui/active-indicator';
 import { useReorderProcurementCategories, type ProcurementCategoryRow } from '@/lib/api/procurement-categories';
 
-type SortKey = 'categoryCode' | 'categoryName' | 'usedByCount';
-
 interface ProcurementCategoryGridProps {
   categories: ProcurementCategoryRow[];
   isLoading: boolean;
   selectedId: number | null;
-  sortKey: SortKey;
-  sortDir: 'asc' | 'desc';
-  onSort: (key: SortKey) => void;
   onSelect: (id: number) => void;
-}
-
-function SortHeader({
-  label,
-  sortKey,
-  activeSortKey,
-  sortDir,
-  onSort,
-  className,
-}: {
-  label: string;
-  sortKey: SortKey;
-  activeSortKey: SortKey;
-  sortDir: 'asc' | 'desc';
-  onSort: (key: SortKey) => void;
-  className?: string;
-}) {
-  const active = activeSortKey === sortKey;
-  return (
-    <button
-      onClick={() => onSort(sortKey)}
-      className={cn(
-        'flex items-center gap-1 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground transition-colors',
-        active && 'text-foreground',
-        className
-      )}
-    >
-      {label}
-      <span className="text-[10px]">
-        {active ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}
-      </span>
-    </button>
-  );
 }
 
 interface SortableCategoryRowProps {
@@ -127,9 +89,6 @@ export function ProcurementCategoryGrid({
   categories,
   isLoading,
   selectedId,
-  sortKey,
-  sortDir,
-  onSort,
   onSelect,
 }: ProcurementCategoryGridProps) {
   const sensors = useSensors(
@@ -173,44 +132,23 @@ export function ProcurementCategoryGrid({
 
   return (
     <div className="h-full flex flex-col">
-      {/* Header */}
+      {/* Header — display-only labels, no sort controls */}
       <div className="flex items-center gap-3 border-b bg-muted/30 px-4 py-2 shrink-0">
         <div className="w-6 shrink-0" />
         <div className="w-14 shrink-0 text-xs font-medium uppercase tracking-wide text-muted-foreground text-center">
           Active
         </div>
-        <div className="w-20 shrink-0">
-          <SortHeader
-            label="Code"
-            sortKey="categoryCode"
-            activeSortKey={sortKey}
-            sortDir={sortDir}
-            onSort={onSort}
-          />
+        <div className="w-20 shrink-0 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          Code
         </div>
-        <div className="w-40 shrink-0">
-          <SortHeader
-            label="Name"
-            sortKey="categoryName"
-            activeSortKey={sortKey}
-            sortDir={sortDir}
-            onSort={onSort}
-          />
+        <div className="w-40 shrink-0 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          Name
         </div>
-        <div className="flex-1 min-w-0">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Description
-          </span>
+        <div className="flex-1 min-w-0 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          Description
         </div>
-        <div className="w-20 shrink-0">
-          <SortHeader
-            label="Used By"
-            sortKey="usedByCount"
-            activeSortKey={sortKey}
-            sortDir={sortDir}
-            onSort={onSort}
-            className="justify-end"
-          />
+        <div className="w-20 shrink-0 text-xs font-medium uppercase tracking-wide text-muted-foreground text-right">
+          Used By
         </div>
       </div>
 

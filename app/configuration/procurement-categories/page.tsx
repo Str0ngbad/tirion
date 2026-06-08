@@ -5,57 +5,25 @@ import { ConfigurationPageChrome } from '@/components/configuration/configuratio
 import { useProcurementCategories } from '@/lib/api/procurement-categories';
 import { ProcurementCategoryGrid } from './_components/procurement-category-grid';
 import { ProcurementCategorySheet } from './_components/procurement-category-sheet';
-import type { ProcurementCategoryRow } from '@/lib/api/procurement-categories';
-
-type SortKey = 'categoryCode' | 'categoryName' | 'usedByCount';
 
 type SheetState =
   | { type: 'closed' }
   | { type: 'create' }
   | { type: 'edit'; categoryId: number };
 
-function sortCategories(
-  categories: ProcurementCategoryRow[],
-  key: SortKey,
-  dir: 'asc' | 'desc'
-): ProcurementCategoryRow[] {
-  return [...categories].sort((a, b) => {
-    const aVal = a[key];
-    const bVal = b[key];
-    let cmp: number;
-    if (typeof aVal === 'string' && typeof bVal === 'string') {
-      cmp = aVal.localeCompare(bVal);
-    } else {
-      cmp = (aVal as number) - (bVal as number);
-    }
-    return dir === 'asc' ? cmp : -cmp;
-  });
-}
-
 export default function ProcurementCategoriesPage() {
   const [showInactive, setShowInactive] = useState(false);
   const [sheetState, setSheetState] = useState<SheetState>({ type: 'closed' });
-  const [sortKey, setSortKey] = useState<SortKey>('categoryCode');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
   const { data: categories = [], isLoading } = useProcurementCategories({
     active: showInactive ? 'all' : 'true',
   });
 
-  // When no column sort is active, preserve displayOrder from the server
+  // Always render in displayOrder ascending; drag-to-reorder is the sole ordering mechanism
   const sorted = useMemo(
-    () => sortCategories(categories, sortKey, sortDir),
-    [categories, sortKey, sortDir]
+    () => [...categories].sort((a, b) => a.displayOrder - b.displayOrder),
+    [categories]
   );
-
-  function handleSort(key: SortKey) {
-    if (key === sortKey) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSortKey(key);
-      setSortDir('asc');
-    }
-  }
 
   const selectedId = sheetState.type === 'edit' ? sheetState.categoryId : null;
 
@@ -75,9 +43,6 @@ export default function ProcurementCategoriesPage() {
               categories={sorted}
               isLoading={isLoading}
               selectedId={selectedId}
-              sortKey={sortKey}
-              sortDir={sortDir}
-              onSort={handleSort}
               onSelect={(id) =>
                 setSheetState((prev) =>
                   prev.type === 'edit' && prev.categoryId === id
