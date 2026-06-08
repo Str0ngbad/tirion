@@ -466,11 +466,12 @@ model AuditAction {
 }
 
 model View {
-  viewId         Int     @id @default(autoincrement())
-  name           String  @unique
-  isDefault      Boolean @default(false)
-  isLocked       Boolean @default(false)
+  viewId         Int      @id @default(autoincrement())
+  name           String   @unique
+  isDefault      Boolean  @default(false)
+  isLocked       Boolean  @default(false)
   visibleColumns Json
+  columnOrder    Json?
   defaultSort    Json
   filters        Json
 

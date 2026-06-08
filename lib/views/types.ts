@@ -90,6 +90,7 @@ export type ViewRow = {
   isDefault: boolean;
   isLocked: boolean;
   visibleColumns: string[];
+  columnOrder: string[] | null;
   defaultSort: SortSpec[];
   filters: FilterObject[];
 };
@@ -97,6 +98,7 @@ export type ViewRow = {
 export type CreateViewInput = {
   name: string;
   visibleColumns: string[];
+  columnOrder?: string[];
   defaultSort: SortSpec[];
   filters: FilterObject[];
 };

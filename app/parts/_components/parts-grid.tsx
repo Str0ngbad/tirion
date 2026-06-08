@@ -3,6 +3,21 @@
 import React, { useMemo, useContext, createContext } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { ArrowUpIcon, ArrowDownIcon } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  horizontalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import type { SortSpec } from "@/lib/views/types";
 import { cn } from "@/lib/utils";
 import type { PartRowClient } from "@/lib/api/parts";
@@ -253,11 +268,113 @@ const PartRowComponent = React.memo(function PartRowComponent({
   );
 });
 
+// ─── Sortable column header ────────────────────────────────────────────────────
+
+type SortableColumnHeaderProps = {
+  col: Column;
+  sortEntry: SortSpec | undefined;
+  sortIndex: number;
+  showPriority: boolean;
+  filterByColumn: Map<string, FilterObject>;
+  sorts: SortSpec[];
+  onSortSet: (columnId: ColumnId, direction: "asc" | "desc") => void;
+  onAddToSort: (columnId: ColumnId) => void;
+  onClearThisSort: (columnId: ColumnId) => void;
+  onHideColumn: (columnId: ColumnId) => void;
+  onApplyFilter: (filter: FilterObject) => void;
+  onRemoveFilter: (column: string) => void;
+};
+
+function SortableColumnHeader({
+  col,
+  sortEntry,
+  sortIndex,
+  showPriority,
+  filterByColumn,
+  sorts,
+  onSortSet,
+  onAddToSort,
+  onClearThisSort,
+  onHideColumn,
+  onApplyFilter,
+  onRemoveFilter,
+}: SortableColumnHeaderProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: col.id });
+
+  const dragStyle: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 10 : undefined,
+    width: col.width,
+    minWidth: col.width,
+    maxWidth: col.width,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={dragStyle}
+      className={cn(
+        "group/header overflow-hidden select-none whitespace-nowrap px-3 py-2 text-xs font-semibold text-foreground cursor-grab active:cursor-grabbing",
+        col.align === "right" && "text-right",
+        col.align === "center" && "text-center"
+      )}
+      {...attributes}
+      {...listeners}
+    >
+      <div
+        className={cn(
+          "flex items-center gap-1",
+          col.align === "right" && "justify-end",
+          col.align === "center" && "justify-center"
+        )}
+      >
+        <span className="leading-none">{col.label}</span>
+        {sortEntry && (
+          <span className="inline-flex items-center gap-0.5 text-foreground/60">
+            {sortEntry.direction === "asc"
+              ? <ArrowUpIcon className="h-3 w-3 shrink-0" />
+              : <ArrowDownIcon className="h-3 w-3 shrink-0" />}
+            {showPriority && (
+              <span className="text-[10px] font-medium leading-none tabular-nums">
+                {sortIndex + 1}
+              </span>
+            )}
+          </span>
+        )}
+        {/* Stop pointer events from bubbling into the drag listener so
+            the menu can open on a simple click without engaging drag. */}
+        <span onPointerDown={(e) => e.stopPropagation()}>
+          <ColumnHeaderMenu
+            columnId={col.id}
+            label={col.label}
+            sortable={col.sortable}
+            filterable={col.filterable}
+            columnDataType={col.dataType}
+            sorts={sorts}
+            existingFilter={filterByColumn.get(col.id) ?? null}
+            onSortAsc={() => onSortSet(col.id, "asc")}
+            onSortDesc={() => onSortSet(col.id, "desc")}
+            onAddToSort={() => onAddToSort(col.id)}
+            onClearThisSort={() => onClearThisSort(col.id)}
+            onHideColumn={() => onHideColumn(col.id)}
+            onApplyFilter={onApplyFilter}
+            onRemoveFilter={() => onRemoveFilter(col.id)}
+          />
+        </span>
+      </div>
+    </div>
+  );
+}
+
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 type Props = {
   rows: PartRowClient[];
   visibleColumns: string[];
+  columnOrder: string[] | null;
   sorts: SortSpec[];
   condensed: boolean;
   selectedPartId: number | null;
@@ -266,7 +383,7 @@ type Props = {
   onSelectPart: (partId: number) => void;
   onStockCountChange: (partId: number, value: number) => void;
   onInventoryLocationChange: (partId: number, value: string | null) => void | Promise<void>;
-  onSortToggle: (columnId: ColumnId, addToStack: boolean) => void;
+  onColumnReorder: (newOrder: string[]) => void;
   onSortSet: (columnId: ColumnId, direction: "asc" | "desc") => void;
   onAddToSort: (columnId: ColumnId) => void;
   onClearThisSort: (columnId: ColumnId) => void;
@@ -280,6 +397,7 @@ type Props = {
 export default function PartsGrid({
   rows,
   visibleColumns,
+  columnOrder,
   sorts,
   condensed,
   selectedPartId,
@@ -288,7 +406,7 @@ export default function PartsGrid({
   onSelectPart,
   onStockCountChange,
   onInventoryLocationChange,
-  onSortToggle,
+  onColumnReorder,
   onSortSet,
   onAddToSort,
   onClearThisSort,
@@ -296,15 +414,32 @@ export default function PartsGrid({
   onApplyFilter,
   onRemoveFilter,
 }: Props) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
+
   const columns = useMemo(() => {
     const visibleSet = new Set(visibleColumns);
-    return ALL_COLUMNS
+    const filtered = ALL_COLUMNS
       .filter((c) => visibleSet.has(c.id))
-      .map((c) => c.id === "routing"
-        ? { ...c, width: condensed ? 120 : 400 }
-        : c
-      );
-  }, [visibleColumns, condensed]);
+      .map((c) => c.id === "routing" ? { ...c, width: condensed ? 120 : 400 } : c);
+
+    if (!columnOrder || columnOrder.length === 0) return filtered;
+
+    const idToCol = new Map(filtered.map((c) => [c.id, c]));
+    const ordered: typeof filtered = [];
+    const seen = new Set<string>();
+
+    for (const id of columnOrder) {
+      const col = idToCol.get(id as ColumnId);
+      if (col) { ordered.push(col); seen.add(id); }
+    }
+    for (const col of filtered) {
+      if (!seen.has(col.id)) ordered.push(col);
+    }
+
+    return ordered;
+  }, [visibleColumns, condensed, columnOrder]);
 
   const totalWidth = useMemo(
     () => columns.reduce((sum, c) => sum + c.width, 0),
@@ -317,6 +452,15 @@ export default function PartsGrid({
   );
 
   const showPriority = sorts.length > 1;
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = columns.findIndex((c) => c.id === active.id);
+    const newIndex = columns.findIndex((c) => c.id === over.id);
+    const reordered = arrayMove(columns, oldIndex, newIndex);
+    onColumnReorder(reordered.map((c) => c.id));
+  }
 
   const cellCallbacks = useMemo<CellCallbacks>(
     () => ({ onStockCountChange, onInventoryLocationChange }),
@@ -340,69 +484,40 @@ export default function PartsGrid({
           role="rowgroup"
           className="sticky top-0 z-10 bg-muted border-b border-border"
         >
-          <div role="row" className="flex">
-            {columns.map((col) => {
-              const sortEntry = sorts.find((s) => s.column === col.id);
-              const sortIndex = sortEntry ? sorts.indexOf(sortEntry) : -1;
-
-              return (
-                <div
-                  key={col.id}
-                  role="columnheader"
-                  style={{ width: col.width, minWidth: col.width, maxWidth: col.width }}
-                  className={cn(
-                    "group/header overflow-hidden select-none whitespace-nowrap px-3 py-2 text-xs font-semibold text-foreground",
-                    col.align === "right" && "text-right",
-                    col.align === "center" && "text-center"
-                  )}
-                >
-                  <div
-                    className={cn(
-                      "flex items-center gap-1",
-                      col.align === "right" && "justify-end",
-                      col.align === "center" && "justify-center"
-                    )}
-                  >
-                    <button
-                      className="leading-none text-foreground hover:text-foreground/70 transition-colors"
-                      onClick={(e) => col.sortable && onSortToggle(col.id, e.shiftKey)}
-                      disabled={!col.sortable}
-                    >
-                      {col.label}
-                    </button>
-                    {sortEntry && (
-                      <span className="inline-flex items-center gap-0.5 text-foreground/60">
-                        {sortEntry.direction === "asc"
-                          ? <ArrowUpIcon className="h-3 w-3 shrink-0" />
-                          : <ArrowDownIcon className="h-3 w-3 shrink-0" />}
-                        {showPriority && (
-                          <span className="text-[10px] font-medium leading-none tabular-nums">
-                            {sortIndex + 1}
-                          </span>
-                        )}
-                      </span>
-                    )}
-                    <ColumnHeaderMenu
-                      columnId={col.id}
-                      label={col.label}
-                      sortable={col.sortable}
-                      filterable={col.filterable}
-                      columnDataType={col.dataType}
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={columns.map((c) => c.id)}
+              strategy={horizontalListSortingStrategy}
+            >
+              <div role="row" className="flex">
+                {columns.map((col) => {
+                  const sortEntry = sorts.find((s) => s.column === col.id);
+                  const sortIndex = sortEntry ? sorts.indexOf(sortEntry) : -1;
+                  return (
+                    <SortableColumnHeader
+                      key={col.id}
+                      col={col}
+                      sortEntry={sortEntry}
+                      sortIndex={sortIndex}
+                      showPriority={showPriority}
+                      filterByColumn={filterByColumn}
                       sorts={sorts}
-                      existingFilter={filterByColumn.get(col.id) ?? null}
-                      onSortAsc={() => onSortSet(col.id, "asc")}
-                      onSortDesc={() => onSortSet(col.id, "desc")}
-                      onAddToSort={() => onAddToSort(col.id)}
-                      onClearThisSort={() => onClearThisSort(col.id)}
-                      onHideColumn={() => onHideColumn(col.id)}
+                      onSortSet={onSortSet}
+                      onAddToSort={onAddToSort}
+                      onClearThisSort={onClearThisSort}
+                      onHideColumn={onHideColumn}
                       onApplyFilter={onApplyFilter}
-                      onRemoveFilter={() => onRemoveFilter(col.id)}
+                      onRemoveFilter={onRemoveFilter}
                     />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                  );
+                })}
+              </div>
+            </SortableContext>
+          </DndContext>
         </div>
 
         {/* Virtual body */}

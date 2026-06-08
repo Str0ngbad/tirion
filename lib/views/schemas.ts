@@ -57,6 +57,7 @@ export const FilterSchema = z.discriminatedUnion("operator", [
 export const CreateViewSchema = z.object({
   name: z.string().min(1).max(30),
   visibleColumns: z.array(z.string()).min(1),
+  columnOrder: z.array(z.string()).optional(),
   defaultSort: z.array(SortSpecSchema),
   filters: z.array(FilterSchema),
 });
@@ -65,6 +66,7 @@ export const UpdateViewSchema = z
   .object({
     name: z.string().min(1).max(30).optional(),
     visibleColumns: z.array(z.string()).min(1).optional(),
+    columnOrder: z.array(z.string()).optional(),
     defaultSort: z.array(SortSpecSchema).optional(),
     filters: z.array(FilterSchema).optional(),
   })

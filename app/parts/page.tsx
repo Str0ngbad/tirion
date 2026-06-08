@@ -116,6 +116,7 @@ function PartsPageInner() {
   // Draft overrides (null = no override, use view's saved state).
   const [draftSorts, setDraftSorts] = useState<SortSpec[] | null>(null);
   const [draftVisibleColumns, setDraftVisibleColumns] = useState<string[] | null>(null);
+  const [draftColumnOrder, setDraftColumnOrder] = useState<string[] | null>(null);
   const [draftFilters, setDraftFilters] = useState<FilterObject[] | null>(null);
 
   // Bidirectional dirty: compares current state against the View's saved state.
@@ -125,16 +126,23 @@ function PartsPageInner() {
     const currentSorts = draftSorts ?? activeView.defaultSort;
     const currentFilters = draftFilters ?? activeView.filters;
     const currentColumns = draftVisibleColumns ?? activeView.visibleColumns;
+    const currentOrder = draftColumnOrder ?? activeView.columnOrder ?? [];
     return (
       !sortSpecsEqual(currentSorts, activeView.defaultSort) ||
       !filterObjectsEqual(currentFilters, activeView.filters) ||
-      !columnsEqual(currentColumns, activeView.visibleColumns)
+      !columnsEqual(currentColumns, activeView.visibleColumns) ||
+      !columnsEqual(currentOrder, activeView.columnOrder ?? [])
     );
-  }, [activeView, draftSorts, draftFilters, draftVisibleColumns]);
+  }, [activeView, draftSorts, draftFilters, draftVisibleColumns, draftColumnOrder]);
 
   const effectiveVisibleColumns = useMemo<string[]>(
     () => draftVisibleColumns ?? activeView?.visibleColumns ?? [],
     [draftVisibleColumns, activeView]
+  );
+
+  const effectiveColumnOrder = useMemo<string[] | null>(
+    () => draftColumnOrder ?? activeView?.columnOrder ?? null,
+    [draftColumnOrder, activeView]
   );
 
   const effectiveFilters = useMemo<FilterObject[]>(
@@ -270,6 +278,7 @@ function PartsPageInner() {
     setActiveViewId(viewId);
     setDraftSorts(null);
     setDraftVisibleColumns(null);
+    setDraftColumnOrder(null);
     setDraftFilters(null);
     setSaveAsMode(false);
     setSaveAsName("");
@@ -280,6 +289,7 @@ function PartsPageInner() {
     const update: Parameters<typeof updateView.mutate>[0]["input"] = {};
     if (draftSorts !== null) update.defaultSort = draftSorts;
     if (draftVisibleColumns !== null) update.visibleColumns = draftVisibleColumns;
+    if (draftColumnOrder !== null) update.columnOrder = draftColumnOrder;
     if (draftFilters !== null) update.filters = draftFilters;
     updateView.mutate(
       { id: activeViewId, input: update },
@@ -287,6 +297,7 @@ function PartsPageInner() {
         onSuccess: () => {
           setDraftSorts(null);
           setDraftVisibleColumns(null);
+          setDraftColumnOrder(null);
           setDraftFilters(null);
           toast.success("View saved");
         },
@@ -303,6 +314,7 @@ function PartsPageInner() {
       {
         name,
         visibleColumns: effectiveVisibleColumns.length > 0 ? effectiveVisibleColumns : activeView.visibleColumns,
+        columnOrder: draftColumnOrder ?? activeView.columnOrder ?? undefined,
         defaultSort: draftSorts ?? activeView.defaultSort,
         filters: effectiveFilters,
       },
@@ -311,6 +323,7 @@ function PartsPageInner() {
           setActiveViewId(newView.viewId);
           setDraftSorts(null);
           setDraftVisibleColumns(null);
+          setDraftColumnOrder(null);
           setDraftFilters(null);
           setSaveAsMode(false);
           setSaveAsName("");
@@ -324,6 +337,7 @@ function PartsPageInner() {
   function handleRevert() {
     setDraftSorts(null);
     setDraftVisibleColumns(null);
+    setDraftColumnOrder(null);
     setDraftFilters(null);
     setSaveAsMode(false);
     setSaveAsName("");
@@ -380,6 +394,10 @@ function PartsPageInner() {
       return base.filter((s) => s.column !== columnId);
     });
   }, [effectiveSorts]);
+
+  const handleColumnReorder = useCallback((newOrder: string[]) => {
+    setDraftColumnOrder(newOrder);
+  }, []);
 
   const handleReorderSorts = useCallback((sorts: SortSpec[]) => {
     setDraftSorts(sorts);
@@ -685,6 +703,7 @@ function PartsPageInner() {
               <PartsGrid
                 rows={displayRows}
                 visibleColumns={effectiveVisibleColumns}
+                columnOrder={effectiveColumnOrder}
                 sorts={effectiveSorts}
                 condensed={condensed}
                 selectedPartId={selectedPartId}
@@ -697,7 +716,7 @@ function PartsPageInner() {
                 }}
                 onStockCountChange={handleStockCountChange}
                 onInventoryLocationChange={handleInventoryLocationChange}
-                onSortToggle={handleSortToggle}
+                onColumnReorder={handleColumnReorder}
                 onSortSet={handleSortSet}
                 onAddToSort={handleAddToSort}
                 onClearThisSort={handleClearThisSort}

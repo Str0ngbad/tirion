@@ -22,6 +22,7 @@ function parseViewRow(raw: {
   isDefault: boolean;
   isLocked: boolean;
   visibleColumns: Prisma.JsonValue;
+  columnOrder: Prisma.JsonValue;
   defaultSort: Prisma.JsonValue;
   filters: Prisma.JsonValue;
 }): ViewRow {
@@ -31,6 +32,7 @@ function parseViewRow(raw: {
     isDefault: raw.isDefault,
     isLocked: raw.isLocked,
     visibleColumns: raw.visibleColumns as string[],
+    columnOrder: raw.columnOrder as string[] | null,
     defaultSort: raw.defaultSort as SortSpec[],
     filters: raw.filters as FilterObject[],
   };
@@ -63,6 +65,7 @@ export async function createView(
           data: {
             name: input.name,
             visibleColumns: input.visibleColumns,
+            ...(input.columnOrder !== undefined && { columnOrder: input.columnOrder }),
             defaultSort: input.defaultSort,
             filters: input.filters as Prisma.InputJsonValue,
             isDefault: false,
@@ -118,6 +121,7 @@ export async function updateView(
           data: {
             ...(input.name !== undefined && { name: input.name }),
             ...(input.visibleColumns !== undefined && { visibleColumns: input.visibleColumns }),
+            ...(input.columnOrder !== undefined && { columnOrder: input.columnOrder }),
             ...(input.defaultSort !== undefined && { defaultSort: input.defaultSort }),
             ...(input.filters !== undefined && { filters: input.filters as Prisma.InputJsonValue }),
           },
