@@ -201,6 +201,7 @@ async function seedAuditActions() {
     { actionName: "ProcessTypeSubStatusUpdated", category: "Configuration", description: "ProcessTypeSubStatus attribute fields edited" },
     { actionName: "ProcessTypeSubStatusDeactivated", category: "Configuration", description: "ProcessTypeSubStatus isActive set to false" },
     { actionName: "ProcessTypeSubStatusReactivated", category: "Configuration", description: "ProcessTypeSubStatus isActive restored to true" },
+    { actionName: "ProcessTypeSubStatusesReordered", category: "Configuration", description: "ProcessTypeSubStatus displayOrder values updated via drag-to-reorder" },
   ];
 
   for (const aa of auditActions) {

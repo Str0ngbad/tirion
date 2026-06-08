@@ -75,7 +75,6 @@ function CreateSubStatusSheet({
 }: CreateSubStatusSheetProps) {
   const [subStatusName, setSubStatusName] = useState('');
   const [description, setDescription] = useState('');
-  const [displayOrder, setDisplayOrder] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const { mutate: create, isPending } = useCreateProcessTypeSubStatus();
@@ -100,14 +99,13 @@ function CreateSubStatusSheet({
     }
 
     const maxOrder = existing.reduce((max, s) => Math.max(max, s.displayOrder), 0);
-    const order = displayOrder ? parseInt(displayOrder, 10) : maxOrder + 1;
 
     create(
       {
         processTypeId,
         subStatusName: subStatusName.trim(),
         description: description.trim() || null,
-        displayOrder: isNaN(order) ? maxOrder + 1 : order,
+        displayOrder: maxOrder + 1,
       },
       {
         onSuccess: (created) => {
@@ -178,21 +176,6 @@ function CreateSubStatusSheet({
             />
           </div>
 
-          <div className="w-32">
-            <Label htmlFor="create-order" className="text-xs">
-              Display Order
-            </Label>
-            <Input
-              id="create-order"
-              type="number"
-              min={0}
-              value={displayOrder}
-              onChange={(e) => setDisplayOrder(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-              placeholder="Auto"
-              className="mt-1"
-            />
-          </div>
         </section>
       </div>
 
@@ -229,7 +212,6 @@ function EditSubStatusSheet({ subStatusId, onClose }: EditSubStatusSheetProps) {
 
   const [subStatusName, setSubStatusName] = useState('');
   const [description, setDescription] = useState('');
-  const [displayOrder, setDisplayOrder] = useState('');
   const [isDirty, setIsDirty] = useState(false);
   const [deactivateDialogOpen, setDeactivateDialogOpen] = useState(false);
 
@@ -237,7 +219,6 @@ function EditSubStatusSheet({ subStatusId, onClose }: EditSubStatusSheetProps) {
     if (subStatus) {
       setSubStatusName(subStatus.subStatusName);
       setDescription(subStatus.description ?? '');
-      setDisplayOrder(String(subStatus.displayOrder));
       setIsDirty(false);
     }
   }, [subStatus]);
@@ -248,14 +229,12 @@ function EditSubStatusSheet({ subStatusId, onClose }: EditSubStatusSheetProps) {
 
   function handleSave() {
     if (!subStatus) return;
-    const order = parseInt(displayOrder, 10);
     update(
       {
         id: subStatusId,
         input: {
           subStatusName: subStatusName.trim(),
           description: description.trim() || null,
-          displayOrder: isNaN(order) ? subStatus.displayOrder : order,
         },
       },
       {
@@ -326,19 +305,6 @@ function EditSubStatusSheet({ subStatusId, onClose }: EditSubStatusSheetProps) {
             />
           </div>
 
-          <div className="w-28">
-            <Label className="text-xs">Display Order</Label>
-            <Input
-              type="number"
-              min={0}
-              value={displayOrder}
-              onChange={(e) => {
-                setDisplayOrder(e.target.value);
-                markDirty();
-              }}
-              className="mt-1"
-            />
-          </div>
         </section>
 
         <section className="border-b px-4 py-4">

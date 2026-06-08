@@ -248,6 +248,42 @@ export async function updateProcessTypeSubStatus(
   });
 }
 
+export async function reorderProcessTypeSubStatuses(
+  updates: Array<{ id: number; displayOrder: number }>,
+  actorUserId: number
+): Promise<void> {
+  if (updates.length === 0) return;
+
+  const auditAction = await prisma.auditAction.findUnique({
+    where: { actionName: "ProcessTypeSubStatusesReordered" },
+  });
+  if (auditAction === null) {
+    throw new Error("AuditAction not found for action: ProcessTypeSubStatusesReordered");
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await Promise.all(
+      updates.map(({ id, displayOrder }) =>
+        tx.processTypeSubStatus.update({
+          where: { processTypeSubStatusId: id },
+          data: { displayOrder },
+        })
+      )
+    );
+
+    await tx.auditLog.create({
+      data: {
+        entityType: "ProcessTypeSubStatus",
+        entityId: updates[0]!.id,
+        auditActionId: auditAction.auditActionId,
+        changedByUserId: actorUserId,
+        previousValue: Prisma.DbNull,
+        newValue: { reorder: updates },
+      },
+    });
+  });
+}
+
 export async function deactivateProcessTypeSubStatus(
   processTypeSubStatusId: number,
   actorUserId: number

@@ -119,6 +119,56 @@ export function useUpdateProcessTypeSubStatus(): UseMutationResult<
   });
 }
 
+export type ReorderProcessTypeSubStatusesInput = {
+  processTypeId: number;
+  updates: Array<{ id: number; displayOrder: number }>;
+};
+
+export function useReorderProcessTypeSubStatuses(): UseMutationResult<
+  void,
+  ApiError,
+  ReorderProcessTypeSubStatusesInput
+> {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ updates }) =>
+      apiFetch<void>("/api/v1/process-type-sub-statuses/reorder", {
+        method: "POST",
+        body: JSON.stringify({ updates }),
+      }),
+    onMutate: async ({ processTypeId, updates }) => {
+      await qc.cancelQueries({ queryKey: ["process-type-sub-statuses", "list"] });
+      const previous = qc.getQueryData<ProcessTypeSubStatusRow[]>([
+        "process-type-sub-statuses",
+        "list",
+        { active: "all", processTypeId },
+      ]);
+
+      // Optimistically update all matching list query keys
+      qc.setQueriesData<ProcessTypeSubStatusRow[]>(
+        { queryKey: ["process-type-sub-statuses", "list"] },
+        (old) => {
+          if (!old) return old;
+          return old.map((s) => {
+            const u = updates.find((u) => u.id === s.processTypeSubStatusId);
+            return u ? { ...s, displayOrder: u.displayOrder } : s;
+          });
+        }
+      );
+
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous !== undefined) {
+        qc.setQueryData(["process-type-sub-statuses", "list"], context.previous);
+      }
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["process-type-sub-statuses", "list"] });
+    },
+  });
+}
+
 export function useDeactivateProcessTypeSubStatus(): UseMutationResult<
   ProcessTypeSubStatusRow,
   ApiError,
