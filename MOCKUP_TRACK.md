@@ -18,6 +18,279 @@ Entries are ordered most recent first.
 
 ---
 
+## 2026-06-08 — Project Creation View (Project List, Draft Editor, Active Summary)
+
+**Surfaces touched:** /app/mockups/project-creation/ — three surfaces:
+Project List (landing/default), Draft Editor (editing + compile flow),
+Active Project Summary (read-only).
+
+**Mockup commits:**
+- `8a87120` — initial scaffold: _data.ts with five seeded projects, WO
+  generation, template assignment, all three surface components
+- `afc38e9` — fix: ALWAYS_ASSIGN_PARTS ensures clean-compile projects
+  resolve routing templates despite real data having `routingTemplate: null`
+
+### Scope of exploration
+
+This session built the Project Creation View — the surface where users
+define new manufacturing projects (linking customers to BOM top-level
+items), manage them as Drafts (editing header fields and top-level
+items), compile a Draft into an Active Project (validating all BOM
+parts have active routing templates, then generating Work Orders), and
+view an Active Project's summary.
+
+The session used the same real-data integration from the BOM Editor
+session: all five seeded projects use real Part IDs and BOM trees from
+the existing mockup dataset. Five projects were seeded with specific
+validation scenarios:
+
+- **17559 Wireless Probe Package — Cell 3** (Draft, single top-level,
+  clean compile — 19-08-0-00)
+- **10256 Customer A Trunnion — Q2 Build** (Draft, single top-level,
+  clean compile — 22-15-0-00)
+- **10236 Bridgeport Upgrade — Floor 2** (Draft, single top-level,
+  surfaces two failure types: 22-06-1-00 has no template; 22-06-2-00
+  has no template; 22-06-0-00 has an inactive template)
+- **10121 PB-M Cell 2024-Q4** (Active, 6 top-level parts, 101 WOs)
+- **10030 PB-M Wrap Drive Integration** (Active, 8 top-level parts,
+  162 WOs)
+
+The session established the compile flow end-to-end: validation runs
+as a BOM tree walk, failures produce a Compile Failure Screen with
+resolution deep links, a clean validation triggers WO generation and
+transitions the project to Active.
+
+### Design decisions made
+
+**1. Validation at module init via ALWAYS_ASSIGN_PARTS**
+
+The real mockup data has `routingTemplate: null` on many leaf parts
+(assembly components), which would cause every project to fail
+validation even for projects intended to compile cleanly. The
+resolution: at module init, walk the BOM trees of the clean-compile
+and Active projects to collect all part IDs, then create an
+ALWAYS_ASSIGN_PARTS Set. `resolvePartTemplate()` returns an active
+default template (102 for Assemblies, 101 for Parts) for any part in
+that Set, bypassing the null in real data.
+
+Specific overrides are still modeled via TEMPLATE_OVERRIDE_MAP for the
+three parts in 10236 that should show failures (two mapped to null for
+"no template", one mapped to inactive template 103).
+
+**Why this approach:** the alternative (patching all real data to add
+routing templates) would have lost the ability to model the failure
+scenarios that make 10236 meaningful. The ALWAYS_ASSIGN_PARTS approach
+keeps real data intact while defining which projects are "clean" at
+the mockup level.
+
+**Implication for implementation:** real database validation logic
+checks `RoutingTemplate` assignments on each Part record directly; no
+ALWAYS_ASSIGN_PARTS equivalent needed. This is a mockup-only shim.
+
+**2. Compile flow with three Compile button states**
+
+The Compile button has three states based on project completeness and
+validation:
+
+- **Disabled** (grey, with tooltip): missing required header fields
+  (customer, due date, or no top-level items). Cannot attempt compile.
+- **Amber/warn outline**: all required fields present, but at least one
+  validation failure exists. Clicking shows the Compile Failure Screen.
+- **Primary enabled**: all required fields present, all validation
+  passes. Clicking triggers the 800ms compile simulation then
+  transitions to Active.
+
+The compile button text is "Compile →" in warn state (prompts the user
+to proceed despite warnings) and "Compile →" in clean state. This
+distinction was implemented by changing the visual style rather than
+the text.
+
+**Implication:** this three-state pattern fits any action that has
+hard blocks (missing required data) and soft warnings (fixable-but-
+valid-to-proceed issues). Not a general pattern for all buttons — only
+for actions that have both.
+
+**3. Compile Failure Screen as a full surface replacement, not overlay**
+
+When the Compile button is clicked with validation failures, the Draft
+Editor body is replaced entirely by the Compile Failure Screen (not a
+modal Dialog overlaying the Editor). The Screen shows:
+
+- Count header: "Compilation cancelled — N validation issues must be
+  resolved"
+- Per-failure list: part number, part name, failure reason label, BOM
+  path breadcrumb, deep link to resolution surface
+- Footer: "Return to Editor" button
+
+Resolution deep links:
+- no-template → `/mockups/parts?partId=X` (Open Part form → Routing
+  Template section)
+- part-inactive → `/mockups/parts?partId=X` (Open Part form)
+- circular → `/mockups/bom-editor/X` (Open BOM Editor)
+- template-inactive → dead-end annotation "Routing Template Editor
+  — not yet built" (no link because the Routing Template Editor
+  mockup does not support this navigation yet)
+
+**Implication:** template-inactive failures have a dead-end annotation
+in the mockup. When the Routing Template Editor mockup gains this
+resolution path, the `getDeepLink()` function needs the `template-
+inactive` case updated to a real href.
+
+**4. BOM Tree Preview in Draft Editor**
+
+The Draft Editor shows a BOM Tree Preview section (below the top-level
+items table) that visualizes the full BOM tree for each top-level item
+with per-node validation indicators. This preview:
+
+- Reuses the same `validateTree()` logic used by the compile flow
+- Shows CheckCircle2 (pass) or AlertCircle (fail) per node with the
+  failure reason label
+- "Fix" deep links on fail nodes (same resolution deep links as the
+  Compile Failure Screen)
+- Has Expand All / Collapse All / Reset controls
+- Failure nodes show a dead-end annotation ("not yet built") when the
+  resolution surface isn't available
+
+The BOM Tree Preview mirrors the expandable tree pattern from the BOM
+Editor mockup (hybrid expandable, chevron per sub-assembly).
+
+**5. Active Project Summary is read-only (Phase 8 note)**
+
+The Active Summary surface is intentionally read-only. All edit
+affordances are absent. A sky-blue notice banner reads:
+
+> "Active Project — read-only view. Work order management and
+> execution details will be available in Phase 8 of the Project View
+> build."
+
+Progress bars (per project and per top-level item) show 0% since all
+generated WOs are Unreleased. "All N Work Orders are Unreleased" note
+provides context.
+
+Quick Navigation links (to WO grid, Routing Steps, Blockers, etc.)
+appear as inert text with "— not yet built" annotations.
+
+**6. Part search relevance ranking (from BOM Editor, confirmed here)**
+
+The PartSearchCombobox in the Draft Editor uses the same
+relevance-ranked search established in the BOM Editor:
+exact → prefix → substring → edit-distance on same-length prefix,
+on Part Number first, Part Name second. Confirmed this is the right
+pattern for any part-selection combobox in the system.
+
+**7. TypeScript strict mode: discriminated union for ValidationResult**
+
+`ValidationResult` is a discriminated union:
+```typescript
+type ValidationResultPass = { status: "pass" };
+type ValidationResultFail = { status: "fail"; reason: ValidationFailureReason; templateName?: string };
+type ValidationResult = ValidationResultPass | ValidationResultFail;
+```
+
+Accessing `reason` requires narrowing to `ValidationResultFail`.
+Components that need to display failure details import
+`ValidationResultFail` and cast after narrowing. This pattern avoids
+`as any` and keeps the compiler helpful throughout the validation
+rendering path.
+
+**8. Lucide icon `title` prop — must wrap in `<span title>`**
+
+Lucide React icons do not accept a `title` prop. Attempting to pass
+`title="..."` produces a TypeScript error. The correct pattern is:
+```tsx
+<span title="Tooltip text">
+  <AlertCircle className="h-4 w-4" />
+</span>
+```
+This applies throughout the mockup wherever an icon needs a tooltip.
+Already documented in BOM Editor history; confirmed as the pattern
+for all mockup surfaces.
+
+### Recommendations for implementation
+
+- **Compile flow** as a server-side transaction: validate all parts
+  against their RoutingTemplate assignments (with database-backed
+  resolution), then within a single transaction generate all WOs
+  (with steps, per `state_model.md`), write an AuditLog entry, and
+  transition the project to Active. Validation is fast and should run
+  before the transaction is opened.
+
+- **Three compile-button states** (hard-blocked, warn-but-clickable,
+  clean) as the canonical pattern for actions with both required-data
+  gates and fixable-warning conditions.
+
+- **Compile Failure Screen** as a full surface replacement with
+  resolution deep links per failure reason. When the Routing Template
+  Editor gains a URL-addressable per-template route, wire the
+  `template-inactive` deep link.
+
+- **BOM Tree Preview** in the Draft Editor (or an equivalent live
+  validation summary). Users should know before compiling which parts
+  will fail and why. The preview makes the Compile Failure Screen less
+  surprising and accelerates the fix loop.
+
+- **Active Summary as a Phase 8 stub.** The surface exists and is
+  reachable; it shows accurate WO counts and 0% progress for
+  Unreleased. Full execution detail (per-WO status, step completion,
+  blockers) is Phase 8 work.
+
+- **Validation logic as pure functions in `/lib`** (no component or
+  database imports). The `validateTree()`, `validatePart()`, and
+  `validateProject()` functions are testable in isolation and reused
+  by both the Preview and the Compile flow.
+
+- **WO generation as a recursive BOM tree walk.** Walk each
+  top-level item's BOM tree; create one WO per node; create steps per
+  routing template; assign `Unreleased` status to all WOs, `Waiting`
+  status to all steps. This is the spec's compile behavior.
+
+### Open questions for implementation track
+
+- **WO reference format:** the mockup generates WO references as
+  `projectNumber.NN` (e.g., "17559.01"). The spec in
+  `project_creation_view_spec.md` should specify the exact format for
+  implementation. If it's different, adjust.
+
+- **Compile concurrency:** if two users compile the same Draft
+  simultaneously, the second write should either detect the state
+  change (409 Conflict) or be idempotent. The mockup doesn't model
+  this. Real implementation needs a concurrency decision.
+
+- **WO count capping:** Project 10030 generates 162 WOs from 8 top-
+  level items. At scale, a large project might generate 500+. CLAUDE.md
+  notes that Prisma transactions exceeding ~50 rows may need chunking.
+  The WO generation transaction should account for this.
+
+- **Template-inactive resolution flow:** currently a dead-end in the
+  mockup. When the Routing Template Editor mockup (or real
+  implementation) supports routing a user to a specific template's
+  edit form, the deep link in both the Compile Failure Screen and the
+  BOM Tree Preview validation indicators needs to be wired up.
+
+- **Draft auto-save vs explicit save:** the Draft Editor uses auto-
+  save on every field change (via the `update()` helper bumping
+  `lastEditedAt`). Real implementation should match this behavior with
+  an auto-save API call (debounced) or a Save button. Spec may be
+  silent on this; worth clarifying.
+
+### Mockup-only details
+
+- **ALWAYS_ASSIGN_PARTS shim** — not needed in implementation; real
+  database has proper RoutingTemplate assignments per Part.
+- **800ms compile simulation** — real compile may be faster or slower
+  depending on project size; the delay is mockup UX only.
+- **State isolation between pages** — because the mockup uses page-
+  level useState initialized from INITIAL_PROJECTS, navigating away
+  from [id]/page.tsx and back resets project state. A compiled project
+  appearing as Active on the list requires the compile to have updated
+  the parent page state before navigating. This is a mockup architecture
+  limitation; real implementation uses a shared database.
+- **Active Summary 0% progress** — all generated WOs are Unreleased
+  so progress bars show 0%. The mockup has no mechanism to advance WO
+  status; this is expected.
+
+---
+
 ## 2026-06-02 — BOM Editor (read-only tree, real-data integration, editing operations)
 
 **Surfaces touched:** /app/mockups/bom-editor/ (search-driven

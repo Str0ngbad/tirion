@@ -168,6 +168,16 @@
 - app/mockups/process-substatus/_components/sub-status-section.tsx — default export
 - app/mockups/process-substatus/_data.ts — exports: MOCK_SUB_STATUSES
 - app/mockups/process-substatus/page.tsx — default export
+- app/mockups/project-creation/[id]/page.tsx — default export
+- app/mockups/project-creation/_components/active-summary.tsx — default export
+- app/mockups/project-creation/_components/bom-tree-preview.tsx — default export
+- app/mockups/project-creation/_components/compile-failure-screen.tsx — default export
+- app/mockups/project-creation/_components/draft-editor.tsx — default export
+- app/mockups/project-creation/_components/part-search-combobox.tsx — default export
+- app/mockups/project-creation/_components/project-list.tsx — default export
+- app/mockups/project-creation/_data.ts — exports: INITIAL_PROJECTS,MOCK_PROJECT_ROUTING_TEMPLATES,resolvePartTemplate,topLevelWoSummary,woCountSummary
+- app/mockups/project-creation/_lib/validation.ts — exports: allPass,failCount,validatePart,validateProject,validateTree
+- app/mockups/project-creation/page.tsx — default export
 - app/mockups/routing-templates/[id]/page.tsx — default export
 - app/mockups/routing-templates/_components/add-step-dialog.tsx — default export
 - app/mockups/routing-templates/_components/edit-time-dialog.tsx — default export
