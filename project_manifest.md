@@ -13,12 +13,18 @@
 - app/api/v1/bom-edges/bulk-delete/route.ts — route handlers: POST
 - app/api/v1/bom-edges/route.ts — route handlers: POST
 - app/api/v1/health/route.ts — route handlers: GET
+- app/api/v1/material-specs/[id]/audit-log/route.ts — route handlers: GET
 - app/api/v1/material-specs/[id]/deactivate/route.ts — route handlers: POST
 - app/api/v1/material-specs/[id]/reactivate/route.ts — route handlers: POST
 - app/api/v1/material-specs/[id]/route.ts — route handlers: GET,PATCH
 - app/api/v1/material-specs/route.ts — route handlers: GET,POST
+- app/api/v1/parts/[id]/audit-log/route.ts — route handlers: GET
+- app/api/v1/parts/[id]/bom-children/route.ts — route handlers: GET
+- app/api/v1/parts/[id]/bom-parents/route.ts — route handlers: GET
+- app/api/v1/parts/[id]/bom-tree/route.ts — route handlers: GET
 - app/api/v1/parts/[id]/deactivate/route.ts — route handlers: POST
 - app/api/v1/parts/[id]/inventory-location/route.ts — route handlers: PATCH
+- app/api/v1/parts/[id]/open-wos/route.ts — route handlers: GET
 - app/api/v1/parts/[id]/reactivate/route.ts — route handlers: POST
 - app/api/v1/parts/[id]/route.ts — route handlers: GET,PATCH
 - app/api/v1/parts/[id]/stock-count/route.ts — route handlers: PATCH
@@ -30,6 +36,7 @@
 - app/api/v1/process-type-sub-statuses/[id]/route.ts — route handlers: GET,PATCH
 - app/api/v1/process-type-sub-statuses/route.ts — route handlers: GET,POST
 - app/api/v1/process-types/route.ts — route handlers: GET
+- app/api/v1/procurement-categories/[id]/audit-log/route.ts — route handlers: GET
 - app/api/v1/procurement-categories/[id]/deactivate/route.ts — route handlers: POST
 - app/api/v1/procurement-categories/[id]/reactivate/route.ts — route handlers: POST
 - app/api/v1/procurement-categories/[id]/route.ts — route handlers: GET,PATCH
@@ -42,12 +49,45 @@
 - app/api/v1/users/[id]/reactivate/route.ts — route handlers: POST
 - app/api/v1/users/[id]/route.ts — route handlers: GET,PATCH
 - app/api/v1/users/route.ts — route handlers: GET,POST
+- app/api/v1/vendors/[id]/audit-log/route.ts — route handlers: GET
 - app/api/v1/vendors/[id]/deactivate/route.ts — route handlers: POST
 - app/api/v1/vendors/[id]/reactivate/route.ts — route handlers: POST
 - app/api/v1/vendors/[id]/route.ts — route handlers: GET,PATCH
 - app/api/v1/vendors/route.ts — route handlers: GET,POST
 - app/api/v1/views/[id]/route.ts — route handlers: DELETE,GET,PATCH
 - app/api/v1/views/route.ts — route handlers: GET,POST
+- app/bom-editor/[assemblyId]/page.tsx — default export
+- app/bom-editor/_components/add-child-input-row.tsx — exports: AddChildInputRow
+- app/bom-editor/_components/assembly-identity-band.tsx — exports: AssemblyIdentityBand
+- app/bom-editor/_components/bom-editor-chrome.tsx — exports: BomEditorChrome
+- app/bom-editor/_components/bom-tree-column-header.tsx — exports: BomTreeColumnHeader
+- app/bom-editor/_components/bom-tree-row.tsx — exports: BomTreeRow
+- app/bom-editor/_components/bom-tree.tsx — exports: BomTree
+- app/bom-editor/_components/controls-bar.tsx — exports: ControlsBar
+- app/bom-editor/_components/cycle-error-dialog.tsx — exports: CycleErrorDialog
+- app/bom-editor/_components/depth-block-dialog.tsx — exports: DepthBlockDialog
+- app/bom-editor/_components/depth-warning-dialog.tsx — exports: DepthWarningDialog
+- app/bom-editor/_components/freshness-indicator.tsx — exports: FreshnessIndicator
+- app/bom-editor/_components/qty-edit-cell.tsx — exports: QtyEditCell
+- app/bom-editor/_components/remove-children-confirm-dialog.tsx — exports: RemoveChildrenConfirmDialog
+- app/bom-editor/page.tsx — default export
+- app/configuration/_components/configuration-sub-nav.tsx — exports: ConfigurationSubNav
+- app/configuration/layout.tsx — default export
+- app/configuration/material-specs/_components/material-spec-grid.tsx — exports: MaterialSpecGrid
+- app/configuration/material-specs/_components/material-spec-sheet.tsx — exports: MaterialSpecSheet
+- app/configuration/material-specs/page.tsx — default export
+- app/configuration/page.tsx — default export
+- app/configuration/process-type-sub-statuses/page.tsx — default export
+- app/configuration/process-types/page.tsx — default export
+- app/configuration/procurement-categories/_components/procurement-category-create-modal.tsx — exports: ProcurementCategoryCreateModal
+- app/configuration/procurement-categories/_components/procurement-category-grid.tsx — exports: ProcurementCategoryGrid
+- app/configuration/procurement-categories/_components/procurement-category-sheet.tsx — exports: ProcurementCategorySheet
+- app/configuration/procurement-categories/page.tsx — default export
+- app/configuration/users/page.tsx — default export
+- app/configuration/vendors/_components/vendor-create-modal.tsx — exports: VendorCreateModal
+- app/configuration/vendors/_components/vendor-grid.tsx — exports: VendorGrid
+- app/configuration/vendors/_components/vendor-sheet.tsx — exports: VendorSheet
+- app/configuration/vendors/page.tsx — default export
 - app/globals.css — global stylesheet
 - app/layout.tsx — exports: metadata; default export
 - app/mockups/bom-editor/[assemblyId]/page.tsx — default export
@@ -150,6 +190,7 @@
 - app/mockups/vendors/page.tsx — default export
 - app/page.tsx — default export
 - app/parts/_components/active-filters-chrome.tsx — default export
+- app/parts/_components/active-sorts-chrome.tsx — default export
 - app/parts/_components/column-filter-boolean.tsx — default export
 - app/parts/_components/column-filter-categorical.tsx — default export
 - app/parts/_components/column-filter-date.tsx — default export
@@ -160,10 +201,12 @@
 - app/parts/_components/column-header-menu.tsx — default export
 - app/parts/_components/columns-button.tsx — default export
 - app/parts/_components/hide-column-filter-dialog.tsx — default export
+- app/parts/_components/inline-edit-cell.tsx — default export
+- app/parts/_components/part-form-sheet.tsx — exports: SECTION_IDS; default export
 - app/parts/_components/parts-grid.tsx — default export
 - app/parts/_components/view-management-modal.tsx — default export
 - app/parts/_components/view-switcher.tsx — default export
-- app/parts/_lib/columns.ts — exports: ALL_COLUMNS,ALL_COLUMN_IDS,COLUMN_BY_ID,applyClientSort,getSortValue
+- app/parts/_lib/columns.ts — exports: ALL_COLUMNS,ALL_COLUMN_IDS,COLUMN_BY_ID,applyClientSort,applyClientSorts,getSortValue
 - app/parts/_lib/filter-utils.ts — exports: filterTooltip
 - app/parts/page.tsx — default export
 - app/routing-templates/[id]/page.tsx — default export
@@ -179,18 +222,25 @@
 ## lib/
 
 - lib/api/auth.ts — exports: requireUser
+- lib/api/bom.ts — exports: useAddBomChild,useBomTree,useBulkRemoveBomChildren,useRemoveBomChild,useUpdateBomQuantity
 - lib/api/client-error.ts
 - lib/api/client.ts — exports: apiFetch
 - lib/api/errors.ts — exports: handleApiError
-- lib/api/parts.ts — exports: useDistinctValues,usePartsGrid,useProcessTypes
+- lib/api/material-specs.ts — exports: useCreateMaterialSpec,useDeactivateMaterialSpec,useMaterialSpec,useMaterialSpecAuditLog,useMaterialSpecs,useReactivateMaterialSpec,useUpdateMaterialSpec
+- lib/api/parts.ts — exports: useAllActiveParts,useAssemblies,useBomChildren,useBomParents,useCreatePart,useDistinctValues,usePart,usePartAuditLog,usePartOpenWos,usePartsGrid,useProcessTypes,useSetPartActive,useUpdateInventoryLocation,useUpdatePart,useUpdateStockCount
+- lib/api/procurement-categories.ts — exports: useCreateProcurementCategory,useDeactivateProcurementCategory,useProcurementCategories,useProcurementCategory,useProcurementCategoryAuditLog,useReactivateProcurementCategory,useUpdateProcurementCategory
 - lib/api/query-client.ts — exports: makeQueryClient
 - lib/api/routing-templates.ts — exports: useCreateRoutingTemplate,useDeactivateRoutingTemplate,useProcessTypes,useReactivateRoutingTemplate,useRoutingTemplate,useRoutingTemplates,useUpdateRoutingTemplate
+- lib/api/vendors.ts — exports: useCreateVendor,useDeactivateVendor,useReactivateVendor,useUpdateVendor,useVendor,useVendorAuditLog,useVendors
 - lib/api/views.ts — exports: useCreateView,useDeleteView,useUpdateView,useViews
 - lib/audit/mutateWithAudit.ts — exports: mutateWithAudit
 - lib/bom/buildable-helpers.ts — exports: buildableCountForAllAssemblies
+- lib/bom/client-validation.ts — exports: DEPTH_HARD,DEPTH_SOFT,computeAddDepth,findCycleChain,partMatchesQuery,rankPartMatch,wouldCreateCycle
 - lib/bom/cte-helpers.ts — exports: detectCycle,getMaxAncestorDepth,getMaxDescendantDepth
+- lib/bom/rollup-helpers.ts — exports: computeBuildable,computeCostRollup,computeFreshness,computePartFreshness
 - lib/bom/schemas.ts — exports: BulkDeleteSchema,CreateBomEdgeSchema,UpdateBomEdgeSchema
 - lib/bom/service.ts — exports: bulkDeleteBomEdges,createBomEdge,deleteBomEdge,getBomTree,updateBomEdge
+- lib/bom/sort-helpers.ts — exports: sortBomChildren
 - lib/bom/types.ts
 - lib/bom/validate.ts — exports: BOM_DEPTH_HARD_LIMIT,validateDepthLimit,validateNoCycle
 - lib/db/client.ts — exports: prisma
@@ -223,7 +273,7 @@
 - lib/process-type-sub-statuses/service.ts — exports: createProcessTypeSubStatus,deactivateProcessTypeSubStatus,getProcessTypeSubStatus,listProcessTypeSubStatuses,reactivateProcessTypeSubStatus,updateProcessTypeSubStatus
 - lib/process-type-sub-statuses/types.ts
 - lib/process-types.ts — exports: ALL_PROCESS_TYPES,PROCESS_TYPE_META
-- lib/procurement-categories/schemas.ts — exports: CreateProcurementCategorySchema,ListProcurementCategoriesQuerySchema,ProcurementCategoryWithCountsSchema,UpdateProcurementCategorySchema
+- lib/procurement-categories/schemas.ts — exports: CreateProcurementCategorySchema,ListProcurementCategoriesQuerySchema,ProcurementCategoryWithCountsSchema,ProcurementCategoryWithPartsSchema,UpdateProcurementCategorySchema
 - lib/procurement-categories/service.ts — exports: createProcurementCategory,deactivateProcurementCategory,getProcurementCategory,listProcurementCategories,reactivateProcurementCategory,updateProcurementCategory
 - lib/procurement-categories/types.ts
 - lib/routing-templates/schemas.ts — exports: CreateRoutingTemplateSchema,ListRoutingTemplatesQuerySchema,RoutingTemplateStepInputSchema,UpdateRoutingTemplateSchema
@@ -233,7 +283,8 @@
 - lib/users/service.ts — exports: createUser,deactivateUser,getUser,listUsers,reactivateUser,updateUser
 - lib/users/types.ts
 - lib/utils.ts — exports: cn
-- lib/vendors/schemas.ts — exports: CreateVendorSchema,ListVendorsQuerySchema,UpdateVendorSchema,VendorWithCountsSchema
+- lib/utils/edit-distance.ts — exports: levenshtein,matchesCriteria
+- lib/vendors/schemas.ts — exports: CreateVendorSchema,ListVendorsQuerySchema,UpdateVendorSchema,VendorWithCountsSchema,VendorWithPartsSchema
 - lib/vendors/service.ts — exports: createVendor,deactivateVendor,getVendor,listVendors,reactivateVendor,updateVendor
 - lib/vendors/types.ts
 - lib/views/schemas.ts — exports: CreateViewSchema,FilterSchema,SortSpecSchema,UpdateViewSchema
@@ -243,6 +294,11 @@
 ## components/
 
 - components/condense-toggle.tsx — exports: CondenseToggle
+- components/configuration/audit-log-section.tsx — exports: AuditLogSection
+- components/configuration/configuration-page-chrome.tsx — exports: ConfigurationPageChrome
+- components/configuration/deactivation-dialog.tsx — exports: DeactivationDialog
+- components/configuration/reference-list.tsx — exports: ReferenceList
+- components/material-specs/material-spec-cascade-modal.tsx — exports: MaterialSpecCascadeModal
 - components/process-type-chip.tsx — default export
 - components/query-provider.tsx — exports: QueryProvider
 - components/theme-provider.tsx — exports: ThemeProvider
@@ -286,6 +342,7 @@
 - prisma/migrations/20260601205153_add_view_model/migration.sql — migration SQL
 - prisma/migrations/20260603023424_drop_bom_display_order/migration.sql — migration SQL
 - prisma/migrations/20260603202537_relax_part_inventory_location_unique/migration.sql — migration SQL
+- prisma/migrations/20260606000001_add_bom_unique_constraint/migration.sql — migration SQL
 - prisma/migrations/migration_lock.toml
 - prisma/seed.ts
 
