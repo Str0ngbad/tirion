@@ -18,6 +18,183 @@ Entries are ordered most recent first.
 
 ---
 
+## 2026-06-10 — Project Creation View — Iteration Pass
+
+**Surfaces touched:** /app/mockups/project-creation/ — iteration on all three
+surfaces from the prior session.
+
+**Mockup commits:**
+- `7720780` — fix: delete icon contrast on Project List and Draft Editor rows
+- `554f666` — feat: Add New Project wiring (session store + empty Draft state)
+- `ccf5199` — feat: Project Color attribute with curated palette picker
+
+### Scope
+
+Four focused changes:
+
+1. **Delete icon contrast** — raised resting opacity from `/40` to `/70` on
+   Trash2 row actions in Project List and Draft Editor top-level items table.
+   `/40` on a near-black background fails WCAG AA for icon controls (3:1
+   minimum); `/70` passes. Hover retains `text-destructive` for maximum
+   contrast.
+
+2. **Add New Project wiring** — module-level session store added to `_data.ts`
+   (`getSessionProjects` / `setSessionProjects` / `createNewProject`).
+   Module scope persists across Next.js SPA navigations, so list page and
+   detail page share project state without Zustand. New project IDs are
+   synthesized monotonically starting at projectId=6 / projectNumber=17560.
+   Empty Draft state in the editor: auto-focus on Project Number, always-
+   visible validation banner (neutral empty-state message when no items),
+   BOM Tree Preview section always renders (empty-state placeholder when
+   no items). Project Number uniqueness validation on blur against all
+   projects in the session store.
+
+3. **Project Color** — see design decisions below.
+
+4. **Persistent issue-resolution helper** — identified as a cross-surface
+   pattern held for Rev 1.5+. Documented in `DEFERRED.md` (newly created).
+   Not built in this pass.
+
+### Design decisions made
+
+**1. Session store via module scope (not Zustand / URL params)**
+
+The mockup's prior architecture used isolated useState on each page, seeded
+from INITIAL_PROJECTS. This worked for the five seeded projects (which never
+change) but broke for new projects (created on list page, not visible on
+detail page).
+
+Decision: add a module-level `_sessionProjects` variable in `_data.ts`.
+Module scope persists across client-side navigations in a Next.js SPA session.
+Both page.tsx files initialize from `getSessionProjects()` and detail page
+syncs back via `setSessionProjects()` in `updateProject()` and `onDeleteDraft()`.
+
+The sync happens imperatively inside state updater functions (acceptable
+side-effect pattern for a mockup). In production, this would be Zustand,
+React Query, or a proper store. Module-scope state is a mockup-track shortcut
+with a clear comment noting the real-world replacement.
+
+**2. ID synthesis starting at 17560**
+
+New projects created within the session get numeric IDs starting at 17560
+(one above the highest seeded projectNumber). IDs are monotonically
+incrementing per session. The code has an explicit comment that this is
+mock-only; real implementation uses database auto-increment.
+
+**3. Project Color — palette choices**
+
+The palette excludes green, amber, and red ranges (reserved for status
+indicators: active/pass/complete, warning/draft, error/fail respectively).
+Also excludes rose/crimson (could read as status-red).
+
+Final 11-color palette:
+- Blue (#3b82f6) — professional neutral
+- Teal (#14b8a6) — blue-green, clearly not status
+- Cyan (#06b6d4) — bright but blue, not green
+- Indigo (#6366f1) — dark blue-purple
+- Violet (#8b5cf6) — lighter purple
+- Purple (#a855f7)
+- Magenta (#d946ef) — fuchsia
+- Pink (#ec4899) — clearly pink, not red
+- Brown (#92400e) — dark warm, not status amber
+- Slate (#64748b) — cool grey, higher opacity (15/28%) to ensure visibility
+- Electric Blue (#38bdf8) — the "look at me" high-attention option
+
+Seeded assignments: 17559→blue, 10256→violet, 10236→null (demonstrates
+no-color), 10121→electric, 10030→teal.
+
+**4. Color application: tints on list rows, chip in headers**
+
+Row tints (12% opacity at rest, 22% on hover) applied via inline style.
+Hover tracking via `hoveredRowId` state in project-list — needed because
+Tailwind's `hover:bg-*` classes don't override inline `backgroundColor`.
+Uncolored rows keep the original `hover:bg-muted/50` Tailwind class.
+
+Chip in `[id]/page.tsx` breadcrumb chrome (2.5px circle) when color is set.
+Color field in Draft Editor header grid (swatch trigger + dropdown picker).
+Color field in Active Summary header — the only editable affordance this
+pass; `onChange` prop threaded through from detail page.
+
+**5. Active Summary's only editable affordance**
+
+The read-only notice was updated to say "Project Color is editable" while
+all other fields remain Phase 8. This makes the color picker the deliberate
+exception — it doesn't change project operational data, so adding it to the
+"read-only this pass" surface doesn't compromise the Phase 8 scope gate.
+
+**6. Spec gap: Project Color is not in `project_creation_view_spec.md`**
+
+The Color attribute was introduced in this mockup pass and has no spec
+equivalent. Per mockup track convention, the spec is NOT edited in mockup
+track sessions — the gap is recorded here, and the spec will be backfilled
+separately by the user.
+
+The attribute is conceptually optional metadata (like Notes) that doesn't
+affect compilation, WO generation, or any lifecycle transitions. It is
+purely a workspace-organization affordance for the planner.
+
+**7. Persistent issue-resolution helper — explicitly held**
+
+The user identified this cross-surface pattern during the iteration cycle:
+three surfaces (Compile Failure Screen, Definition Change Flag inspection,
+Deactivation blocker resolution) all present a bounded list of fixable issues,
+each requiring navigation away from the list to resolve. Rev 1's solution is
+"navigate away, fix, navigate back" — the list context is lost each time.
+
+This is documented in `DEFERRED.md` with the problem statement, three
+surfaces, and directional design thinking (pinnable overlay with detach-to-
+window option). The design starting point for Rev 1.5+ is to derive the
+common shape across all three surfaces before building anything.
+
+### Recommendations for implementation
+
+- **Session store pattern** — module scope works for a mockup but is not
+  the implementation recommendation. Use Zustand, React Query, or server-
+  state (RSC + Server Actions) for cross-page state in production.
+- **Project Color** — optional field on Project record. If persisted to
+  the database, a simple `color: varchar(20)` column with the union of
+  color names as a CHECK constraint. The hex/tint values belong in the
+  frontend color map (not the database). The palette can be tuned or
+  extended without a migration.
+- **Row tinting** — the 12/22% opacity values work on the current dark
+  theme. On a light theme, these percentages would likely need to be higher
+  (~20/35%) for the tint to be visible. Color tinting should be tested at
+  both theme modes if a light mode is ever added.
+- **Uniqueness validation** — the mockup validates Project Number uniqueness
+  on blur against the session store. Real implementation validates against
+  the database (the unique constraint on `Project.projectNumber` covers the
+  persistence layer, but the UX inline error needs an API call on blur or
+  a server action).
+
+### Open questions for implementation track
+
+- **Color in API responses** — should color be included in the Project
+  resource response? Likely yes, as a nullable string field. The API
+  convention is camelCase, so `color: "blue" | null`.
+- **Palette extensibility** — the 11-color palette is fixed in the mockup.
+  Should users be able to add custom colors? Not for Rev 1; flag for Rev 2
+  if the constraint becomes a pain point in user testing.
+- **Color in cross-surface references** — the chip is only added to the
+  `[id]/page.tsx` breadcrumb in this pass. When Project Number links appear
+  in other execution lenses (Project View, Operations Lens, etc.), those
+  surfaces should show the chip too. The implementation should share a
+  `ProjectColorChip` component from a common location.
+
+### Mockup-only details
+
+- **Module-scope session store** — not a production pattern. No Zustand,
+  no persistence, no multi-tab consistency.
+- **Specific opacity values (12/22%)** — visually tuned for the dark theme;
+  may need adjustment for light mode or different background colors.
+- **ColorPicker popover positioning** — uses `absolute left-0 top-9` with a
+  fixed width. In production, a Radix Popover or similar primitive handles
+  viewport edge detection and positioning.
+- **`drop-shadow` on check icon in swatch** — Tailwind utility for readability
+  against saturated backgrounds. Fine for a mockup; production may use a
+  different approach (white stroke or composite shadow).
+
+---
+
 ## 2026-06-08 — Project Creation View (Project List, Draft Editor, Active Summary)
 
 **Surfaces touched:** /app/mockups/project-creation/ — three surfaces:
