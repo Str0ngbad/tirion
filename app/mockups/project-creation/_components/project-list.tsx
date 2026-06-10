@@ -8,8 +8,8 @@ import {
   woCountSummary,
   createNewProject,
   setSessionProjects,
-  PROJECT_COLOR_MAP,
 } from "../_data";
+import ProjectIdPill from "./project-id-pill";
 import { validateProject, failCount, allPass } from "../_lib/validation";
 import { Button } from "@/components/ui/button";
 import {
@@ -133,9 +133,6 @@ export default function ProjectList({ projects, setProjects }: Props) {
 
   // Delete confirmation
   const [deleteTarget, setDeleteTarget] = useState<MockProject | null>(null);
-
-  // Row hover tracking — needed to apply darker tint on hover for colored rows
-  const [hoveredRowId, setHoveredRowId] = useState<number | null>(null);
 
   const allCustomers = useMemo(() => {
     const names = new Set<string>();
@@ -335,22 +332,14 @@ export default function ProjectList({ projects, setProjects }: Props) {
             )}
             {rows.map((project) => {
               const { total, complete } = woCountSummary(project);
-              const colorMeta = project.color ? PROJECT_COLOR_MAP[project.color] : null;
               return (
                 <tr
                   key={project.projectId}
                   onClick={() => handleRowClick(project)}
-                  onMouseEnter={() => setHoveredRowId(project.projectId)}
-                  onMouseLeave={() => setHoveredRowId(null)}
-                  style={colorMeta ? {
-                    backgroundColor: hoveredRowId === project.projectId
-                      ? colorMeta.hoverTintRgba
-                      : colorMeta.tintRgba,
-                  } : undefined}
-                  className={`cursor-pointer border-b border-border/60 transition-colors ${!colorMeta ? "hover:bg-muted/50" : ""}`}
+                  className="cursor-pointer border-b border-border/60 transition-colors hover:bg-muted/50"
                 >
-                  <td className="px-3 py-2">
-                    <span className="font-mono text-xs">{project.projectNumber}</span>
+                  <td className="px-3 py-2 text-xs">
+                    <ProjectIdPill projectNumber={project.projectNumber} color={project.color} />
                   </td>
                   <td className="px-3 py-2">
                     <span className="font-medium">{project.projectName}</span>

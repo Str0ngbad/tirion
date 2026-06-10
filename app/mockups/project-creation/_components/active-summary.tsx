@@ -4,6 +4,7 @@ import { useState } from "react";
 import { MockProject, woCountSummary, topLevelWoSummary, ProjectColor, PROJECT_COLOR_MAP } from "../_data";
 import { ExternalLink, Info } from "lucide-react";
 import ColorPicker from "./color-picker";
+import ProjectIdPill from "./project-id-pill";
 
 type Props = {
   project: MockProject;
@@ -69,7 +70,7 @@ export default function ActiveSummary({ project, onChange }: Props) {
           </h2>
           <dl className="grid grid-cols-2 gap-x-6 gap-y-4 lg:grid-cols-3">
             <Field label="Project Number">
-              <span className="font-mono">{project.projectNumber}</span>
+              <ProjectIdPill projectNumber={project.projectNumber} color={project.color} />
             </Field>
             <Field label="Project Name">{project.projectName}</Field>
             <Field label="Color">
