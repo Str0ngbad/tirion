@@ -26,11 +26,11 @@ export default function ColorPicker({ selected, onSelect, onClose }: Props) {
   return (
     <div
       ref={ref}
-      className="absolute left-0 top-9 z-50 w-56 rounded-md border border-border bg-popover shadow-lg p-3"
+      className="absolute left-0 top-9 z-50 w-64 rounded-md border border-border bg-popover shadow-lg p-3"
     >
       <div className="mb-2 text-xs font-medium text-muted-foreground">Project Color</div>
-      {/* 6 columns: None swatch + 11 color swatches = 12 in 2 rows */}
-      <div className="grid grid-cols-6 gap-1.5">
+      {/* 7 columns: None swatch + 13 color swatches = 14 in 2 rows */}
+      <div className="grid grid-cols-7 gap-1.5">
         {/* "None" option */}
         <button
           onClick={() => { onSelect(null); onClose(); }}

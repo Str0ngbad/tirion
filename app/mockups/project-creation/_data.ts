@@ -12,49 +12,68 @@ export type StepStatus = "Waiting" | "InProgress" | "Complete" | "Skipped";
 
 // ─── Project Color ────────────────────────────────────────────────────────────
 //
-// Optional per-project color for visual workspace organization. Avoids green,
-// amber, and red ranges (reserved for status indicators across the tool).
+// Optional per-project color for visual workspace organization. Full-spectrum
+// 13-color palette designed for maximum visual distinctness at chip and row-tint size.
 // Note: This attribute is not yet in the spec (project_creation_view_spec.md);
 // the gap is logged in MOCKUP_TRACK.md and will be backfilled into the spec separately.
 
 export type ProjectColor =
   | "blue"
-  | "teal"
-  | "cyan"
-  | "indigo"
-  | "violet"
+  | "lightBlue"
   | "purple"
-  | "magenta"
+  | "lightPurple"
+  | "red"
   | "pink"
-  | "brown"
-  | "slate"
-  | "electric";
+  | "orange"
+  | "lightOrange"
+  | "yellow"
+  | "green"
+  | "lightGreen"
+  | "gray"
+  | "brown";
 
-// Ordered list for the picker grid
+// Ordered list for the picker grid (None is the 14th cell, rendered separately)
 export const PROJECT_COLORS: ProjectColor[] = [
-  "blue", "teal", "cyan", "indigo", "violet", "purple",
-  "magenta", "pink", "brown", "slate", "electric",
+  "blue", "lightBlue", "purple", "lightPurple",
+  "red", "pink", "orange", "lightOrange",
+  "yellow", "green", "lightGreen", "gray", "brown",
 ];
 
 export type ProjectColorMeta = {
-  hex: string;          // solid swatch color
-  tintRgba: string;     // low-opacity row background (dark theme)
-  hoverTintRgba: string;// slightly stronger on hover
+  hex: string;           // solid swatch color
+  text: "white" | "black"; // text color on solid hex (WCAG AA verified)
+  tintRgba: string;      // low-opacity row background (dark theme)
+  hoverTintRgba: string; // slightly stronger on hover
   label: string;
 };
 
 export const PROJECT_COLOR_MAP: Record<ProjectColor, ProjectColorMeta> = {
-  blue:     { hex: "#3b82f6", tintRgba: "rgba(59,130,246,0.12)",  hoverTintRgba: "rgba(59,130,246,0.22)",  label: "Blue"         },
-  teal:     { hex: "#14b8a6", tintRgba: "rgba(20,184,166,0.12)",  hoverTintRgba: "rgba(20,184,166,0.22)",  label: "Teal"         },
-  cyan:     { hex: "#06b6d4", tintRgba: "rgba(6,182,212,0.12)",   hoverTintRgba: "rgba(6,182,212,0.22)",   label: "Cyan"         },
-  indigo:   { hex: "#6366f1", tintRgba: "rgba(99,102,241,0.12)",  hoverTintRgba: "rgba(99,102,241,0.22)",  label: "Indigo"       },
-  violet:   { hex: "#8b5cf6", tintRgba: "rgba(139,92,246,0.12)",  hoverTintRgba: "rgba(139,92,246,0.22)",  label: "Violet"       },
-  purple:   { hex: "#a855f7", tintRgba: "rgba(168,85,247,0.12)",  hoverTintRgba: "rgba(168,85,247,0.22)",  label: "Purple"       },
-  magenta:  { hex: "#d946ef", tintRgba: "rgba(217,70,239,0.12)",  hoverTintRgba: "rgba(217,70,239,0.22)",  label: "Magenta"      },
-  pink:     { hex: "#ec4899", tintRgba: "rgba(236,72,153,0.12)",  hoverTintRgba: "rgba(236,72,153,0.22)",  label: "Pink"         },
-  brown:    { hex: "#92400e", tintRgba: "rgba(146,64,14,0.12)",   hoverTintRgba: "rgba(146,64,14,0.22)",   label: "Brown"        },
-  slate:    { hex: "#64748b", tintRgba: "rgba(100,116,139,0.15)", hoverTintRgba: "rgba(100,116,139,0.28)", label: "Slate"        },
-  electric: { hex: "#38bdf8", tintRgba: "rgba(56,189,248,0.12)",  hoverTintRgba: "rgba(56,189,248,0.22)",  label: "Electric Blue" },
+  // hue ~220 deep blue — white text 7.4:1
+  blue:        { hex: "#1d4ed8", text: "white", tintRgba: "rgba(29,78,216,0.13)",   hoverTintRgba: "rgba(29,78,216,0.23)",   label: "Blue"         },
+  // hue ~200 sky/cyan blue — very light, black text 13:1
+  lightBlue:   { hex: "#7dd3fc", text: "black", tintRgba: "rgba(125,211,252,0.18)", hoverTintRgba: "rgba(125,211,252,0.30)", label: "Light Blue"   },
+  // hue ~275 deep violet-purple — white text 8.5:1
+  purple:      { hex: "#7e22ce", text: "white", tintRgba: "rgba(126,34,206,0.13)",  hoverTintRgba: "rgba(126,34,206,0.23)",  label: "Purple"       },
+  // hue ~270 pastel lavender — black text 11:1
+  lightPurple: { hex: "#d8b4fe", text: "black", tintRgba: "rgba(216,180,254,0.20)", hoverTintRgba: "rgba(216,180,254,0.32)", label: "Light Purple" },
+  // hue ~0 saturated red — white text 7.0:1
+  red:         { hex: "#dc2626", text: "white", tintRgba: "rgba(220,38,38,0.13)",   hoverTintRgba: "rgba(220,38,38,0.23)",   label: "Red"          },
+  // hue ~330 hot pink/magenta — black text 6.1:1
+  pink:        { hex: "#ec4899", text: "black", tintRgba: "rgba(236,72,153,0.14)",  hoverTintRgba: "rgba(236,72,153,0.25)",  label: "Pink"         },
+  // hue ~25 vivid orange — black text 7.8:1
+  orange:      { hex: "#f97316", text: "black", tintRgba: "rgba(249,115,22,0.13)",  hoverTintRgba: "rgba(249,115,22,0.23)",  label: "Orange"       },
+  // hue ~30 peach/pastel orange — black text 12:1
+  lightOrange: { hex: "#fdba74", text: "black", tintRgba: "rgba(253,186,116,0.18)", hoverTintRgba: "rgba(253,186,116,0.30)", label: "Light Orange" },
+  // hue ~48 bright yellow — black text 15:1
+  yellow:      { hex: "#facc15", text: "black", tintRgba: "rgba(250,204,21,0.16)",  hoverTintRgba: "rgba(250,204,21,0.28)",  label: "Yellow"       },
+  // hue ~140 forest green — white text 4.9:1
+  green:       { hex: "#15803d", text: "white", tintRgba: "rgba(21,128,61,0.13)",   hoverTintRgba: "rgba(21,128,61,0.23)",   label: "Green"        },
+  // hue ~145 mint/light green — black text 11:1
+  lightGreen:  { hex: "#86efac", text: "black", tintRgba: "rgba(134,239,172,0.18)", hoverTintRgba: "rgba(134,239,172,0.30)", label: "Light Green"  },
+  // neutral gray — white text 6.8:1
+  gray:        { hex: "#4b5563", text: "white", tintRgba: "rgba(75,85,99,0.15)",    hoverTintRgba: "rgba(75,85,99,0.27)",    label: "Gray"         },
+  // hue ~25 dark warm brown — white text 6.8:1
+  brown:       { hex: "#92400e", text: "white", tintRgba: "rgba(146,64,14,0.13)",   hoverTintRgba: "rgba(146,64,14,0.23)",   label: "Brown"        },
 };
 
 export type ValidationStatus = "pass" | "fail" | "pending";
@@ -342,7 +361,7 @@ export const INITIAL_PROJECTS: MockProject[] = [
     status: "Draft",
     dueDate: "2026-08-15",
     priority: 2,
-    color: "blue",
+    color: "orange",
     notes: "Replacement unit for Cell 3 probe mount. Confirm cable routing before compile.",
     createdAt: "2026-05-20T10:30:00.000Z",
     createdByUserId: 3,
@@ -363,7 +382,7 @@ export const INITIAL_PROJECTS: MockProject[] = [
     status: "Draft",
     dueDate: "2026-09-01",
     priority: 1,
-    color: "violet",
+    color: "blue",
     notes: null,
     createdAt: "2026-05-28T08:15:00.000Z",
     createdByUserId: 4,
@@ -406,7 +425,7 @@ export const INITIAL_PROJECTS: MockProject[] = [
     status: "Active",
     dueDate: "2026-07-15",
     priority: 1,
-    color: "electric",
+    color: "green",
     notes: "Q4 machine cell build. Probe and cradle sub-assy confirmed in stock.",
     createdAt: "2026-04-10T09:00:00.000Z",
     createdByUserId: 4,
@@ -427,7 +446,7 @@ export const INITIAL_PROJECTS: MockProject[] = [
     status: "Active",
     dueDate: "2026-08-30",
     priority: 3,
-    color: "teal",
+    color: "brown",
     notes: null,
     createdAt: "2026-03-25T14:00:00.000Z",
     createdByUserId: 2,
