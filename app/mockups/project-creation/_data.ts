@@ -10,6 +10,53 @@ export type ProjectStatus = "Draft" | "Active" | "Complete" | "Archived";
 export type WoStatus = "Unreleased" | "Open" | "Complete" | "Cancelled";
 export type StepStatus = "Waiting" | "InProgress" | "Complete" | "Skipped";
 
+// ─── Project Color ────────────────────────────────────────────────────────────
+//
+// Optional per-project color for visual workspace organization. Avoids green,
+// amber, and red ranges (reserved for status indicators across the tool).
+// Note: This attribute is not yet in the spec (project_creation_view_spec.md);
+// the gap is logged in MOCKUP_TRACK.md and will be backfilled into the spec separately.
+
+export type ProjectColor =
+  | "blue"
+  | "teal"
+  | "cyan"
+  | "indigo"
+  | "violet"
+  | "purple"
+  | "magenta"
+  | "pink"
+  | "brown"
+  | "slate"
+  | "electric";
+
+// Ordered list for the picker grid
+export const PROJECT_COLORS: ProjectColor[] = [
+  "blue", "teal", "cyan", "indigo", "violet", "purple",
+  "magenta", "pink", "brown", "slate", "electric",
+];
+
+export type ProjectColorMeta = {
+  hex: string;          // solid swatch color
+  tintRgba: string;     // low-opacity row background (dark theme)
+  hoverTintRgba: string;// slightly stronger on hover
+  label: string;
+};
+
+export const PROJECT_COLOR_MAP: Record<ProjectColor, ProjectColorMeta> = {
+  blue:     { hex: "#3b82f6", tintRgba: "rgba(59,130,246,0.12)",  hoverTintRgba: "rgba(59,130,246,0.22)",  label: "Blue"         },
+  teal:     { hex: "#14b8a6", tintRgba: "rgba(20,184,166,0.12)",  hoverTintRgba: "rgba(20,184,166,0.22)",  label: "Teal"         },
+  cyan:     { hex: "#06b6d4", tintRgba: "rgba(6,182,212,0.12)",   hoverTintRgba: "rgba(6,182,212,0.22)",   label: "Cyan"         },
+  indigo:   { hex: "#6366f1", tintRgba: "rgba(99,102,241,0.12)",  hoverTintRgba: "rgba(99,102,241,0.22)",  label: "Indigo"       },
+  violet:   { hex: "#8b5cf6", tintRgba: "rgba(139,92,246,0.12)",  hoverTintRgba: "rgba(139,92,246,0.22)",  label: "Violet"       },
+  purple:   { hex: "#a855f7", tintRgba: "rgba(168,85,247,0.12)",  hoverTintRgba: "rgba(168,85,247,0.22)",  label: "Purple"       },
+  magenta:  { hex: "#d946ef", tintRgba: "rgba(217,70,239,0.12)",  hoverTintRgba: "rgba(217,70,239,0.22)",  label: "Magenta"      },
+  pink:     { hex: "#ec4899", tintRgba: "rgba(236,72,153,0.12)",  hoverTintRgba: "rgba(236,72,153,0.22)",  label: "Pink"         },
+  brown:    { hex: "#92400e", tintRgba: "rgba(146,64,14,0.12)",   hoverTintRgba: "rgba(146,64,14,0.22)",   label: "Brown"        },
+  slate:    { hex: "#64748b", tintRgba: "rgba(100,116,139,0.15)", hoverTintRgba: "rgba(100,116,139,0.28)", label: "Slate"        },
+  electric: { hex: "#38bdf8", tintRgba: "rgba(56,189,248,0.12)",  hoverTintRgba: "rgba(56,189,248,0.22)",  label: "Electric Blue" },
+};
+
 export type ValidationStatus = "pass" | "fail" | "pending";
 export type ValidationFailureReason =
   | "no-template"
@@ -61,6 +108,7 @@ export type MockProject = {
   dueDate: string | null;
   priority: number | null;
   notes: string | null;
+  color: ProjectColor | null;
   createdAt: string;
   createdByUserId: number;
   createdByName: string;
@@ -294,6 +342,7 @@ export const INITIAL_PROJECTS: MockProject[] = [
     status: "Draft",
     dueDate: "2026-08-15",
     priority: 2,
+    color: "blue",
     notes: "Replacement unit for Cell 3 probe mount. Confirm cable routing before compile.",
     createdAt: "2026-05-20T10:30:00.000Z",
     createdByUserId: 3,
@@ -314,6 +363,7 @@ export const INITIAL_PROJECTS: MockProject[] = [
     status: "Draft",
     dueDate: "2026-09-01",
     priority: 1,
+    color: "violet",
     notes: null,
     createdAt: "2026-05-28T08:15:00.000Z",
     createdByUserId: 4,
@@ -334,6 +384,7 @@ export const INITIAL_PROJECTS: MockProject[] = [
     status: "Draft",
     dueDate: "2026-10-01",
     priority: null,
+    color: null, // demonstrates no-color state
     notes: "Floor 2 Bridgeport retrofit. BOM has validation issues — escalated to Dan.",
     createdAt: "2026-06-01T13:00:00.000Z",
     createdByUserId: 3,
@@ -355,6 +406,7 @@ export const INITIAL_PROJECTS: MockProject[] = [
     status: "Active",
     dueDate: "2026-07-15",
     priority: 1,
+    color: "electric",
     notes: "Q4 machine cell build. Probe and cradle sub-assy confirmed in stock.",
     createdAt: "2026-04-10T09:00:00.000Z",
     createdByUserId: 4,
@@ -375,6 +427,7 @@ export const INITIAL_PROJECTS: MockProject[] = [
     status: "Active",
     dueDate: "2026-08-30",
     priority: 3,
+    color: "teal",
     notes: null,
     createdAt: "2026-03-25T14:00:00.000Z",
     createdByUserId: 2,
@@ -429,6 +482,7 @@ export function createNewProject(): MockProject {
     status: "Draft",
     dueDate: null,
     priority: null,
+    color: null,
     notes: null,
     createdAt: now,
     createdByUserId: 3,

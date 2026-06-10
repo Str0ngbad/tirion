@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
-import { MockProject, MockProjectTopLevelItem, MockWorkOrder, MockWorkOrderStep, StepStatus, getSessionProjects } from "../_data";
+import { MockProject, MockProjectTopLevelItem, MockWorkOrder, MockWorkOrderStep, StepStatus, getSessionProjects, ProjectColor, PROJECT_COLOR_MAP } from "../_data";
 import { MOCK_PARTS } from "@/app/mockups/parts/_data";
+import ColorPicker from "./color-picker";
 import { validateProject, failCount, allPass, NodeValidation } from "../_lib/validation";
 import BomTreePreview from "./bom-tree-preview";
 import CompileFailureScreen from "./compile-failure-screen";
@@ -121,6 +122,7 @@ export default function DraftEditor({ project, onChange, onCompileSuccess, onDel
   const [showToast, setShowToast] = useState(false);
   const toastTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const projectNumberContainerRef = useRef<HTMLDivElement>(null);
+  const [colorPickerOpen, setColorPickerOpen] = useState(false);
 
   // Auto-focus Project Number on mount for new (empty) Drafts
   useEffect(() => {
@@ -370,6 +372,37 @@ export default function DraftEditor({ project, onChange, onCompileSuccess, onDel
                 className="h-8 text-sm"
                 placeholder="Integer, optional"
               />
+            </div>
+
+            {/* Color */}
+            <div className="space-y-1">
+              <Label className="text-xs">Color</Label>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setColorPickerOpen((o) => !o)}
+                  className="flex h-8 w-full items-center gap-2 rounded-md border border-input bg-transparent px-2.5 text-xs transition-colors hover:bg-muted/40"
+                >
+                  {project.color ? (
+                    <>
+                      <span
+                        className="h-3 w-3 shrink-0 rounded-full"
+                        style={{ backgroundColor: PROJECT_COLOR_MAP[project.color].hex }}
+                      />
+                      <span className="text-foreground">{PROJECT_COLOR_MAP[project.color].label}</span>
+                    </>
+                  ) : (
+                    <span className="text-muted-foreground/60">None</span>
+                  )}
+                </button>
+                {colorPickerOpen && (
+                  <ColorPicker
+                    selected={project.color}
+                    onSelect={(c: ProjectColor | null) => update({ color: c })}
+                    onClose={() => setColorPickerOpen(false)}
+                  />
+                )}
+              </div>
             </div>
 
             {/* Notes */}

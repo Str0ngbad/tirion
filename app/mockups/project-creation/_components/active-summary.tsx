@@ -1,10 +1,13 @@
 "use client";
 
-import { MockProject, woCountSummary, topLevelWoSummary } from "../_data";
+import { useState } from "react";
+import { MockProject, woCountSummary, topLevelWoSummary, ProjectColor, PROJECT_COLOR_MAP } from "../_data";
 import { ExternalLink, Info } from "lucide-react";
+import ColorPicker from "./color-picker";
 
 type Props = {
   project: MockProject;
+  onChange: (updated: MockProject) => void;
 };
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -25,9 +28,10 @@ function InertLink({ label, annotation }: { label: string; annotation: string })
   );
 }
 
-export default function ActiveSummary({ project }: Props) {
+export default function ActiveSummary({ project, onChange }: Props) {
   const { total, complete } = woCountSummary(project);
   const pct = total > 0 ? Math.round((complete / total) * 100) : 0;
+  const [colorPickerOpen, setColorPickerOpen] = useState(false);
 
   function formatDate(iso: string | null) {
     if (!iso) return "—";
@@ -53,7 +57,7 @@ export default function ActiveSummary({ project }: Props) {
       <div className="shrink-0 border-b border-sky-200 bg-sky-50 px-6 py-2">
         <p className="flex items-center gap-2 text-xs text-sky-700">
           <Info className="h-3.5 w-3.5 shrink-0" />
-          Read-only preview. Editing, Add Top-Level Item, Edit Due Date, and Archive are Phase 8 features.
+          Read-only preview — Project Color is editable. Editing metadata, Add Top-Level Item, and Archive are Phase 8 features.
         </p>
       </div>
 
@@ -68,6 +72,37 @@ export default function ActiveSummary({ project }: Props) {
               <span className="font-mono">{project.projectNumber}</span>
             </Field>
             <Field label="Project Name">{project.projectName}</Field>
+            <Field label="Color">
+              <div className="relative inline-block">
+                <button
+                  type="button"
+                  onClick={() => setColorPickerOpen((o) => !o)}
+                  className="flex items-center gap-1.5 rounded border border-border/50 px-2 py-1 text-xs transition-colors hover:bg-muted/40"
+                  title="Click to change project color"
+                >
+                  {project.color ? (
+                    <>
+                      <span
+                        className="h-3 w-3 shrink-0 rounded-full"
+                        style={{ backgroundColor: PROJECT_COLOR_MAP[project.color].hex }}
+                      />
+                      <span>{PROJECT_COLOR_MAP[project.color].label}</span>
+                    </>
+                  ) : (
+                    <span className="text-muted-foreground/60">None</span>
+                  )}
+                </button>
+                {colorPickerOpen && (
+                  <ColorPicker
+                    selected={project.color}
+                    onSelect={(c: ProjectColor | null) => {
+                      onChange({ ...project, color: c });
+                    }}
+                    onClose={() => setColorPickerOpen(false)}
+                  />
+                )}
+              </div>
+            </Field>
             <Field label="Status">
               <span className="rounded-sm border border-emerald-400 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
                 {project.status}

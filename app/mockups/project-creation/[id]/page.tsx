@@ -2,7 +2,7 @@
 
 import { useState, use } from "react";
 import { useRouter } from "next/navigation";
-import { getSessionProjects, setSessionProjects, MockProject } from "../_data";
+import { getSessionProjects, setSessionProjects, MockProject, PROJECT_COLOR_MAP } from "../_data";
 import DraftEditor from "../_components/draft-editor";
 import ActiveSummary from "../_components/active-summary";
 import { ArrowLeft } from "lucide-react";
@@ -71,8 +71,14 @@ export default function ProjectDetailPage({ params }: Props) {
           <span>Projects</span>
         </button>
         <span className="text-muted-foreground/40">/</span>
-        <span className="text-sm font-semibold text-foreground">
-          {project.projectNumber} — {project.projectName}
+        <span className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+          {project.color && (
+            <span
+              className="h-2.5 w-2.5 shrink-0 rounded-full"
+              style={{ backgroundColor: PROJECT_COLOR_MAP[project.color].hex }}
+            />
+          )}
+          {project.projectNumber} — {project.projectName || <span className="text-muted-foreground font-normal italic">Untitled Draft</span>}
         </span>
         <span className="ml-2 rounded-sm border border-border px-1.5 py-0.5 text-xs text-muted-foreground">
           {project.status}
@@ -89,7 +95,7 @@ export default function ProjectDetailPage({ params }: Props) {
             onDeleteDraft={onDeleteDraft}
           />
         ) : (
-          <ActiveSummary project={project} />
+          <ActiveSummary project={project} onChange={updateProject} />
         )}
       </div>
     </div>
