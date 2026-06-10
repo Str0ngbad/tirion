@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo, useRef } from "react";
-import { MockProject, MockProjectTopLevelItem, MockWorkOrder, MockWorkOrderStep, StepStatus } from "../_data";
+import { useState, useMemo, useRef, useEffect } from "react";
+import { MockProject, MockProjectTopLevelItem, MockWorkOrder, MockWorkOrderStep, StepStatus, getSessionProjects } from "../_data";
 import { MOCK_PARTS } from "@/app/mockups/parts/_data";
 import { validateProject, failCount, allPass, NodeValidation } from "../_lib/validation";
 import BomTreePreview from "./bom-tree-preview";
@@ -120,6 +120,16 @@ export default function DraftEditor({ project, onChange, onCompileSuccess, onDel
   const [compiling, setCompiling] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const toastTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const projectNumberContainerRef = useRef<HTMLDivElement>(null);
+
+  // Auto-focus Project Number on mount for new (empty) Drafts
+  useEffect(() => {
+    if (!project.projectNumber && projectNumberContainerRef.current) {
+      const input = projectNumberContainerRef.current.querySelector("input");
+      if (input) input.focus();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // intentionally only on mount
 
   // Live validation
   const validationNodes = useMemo(
@@ -150,12 +160,18 @@ export default function DraftEditor({ project, onChange, onCompileSuccess, onDel
   }
 
   function handleProjectNumberBlur() {
-    // In a real app, validate uniqueness against backend. In mockup, no-op since single state.
-    if (!project.projectNumber.trim()) {
+    const pn = project.projectNumber.trim();
+    if (!pn) {
       setProjectNumberError("Project Number is required");
-    } else {
-      setProjectNumberError(null);
+      return;
     }
+    // Check uniqueness against all other projects in the session store
+    const others = getSessionProjects().filter((p) => p.projectId !== project.projectId);
+    if (others.some((p) => p.projectNumber === pn)) {
+      setProjectNumberError("Project Number already in use");
+      return;
+    }
+    setProjectNumberError(null);
   }
 
   function handleAddTopLevel(part: { partId: number; partNumber: string; partName: string; partType: string }, qty: number) {
@@ -269,22 +285,22 @@ export default function DraftEditor({ project, onChange, onCompileSuccess, onDel
 
   return (
     <div className="flex flex-1 flex-col overflow-y-auto">
-      {/* Validation banner */}
-      {project.topLevelItems.length > 0 && (
-        <div
-          className={`shrink-0 border-b px-6 py-2 text-sm ${
-            isValid
-              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-              : fails > 0
-              ? "border-destructive/20 bg-destructive/5 text-destructive"
-              : "border-border bg-muted/30 text-muted-foreground"
-          }`}
-        >
-          {isValid
-            ? "All checks passed — ready to compile"
-            : `${fails} validation ${fails === 1 ? "issue" : "issues"} — see details in tree below`}
-        </div>
-      )}
+      {/* Validation banner — always visible */}
+      <div
+        className={`shrink-0 border-b px-6 py-2 text-sm ${
+          project.topLevelItems.length === 0
+            ? "border-border bg-muted/20 text-muted-foreground/70"
+            : isValid
+            ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+            : "border-destructive/20 bg-destructive/5 text-destructive"
+        }`}
+      >
+        {project.topLevelItems.length === 0
+          ? "Add at least one top-level item, then validate and compile"
+          : isValid
+          ? "All checks passed — ready to compile"
+          : `${fails} validation ${fails === 1 ? "issue" : "issues"} — see details in tree below`}
+      </div>
 
       <div className="flex-1 space-y-6 px-6 py-5">
         {/* ── Header section ─────────────────────────────────────────────── */}
@@ -296,13 +312,15 @@ export default function DraftEditor({ project, onChange, onCompileSuccess, onDel
             {/* Project Number */}
             <div className="space-y-1">
               <Label className="text-xs">Project Number <span className="text-destructive">*</span></Label>
-              <Input
-                value={project.projectNumber}
-                onChange={(e) => update({ projectNumber: e.target.value })}
-                onBlur={handleProjectNumberBlur}
-                className="h-8 text-sm font-mono"
-                placeholder="e.g. 17559"
-              />
+              <div ref={projectNumberContainerRef}>
+                <Input
+                  value={project.projectNumber}
+                  onChange={(e) => update({ projectNumber: e.target.value })}
+                  onBlur={handleProjectNumberBlur}
+                  className="h-8 text-sm font-mono"
+                  placeholder="e.g. 17559"
+                />
+              </div>
               {projectNumberError && (
                 <p className="text-xs text-destructive">{projectNumberError}</p>
               )}
@@ -445,16 +463,22 @@ export default function DraftEditor({ project, onChange, onCompileSuccess, onDel
         </section>
 
         {/* ── BOM Tree Preview ────────────────────────────────────────────── */}
-        {project.topLevelItems.length > 0 && (
-          <section>
-            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              BOM Tree Preview
-            </h2>
+        <section>
+          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            BOM Tree Preview
+          </h2>
+          {project.topLevelItems.length > 0 ? (
             <div className="rounded-md border border-border overflow-hidden">
               <BomTreePreview topLevelItems={project.topLevelItems} />
             </div>
-          </section>
-        )}
+          ) : (
+            <div className="rounded-md border border-border/40 bg-muted/20 px-6 py-8 text-center">
+              <p className="text-sm text-muted-foreground">
+                No top-level items yet — add an item above to preview the BOM tree
+              </p>
+            </div>
+          )}
+        </section>
       </div>
 
       {/* ── Footer / Compile bar ─────────────────────────────────────────── */}

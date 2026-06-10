@@ -6,6 +6,8 @@ import {
   MockProject,
   ProjectStatus,
   woCountSummary,
+  createNewProject,
+  setSessionProjects,
 } from "../_data";
 import { validateProject, failCount, allPass } from "../_lib/validation";
 import { Button } from "@/components/ui/button";
@@ -24,7 +26,6 @@ import {
   ChevronsUpDown,
   Filter,
   Plus,
-  Info,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
@@ -195,6 +196,17 @@ export default function ProjectList({ projects, setProjects }: Props) {
     router.push(`/mockups/project-creation/${project.projectId}`);
   }
 
+  function handleAddNewProject() {
+    const newProject = createNewProject();
+    // Imperatively update the session store before navigating so the detail page
+    // can find the new project in getSessionProjects(). The local state update will
+    // follow on return (list page re-mounts and reads from session store).
+    const updated = [...projects, newProject];
+    setSessionProjects(updated);
+    setProjects(() => updated);
+    router.push(`/mockups/project-creation/${newProject.projectId}`);
+  }
+
   function handleDelete(e: React.MouseEvent, project: MockProject) {
     e.stopPropagation();
     setDeleteTarget(project);
@@ -283,16 +295,10 @@ export default function ProjectList({ projects, setProjects }: Props) {
         <div className="ml-auto flex items-center gap-2">
           <span className="text-xs text-muted-foreground">{rows.length} project{rows.length !== 1 ? "s" : ""}</span>
 
-          {/* Add New Project — disabled in mockup */}
-          <div className="relative group">
-            <Button size="sm" disabled className="h-7 gap-1 text-xs opacity-50">
-              <Plus className="h-3.5 w-3.5" />
-              New Project
-            </Button>
-            <div className="pointer-events-none absolute right-0 top-8 z-20 hidden w-56 rounded border border-border bg-popover p-2 text-xs text-muted-foreground shadow-md group-hover:block">
-              Mockup uses seeded projects only. New project creation is in scope but navigation is disabled here.
-            </div>
-          </div>
+          <Button size="sm" onClick={handleAddNewProject} className="h-7 gap-1 text-xs">
+            <Plus className="h-3.5 w-3.5" />
+            New Project
+          </Button>
         </div>
       </div>
 

@@ -2,7 +2,7 @@
 
 import { useState, use } from "react";
 import { useRouter } from "next/navigation";
-import { INITIAL_PROJECTS, MockProject } from "../_data";
+import { getSessionProjects, setSessionProjects, MockProject } from "../_data";
 import DraftEditor from "../_components/draft-editor";
 import ActiveSummary from "../_components/active-summary";
 import { ArrowLeft } from "lucide-react";
@@ -15,16 +15,10 @@ export default function ProjectDetailPage({ params }: Props) {
   const { id } = use(params);
   const router = useRouter();
 
-  // Clone seeded projects into local state for this detail view.
-  // In a real app, this would come from shared state (e.g., Zustand or URL params).
-  // For the mockup, we re-seed from INITIAL_PROJECTS on each page load.
-  const [projects, setProjects] = useState<MockProject[]>(() =>
-    INITIAL_PROJECTS.map((p) => ({
-      ...p,
-      topLevelItems: [...p.topLevelItems],
-      workOrders: [...p.workOrders],
-    }))
-  );
+  // Initialize from the session store so new projects created on the list page are visible here.
+  // Edits made here are synced back to the session store in updateProject() so the list
+  // page sees the changes on navigate-back.
+  const [projects, setProjects] = useState<MockProject[]>(() => getSessionProjects());
 
   const project = projects.find(
     (p) => p.projectId === parseInt(id) || p.projectNumber === id
@@ -45,9 +39,11 @@ export default function ProjectDetailPage({ params }: Props) {
   }
 
   function updateProject(updated: MockProject) {
-    setProjects((prev) =>
-      prev.map((p) => (p.projectId === updated.projectId ? updated : p))
-    );
+    setProjects((prev) => {
+      const next = prev.map((p) => (p.projectId === updated.projectId ? updated : p));
+      setSessionProjects(next); // sync changes back so list page sees them on navigate-back
+      return next;
+    });
   }
 
   function onCompileSuccess(compiled: MockProject) {
@@ -57,6 +53,9 @@ export default function ProjectDetailPage({ params }: Props) {
   }
 
   function onDeleteDraft() {
+    // Remove from session store so the list page reflects the deletion on navigate-back
+    const next = projects.filter((p) => p.projectId !== project?.projectId);
+    setSessionProjects(next);
     router.push("/mockups/project-creation");
   }
 

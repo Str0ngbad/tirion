@@ -389,10 +389,65 @@ export const INITIAL_PROJECTS: MockProject[] = [
   },
 ];
 
+// ─── Session-level project store ─────────────────────────────────────────────
+//
+// Module scope persists across Next.js client-side navigations within the same SPA session.
+// This allows the list page and detail page to share project state without a real store.
+// In a real app, this would be Zustand, server state, or URL params.
+
+let _sessionProjects: MockProject[] | null = null;
+
+export function getSessionProjects(): MockProject[] {
+  if (!_sessionProjects) {
+    // First call: initialize from the seeded INITIAL_PROJECTS
+    _sessionProjects = INITIAL_PROJECTS.map((p) => ({
+      ...p,
+      topLevelItems: [...p.topLevelItems],
+      workOrders: [...p.workOrders],
+    }));
+  }
+  return _sessionProjects;
+}
+
+export function setSessionProjects(projects: MockProject[]): void {
+  _sessionProjects = projects;
+}
+
+// Monotonically increasing ID counter for new projects created within the session.
+// Real implementation uses database auto-increment or a separate ID generator.
+// Starts above the highest seeded projectId (5) and highest seeded projectNumber (17559).
+let _nextProjectId = 6;
+let _nextProjectNumber = 17560;
+
+export function createNewProject(): MockProject {
+  const now = new Date().toISOString();
+  const project: MockProject = {
+    projectId: _nextProjectId++,
+    projectNumber: String(_nextProjectNumber++),
+    projectName: "",
+    customerName: null,
+    status: "Draft",
+    dueDate: null,
+    priority: null,
+    notes: null,
+    createdAt: now,
+    createdByUserId: 3,
+    createdByName: "Marcus Hill", // mock current user
+    lastEditedAt: now,
+    lastEditedUserId: 3,
+    lastEditedByName: "Marcus Hill",
+    topLevelItems: [],
+    workOrders: [],
+    compiledAt: null,
+    nextTopLevelIndex: 1,
+  };
+  return project;
+}
+
 // ─── Mutable project list (pages read/write this via useProjectStore or direct mutation) ──
 
-// In a mockup without Zustand, we pass state down via component useState initialized from INITIAL_PROJECTS.
-// The INITIAL_PROJECTS array is the seed; components clone it into local state.
+// In a mockup without Zustand, we pass state down via component useState initialized from getSessionProjects().
+// The INITIAL_PROJECTS array is the seed; components clone it into local state via getSessionProjects().
 
 // ─── WO count summary helpers ─────────────────────────────────────────────────
 
