@@ -376,7 +376,7 @@ export default function ProjectList({ projects, setProjects }: Props) {
                     {project.status === "Draft" && (
                       <button
                         onClick={(e) => handleDelete(e, project)}
-                        className="rounded p-1 text-muted-foreground/40 hover:bg-destructive/10 hover:text-destructive transition-colors"
+                        className="rounded p-1 text-muted-foreground/70 hover:bg-destructive/10 hover:text-destructive transition-colors"
                         title="Delete Draft"
                       >
                         <Trash2 className="h-3.5 w-3.5" />

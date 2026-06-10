@@ -419,7 +419,7 @@ export default function DraftEditor({ project, onChange, onCompileSuccess, onDel
                       <td className="px-3 py-2">
                         <button
                           onClick={() => handleRemoveTl(tl.topLevelIndex)}
-                          className="rounded p-1 text-muted-foreground/40 hover:bg-destructive/10 hover:text-destructive transition-colors"
+                          className="rounded p-1 text-muted-foreground/70 hover:bg-destructive/10 hover:text-destructive transition-colors"
                           title="Remove top-level item"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
