@@ -124,9 +124,11 @@ export default function DraftEditor({ project, onChange, onCompileSuccess, onDel
   const projectNumberContainerRef = useRef<HTMLDivElement>(null);
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
 
-  // Auto-focus Project Number on mount for new (empty) Drafts
+  // Auto-focus Project Number on mount for new (empty) Drafts.
+  // Gate on projectName being empty — new projects have no name yet; projectNumber
+  // is pre-populated by createNewProject() so it can't be used as the "new" signal.
   useEffect(() => {
-    if (!project.projectNumber && projectNumberContainerRef.current) {
+    if (!project.projectName && projectNumberContainerRef.current) {
       const input = projectNumberContainerRef.current.querySelector("input");
       if (input) input.focus();
     }
