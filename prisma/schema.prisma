@@ -45,6 +45,7 @@ model Part {
   bomParent         BOM[]             @relation("ParentPart")
   bomChild          BOM[]             @relation("ChildPart")
   workOrders        WorkOrder[]
+  topLevelItems     ProjectTopLevelItem[]
   productionBatches ProductionBatch[]
   supplyOrderLines  SupplyOrderLine[]
 }
@@ -177,9 +178,23 @@ model Project {
   lastEditedUserId   Int
 
   // Relations
-  workOrders   WorkOrder[]
-  creator      User        @relation("ProjectCreator", fields: [creatorUserId], references: [userId])
-  lastEditedBy User        @relation("ProjectLastEditor", fields: [lastEditedUserId], references: [userId])
+  workOrders     WorkOrder[]
+  topLevelItems  ProjectTopLevelItem[]
+  creator        User        @relation("ProjectCreator", fields: [creatorUserId], references: [userId])
+  lastEditedBy   User        @relation("ProjectLastEditor", fields: [lastEditedUserId], references: [userId])
+}
+
+model ProjectTopLevelItem {
+  topLevelItemId  Int      @id @default(autoincrement())
+  projectId       Int
+  partId          Int
+  quantity        Decimal
+  topLevelIndex   Int      // 1-based; immutable after assignment; never reused
+
+  project  Project  @relation(fields: [projectId], references: [projectId])
+  part     Part     @relation(fields: [partId], references: [partId])
+
+  @@unique([projectId, topLevelIndex])
 }
 
 enum ProjectStatus {
@@ -198,7 +213,7 @@ model WorkOrder {
   topLevelIndex               Int?      // suffix value (1, 2, 3...) for top-level WOs; null for non-top-level WOs
   quantity                    Decimal
   priority                    Int?      // global integer; lower number = higher priority; nullable
-  dueDate                     DateTime  // denormalized from Project.dueDate; cascades on Project edit
+  dueDate                     DateTime? // denormalized from Project.dueDate; cascades on Project edit; null when project has no due date
   eta                         DateTime? // per-WO ETA, independently editable; receives propagated updates from Supply Order Line ETA edits
   status                      WOStatus  @default(Unreleased)
   batchId                     Int?      // FK to ProductionBatch; null if unbatched
