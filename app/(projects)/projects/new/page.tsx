@@ -1,19 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useCreateProject } from "@/lib/api/projects";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 
 export default function NewProjectPage() {
-  const router = useRouter();
   const createProject = useCreateProject();
   const [error, setError] = useState<string | null>(null);
   const didCreate = useRef(false);
 
   function doCreate() {
     setError(null);
+    didCreate.current = true;
     createProject.mutate(
       {
         projectNumber: `DRAFT-${Date.now()}`,
@@ -21,9 +20,12 @@ export default function NewProjectPage() {
       },
       {
         onSuccess: (project) => {
-          router.replace(`/projects/${project.projectId}/edit`);
+          // Hard navigation bypasses Next.js router cache, ensuring the edit
+          // page always mounts fresh with the new project loaded.
+          window.location.replace(`/projects/${project.projectId}/edit`);
         },
         onError: () => {
+          didCreate.current = false;
           setError("Failed to create draft. Please try again.");
         },
       }
@@ -32,7 +34,6 @@ export default function NewProjectPage() {
 
   useEffect(() => {
     if (!didCreate.current) {
-      didCreate.current = true;
       doCreate();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -41,7 +41,10 @@ export default function ProjectsPage() {
   const canManage = user?.role === "Manager" || user?.role === "Admin";
 
   function handleAddNew() {
-    router.push("/projects/new");
+    // Hard navigation prevents the router cache from restoring the stale
+    // /projects/new component — the page needs to mount fresh so its
+    // useEffect fires and creates the Draft.
+    window.location.href = "/projects/new";
   }
 
   function handleDelete(projectId: number) {
