@@ -169,6 +169,8 @@ model Project {
   dueDate            DateTime?
   status             ProjectStatus @default(Draft)
   notes              String?
+  priority           Int?          // project-level priority; if set, applied to all generated WOs at compile time
+  color              String?       // optional workspace-organization color; one of 13 valid palette keys or null
   createdAt          DateTime      @default(now())
   creatorUserId      Int
   lastEditedAt       DateTime      @default(now())
