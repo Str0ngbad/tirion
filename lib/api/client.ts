@@ -1,7 +1,7 @@
 import { ApiError } from "./client-error";
 
 // TODO: Replace with real user selection per ADR-008 (manual user selector UI deferred)
-const CURRENT_USER_ID = 1;
+export const CURRENT_USER_ID = 1;
 
 export async function apiFetch<T>(
   url: string,
