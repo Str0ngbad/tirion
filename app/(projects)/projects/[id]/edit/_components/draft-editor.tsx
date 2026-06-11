@@ -102,8 +102,15 @@ export function DraftEditor({ initialProject }: Props) {
 
   // ─── Run validation ────────────────────────────────────────────────────────
 
+  // Ref so runValidation always sees the current item count even when called
+  // from a stale closure (e.g. setTimeout inside addTopLevelItem.onSuccess).
+  const topLevelItemCountRef = useRef(project.topLevelItems.length);
+  useEffect(() => {
+    topLevelItemCountRef.current = project.topLevelItems.length;
+  }, [project.topLevelItems.length]);
+
   const runValidation = useCallback(() => {
-    if (project.topLevelItems.length === 0) {
+    if (topLevelItemCountRef.current === 0) {
       setValidation({ status: "pending" });
       return;
     }
@@ -121,7 +128,7 @@ export function DraftEditor({ initialProject }: Props) {
         setValidation({ status: "pending" });
       },
     });
-  }, [project.projectId, project.topLevelItems.length, validateProject]);
+  }, [project.projectId, validateProject]);
 
   // Validate on mount
   useEffect(() => {
