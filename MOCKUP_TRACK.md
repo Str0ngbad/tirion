@@ -18,6 +18,54 @@ Entries are ordered most recent first.
 
 ---
 
+## 2026-06-11 — Project Creation View — Surface Lock
+
+**Surfaces touched:** /app/mockups/project-creation/ — final iteration pass before
+implementation handoff.
+
+**Mockup commits:**
+- `bdb58d3` — fix: auto-focus Project Number on new Draft using projectName guard
+- `3768835` — feat: retune Project Color palette to 13-color full-spectrum set
+- `7324b74` — refactor: replace Project Color row tint with Project ID pill treatment
+
+### Scope
+
+Three focused changes completing the Project Creation surface:
+
+1. **Project Number auto-focus** — new Drafts auto-focus the Project Number
+   field on load. Guard added to prevent the focus from firing on existing
+   Drafts with a projectName already set (guard: `!project.projectName`).
+
+2. **Palette retune** — the 11-color palette from the prior session was
+   replaced with a 13-color full-spectrum set. Added: Red, Yellow, Green,
+   Light Green. Removed: Teal, Cyan, Indigo, Violet, Magenta, Electric Blue.
+   Rationale: the prior palette excluded the warm half of the spectrum; the
+   new palette covers the full hue wheel with better visual distinctness.
+   Updated seeded color assignments: 17559→orange, 10256→blue, 10236→null,
+   10121→green, 10030→brown.
+
+3. **ProjectIdPill migration** — row tint + breadcrumb chip replaced with a
+   unified `ProjectIdPill` component. The pill renders the Project Number
+   as a solid-color pill when color is set, or as plain monospace text when
+   color is null. Applied wherever Project Number is rendered: Project List
+   rows, Draft Editor breadcrumb, Active Summary header. This is a reusable
+   cross-surface UI primitive — its location at
+   `_components/project-id-pill.tsx` is mockup-local; the implementation
+   track should move it to the shared component directory.
+
+### Surface status
+
+**Locked for implementation.** The Project Creation View mockup is complete.
+Handoff document: `mockup_track/project_creation_handoff.md`.
+
+### Spec gaps
+
+Project Color and the `ProjectIdPill` pattern are not in
+`project_creation_view_spec.md`. A full list of gaps and what the
+implementation track needs to backfill is captured in the handoff doc.
+
+---
+
 ## 2026-06-10 — Project Creation View — Iteration Pass
 
 **Surfaces touched:** /app/mockups/project-creation/ — iteration on all three
