@@ -195,12 +195,8 @@ export async function addTopLevelItem(
         throw new TopLevelItemPartInactiveError(data.partId, part?.partNumber ?? String(data.partId));
       }
 
-      // Compute next topLevelIndex: max existing + 1, or 1 if none (PC-21)
-      const maxResult = await tx.projectTopLevelItem.aggregate({
-        where: { projectId },
-        _max: { topLevelIndex: true },
-      });
-      const nextIndex = (maxResult._max.topLevelIndex ?? 0) + 1;
+      // Use Project.nextTopLevelIndex as the monotonic counter (PC-21 — indices are never reused)
+      const nextIndex = project.nextTopLevelIndex;
 
       const item = await tx.projectTopLevelItem.create({
         data: {
@@ -213,7 +209,11 @@ export async function addTopLevelItem(
 
       await tx.project.update({
         where: { projectId },
-        data: { lastEditedAt: new Date(), lastEditedUserId: actingUserId },
+        data: {
+          nextTopLevelIndex: { increment: 1 },
+          lastEditedAt: new Date(),
+          lastEditedUserId: actingUserId,
+        },
       });
 
       return {
