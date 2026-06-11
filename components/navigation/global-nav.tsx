@@ -5,21 +5,25 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { NAV_CATEGORIES, type NavCategory } from './navigation-config';
+import { NAV_ITEMS, type NavItem, type NavCategory, type NavDirectLink } from './navigation-config';
+import { useCurrentUser } from '@/lib/hooks/use-current-user';
 
 export function GlobalNav() {
   const pathname = usePathname();
+  const { user } = useCurrentUser();
   const [openCategory, setOpenCategory] = useState<'production' | 'configuration' | null>(null);
   const [pinnedCategory, setPinnedCategory] = useState<'production' | 'configuration' | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const activeCategoryId = NAV_CATEGORIES.find(cat =>
-    cat.surfaces.some(s => pathname === s.href || pathname.startsWith(s.href + '/'))
+  const categories = NAV_ITEMS.filter((i): i is NavCategory => i.type === 'category');
+
+  const activeCategoryId = categories.find((cat) =>
+    cat.surfaces.some((s) => pathname === s.href || pathname.startsWith(s.href + '/'))
   )?.id ?? null;
 
-  const activeSurfaceHref = NAV_CATEGORIES
-    .flatMap(c => c.surfaces)
-    .find(s => pathname === s.href || pathname.startsWith(s.href + '/'))?.href ?? null;
+  const activeSurfaceHref = categories
+    .flatMap((c) => c.surfaces)
+    .find((s) => pathname === s.href || pathname.startsWith(s.href + '/'))?.href ?? null;
 
   const effectiveOpen = pinnedCategory ?? openCategory;
 
@@ -46,7 +50,7 @@ export function GlobalNav() {
 
   const handleContainerMouseLeave = (categoryId: 'production' | 'configuration') => {
     if (pinnedCategory) return;
-    setOpenCategory(current => current === categoryId ? null : current);
+    setOpenCategory((current) => (current === categoryId ? null : current));
   };
 
   const handleButtonClick = (categoryId: 'production' | 'configuration') => {
@@ -70,21 +74,61 @@ export function GlobalNav() {
         </Link>
 
         <div className="flex items-center">
-          {NAV_CATEGORIES.map((category) => (
-            <CategoryButton
-              key={category.id}
-              category={category}
-              isActive={activeCategoryId === category.id}
-              isOpen={effectiveOpen === category.id}
-              onContainerMouseEnter={() => handleContainerMouseEnter(category.id)}
-              onContainerMouseLeave={() => handleContainerMouseLeave(category.id)}
-              onClick={() => handleButtonClick(category.id)}
-              activeSurfaceHref={activeSurfaceHref}
-            />
-          ))}
+          {NAV_ITEMS.map((item) => {
+            if (item.type === 'link') {
+              return (
+                <DirectLink
+                  key={item.slug}
+                  item={item}
+                  pathname={pathname}
+                  userRole={user?.role}
+                />
+              );
+            }
+
+            return (
+              <CategoryButton
+                key={item.id}
+                category={item}
+                isActive={activeCategoryId === item.id}
+                isOpen={effectiveOpen === item.id}
+                onContainerMouseEnter={() => handleContainerMouseEnter(item.id)}
+                onContainerMouseLeave={() => handleContainerMouseLeave(item.id)}
+                onClick={() => handleButtonClick(item.id)}
+                activeSurfaceHref={activeSurfaceHref}
+              />
+            );
+          })}
         </div>
       </div>
     </nav>
+  );
+}
+
+function DirectLink({
+  item,
+  pathname,
+  userRole,
+}: {
+  item: NavDirectLink;
+  pathname: string;
+  userRole: string | undefined;
+}) {
+  if (userRole && item.hiddenForRoles?.includes(userRole as never)) return null;
+
+  const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+  return (
+    <Link
+      href={item.href}
+      className={cn(
+        'flex items-center px-4 py-3 text-sm transition-colors',
+        isActive
+          ? 'text-foreground border-b-2 border-primary -mb-px font-medium'
+          : 'text-muted-foreground hover:text-foreground'
+      )}
+    >
+      {item.label}
+    </Link>
   );
 }
 
@@ -126,10 +170,7 @@ function CategoryButton({
       >
         {category.label}
         <ChevronDown
-          className={cn(
-            'h-3 w-3 transition-transform',
-            isOpen && 'rotate-180'
-          )}
+          className={cn('h-3 w-3 transition-transform', isOpen && 'rotate-180')}
         />
       </button>
 

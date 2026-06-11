@@ -41,7 +41,11 @@ export async function getProjects(filters?: ListProjectsQuery) {
 
   return prisma.project.findMany({
     where,
-    include: { topLevelItems: true },
+    include: {
+      topLevelItems: true,
+      creator: { select: { displayName: true } },
+      lastEditedBy: { select: { displayName: true } },
+    },
     orderBy: { lastEditedAt: "desc" },
   });
 }
