@@ -128,14 +128,17 @@ async function seedAuditActions() {
     { actionName: "BlockerPending", category: "Blocker", description: "Blocker transitioned to Pending Resolution" },
     { actionName: "BlockerResolved", category: "Blocker", description: "Blocker resolved with type (Cleared, BatchAdjustment, RoutingRollback, WOSplit)" },
 
-    // Project (7)
+    // Project (10)
     { actionName: "ProjectCreated", category: "Project", description: "Draft Project created" },
+    { actionName: "ProjectUpdated", category: "Project", description: "Draft Project metadata or top-level items edited" },
+    { actionName: "ProjectDeleted", category: "Project", description: "Draft Project hard-deleted (service-layer action name)" },
     { actionName: "ProjectCompiled", category: "Project", description: "Draft → Active via successful compilation" },
     { actionName: "ProjectMetadataEdit", category: "Project", description: "Project Name, Customer Name, or Notes edited on Active Project" },
     { actionName: "ProjectDueDateChanged", category: "Project", description: "Project Due Date edited (with cascade summary to N WOs)" },
     { actionName: "ProjectTopLevelAdded", category: "Project", description: "New Top-Level Item added to Active Project" },
     { actionName: "ProjectArchived", category: "Project", description: "Project transitioned to Archived (Active or Complete origin)" },
     { actionName: "ProjectDraftDeleted", category: "Project", description: "Draft Project hard-deleted" },
+    { actionName: "WorkOrderCreated", category: "WO", description: "Work Order created via Project compilation or top-level item addition" },
 
     // Stock (7)
     { actionName: "StockFulfilled", category: "Stock", description: "WO completed via Fulfill from Stock" },
@@ -342,7 +345,7 @@ async function verify() {
   console.log("\nVerification:");
   console.log(`  ProcessTypes:           ${processTypeCount} (expected = 9)`);
   console.log(`  ProcessTypeSubStatuses: ${subStatusCount} (expected = 16)`);
-  console.log(`  AuditActions:           ${auditActionCount} (expected = 87)`);
+  console.log(`  AuditActions:           ${auditActionCount} (expected = 90)`);
   console.log(`  ProcurementCategories:  ${procurementCategoryCount} (expected = 4)`);
   console.log(`  Views:                  ${viewCount} (expected = 5)`);
   console.log(`  Admin user present:     ${userCount === 1 ? "yes" : "NO — check seed"}`);

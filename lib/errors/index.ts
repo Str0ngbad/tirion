@@ -70,3 +70,12 @@ export {
   PartProcurementCategoryInvalidError,
   PartRoutingTemplateInvalidError,
 } from "@/lib/errors/part";
+export {
+  ProjectNotFoundError,
+  ProjectNumberConflictError,
+  ProjectNotDraftError,
+  TopLevelItemNotFoundError,
+  TopLevelItemPartInactiveError,
+  ProjectCompilationError,
+} from "@/lib/errors/project";
+export type { ValidationFailure } from "@/lib/errors/project";
