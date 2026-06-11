@@ -53,7 +53,14 @@ export async function getProjects(filters?: ListProjectsQuery) {
 export async function getProjectById(projectId: number) {
   const project = await prisma.project.findUnique({
     where: { projectId },
-    include: { topLevelItems: { orderBy: { topLevelIndex: "asc" } } },
+    include: {
+      topLevelItems: {
+        orderBy: { topLevelIndex: "asc" },
+        include: {
+          part: { select: { partNumber: true, partName: true, partType: true } },
+        },
+      },
+    },
   });
   if (!project) throw new ProjectNotFoundError(projectId);
   return project;
@@ -127,7 +134,14 @@ export async function updateProject(
             lastEditedAt: new Date(),
             lastEditedUserId: actingUserId,
           },
-          include: { topLevelItems: { orderBy: { topLevelIndex: "asc" } } },
+          include: {
+            topLevelItems: {
+              orderBy: { topLevelIndex: "asc" },
+              include: {
+                part: { select: { partNumber: true, partName: true, partType: true } },
+              },
+            },
+          },
         });
 
         return {

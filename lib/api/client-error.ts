@@ -3,7 +3,8 @@ export class ApiError extends Error {
     public statusCode: number,
     public errorCode: string,
     public details: Record<string, unknown> | undefined,
-    message: string
+    message: string,
+    public rawBody: unknown = undefined
   ) {
     super(message);
     this.name = "ApiError";

@@ -22,7 +22,8 @@ export async function apiFetch<T>(
       response.status,
       body.error?.code ?? "UNKNOWN_ERROR",
       body.error?.details,
-      body.error?.message ?? response.statusText
+      body.error?.message ?? response.statusText,
+      body
     );
   }
 
