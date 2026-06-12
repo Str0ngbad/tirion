@@ -22,7 +22,7 @@ import {
 import { Filter, Layers } from "lucide-react";
 import { toast } from "sonner";
 import ReconcileStockModal from "@/app/mockups/_shared/reconcile-stock-modal";
-import { reconcileStock, type SfWorkOrder as _SfWo } from "./_data";
+import { reconcileStock, fulfillWo } from "./_data";
 
 export default function StockFulfillmentPage() {
   const [state, setState] = useState<SfState>(() => ({
@@ -52,8 +52,34 @@ export default function StockFulfillmentPage() {
     ? state.projects.filter((p) => p.projectId === filterProjectId)
     : state.projects;
 
+  function handleFulfill(woId: number) {
+    const result = fulfillWo(state, woId);
+    if (!result.ok) {
+      toast.error(result.error);
+      return;
+    }
+    setState(result.state);
+
+    const wo = state.workOrders.find((w) => w.woId === woId)!;
+    const isAssembly = wo.partType === "Assembly";
+    const descendantCount = result.state.workOrders.filter(
+      (w) => w.status === "Skipped" && !state.workOrders.find((old) => old.woId === w.woId && old.status === "Skipped")
+    ).length;
+
+    let msg = `Fulfilled ${wo.partNumber} ×${wo.quantity} from stock.`;
+    if (isAssembly && descendantCount > 0) {
+      msg += ` ${descendantCount} sub-WO${descendantCount !== 1 ? "s" : ""} skipped (cascade).`;
+    }
+    toast.success(msg);
+
+    if (result.autoPassedThrough.length > 0) {
+      toast.info(
+        `Auto-passed ${result.autoPassedThrough.length} WO${result.autoPassedThrough.length !== 1 ? "s" : ""} (stock depleted): ${result.autoPassedThrough.join(", ")}`
+      );
+    }
+  }
+
   // Placeholder handlers — wired in subsequent commits
-  function handleFulfill(_woId: number) { /* Commit 5 */ }
   function handlePassThrough(_woId: number) { /* Commit 6 */ }
   function handleReleaseProject(_projectId: number) { /* Commit 7 */ }
   function handleReleaseAll() { /* Commit 7 */ }
@@ -316,7 +342,6 @@ export default function StockFulfillmentPage() {
                             size="sm"
                             className="h-6 px-2 text-xs"
                             onClick={() => handleFulfill(wo.woId)}
-                            disabled
                           >
                             Fulfill from Stock
                           </Button>
