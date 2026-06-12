@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronUp, ChevronDown, ChevronsUpDown, Trash2 } from "lucide-react";
+import { ChevronUp, ChevronDown, ChevronsUpDown, Trash2, AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -56,6 +56,75 @@ function StatusBadge({ status }: { status: ProjectStatus }) {
   );
 }
 
+// ─── Progress cell ────────────────────────────────────────────────────────────
+
+type ValidationState = { status: "loading" | "pass" | "fail"; count: number };
+type WoCountState = { status: "loading" | "done"; total: number; complete: number };
+
+function ProgressCell({
+  project,
+  validation,
+  woCounts,
+}: {
+  project: ProjectRow;
+  validation: ValidationState | undefined;
+  woCounts: WoCountState | undefined;
+}) {
+  if (project.status === "Archived") {
+    return <span className="text-xs text-muted-foreground/50">Archived</span>;
+  }
+
+  if (project.status === "Draft") {
+    if (!validation || validation.status === "loading") {
+      return (
+        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          Checking…
+        </span>
+      );
+    }
+    if (validation.status === "pass") {
+      return (
+        <span className="flex items-center gap-1 text-xs text-emerald-600 font-medium">
+          <CheckCircle2 className="h-3.5 w-3.5" />
+          Ready to compile
+        </span>
+      );
+    }
+    return (
+      <span className="flex items-center gap-1 text-xs text-amber-600 font-medium">
+        <AlertTriangle className="h-3.5 w-3.5" />
+        {validation.count} validation {validation.count === 1 ? "issue" : "issues"}
+      </span>
+    );
+  }
+
+  // Active or Complete
+  if (!woCounts || woCounts.status === "loading") {
+    return (
+      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+        <Loader2 className="h-3 w-3 animate-spin" />
+        Loading…
+      </span>
+    );
+  }
+
+  const pct = woCounts.total === 0 ? 0 : Math.round((woCounts.complete / woCounts.total) * 100);
+  return (
+    <div className="flex flex-col gap-1 min-w-[100px]">
+      <span className="text-xs text-muted-foreground">
+        {woCounts.complete} / {woCounts.total} complete
+      </span>
+      <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+        <div
+          className="h-full rounded-full bg-emerald-500 transition-all"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 // ─── Sort ─────────────────────────────────────────────────────────────────────
 
 type SortField = "projectNumber" | "projectName" | "status" | "customerName" | "dueDate" | "createdAt" | "lastEditedAt";
@@ -83,6 +152,65 @@ export function ProjectListTable({ projects, canManage, onDelete, isDeleting }: 
   const [sortField, setSortField] = useState<SortField>("lastEditedAt");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [pendingDelete, setPendingDelete] = useState<ProjectRow | null>(null);
+
+  const [validations, setValidations] = useState<Record<number, ValidationState>>({});
+  const [woCounts, setWoCounts] = useState<Record<number, WoCountState>>({});
+
+  // Fire parallel fetches after projects load
+  useEffect(() => {
+    if (projects.length === 0) return;
+
+    const drafts = projects.filter((p) => p.status === "Draft");
+    const active = projects.filter((p) => p.status === "Active" || p.status === "Complete");
+
+    if (drafts.length > 0) {
+      setValidations(
+        Object.fromEntries(drafts.map((p) => [p.projectId, { status: "loading", count: 0 }]))
+      );
+      Promise.all(
+        drafts.map(async (p) => {
+          try {
+            const res = await fetch(`/api/v1/projects/${p.projectId}/validate`, { method: "POST" });
+            const data = await res.json();
+            const count: number = data.failures?.length ?? 0;
+            setValidations((prev) => ({
+              ...prev,
+              [p.projectId]: { status: count === 0 ? "pass" : "fail", count },
+            }));
+          } catch {
+            setValidations((prev) => ({
+              ...prev,
+              [p.projectId]: { status: "fail", count: 0 },
+            }));
+          }
+        })
+      );
+    }
+
+    if (active.length > 0) {
+      setWoCounts(
+        Object.fromEntries(active.map((p) => [p.projectId, { status: "loading", total: 0, complete: 0 }]))
+      );
+      Promise.all(
+        active.map(async (p) => {
+          try {
+            const res = await fetch(`/api/v1/projects/${p.projectId}/wo-counts`);
+            const data = await res.json();
+            setWoCounts((prev) => ({
+              ...prev,
+              [p.projectId]: { status: "done", total: data.total ?? 0, complete: data.complete ?? 0 },
+            }));
+          } catch {
+            setWoCounts((prev) => ({
+              ...prev,
+              [p.projectId]: { status: "done", total: 0, complete: 0 },
+            }));
+          }
+        })
+      );
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projects]);
 
   const sorted = useMemo(() => {
     return [...projects].sort((a, b) => {
@@ -146,6 +274,9 @@ export function ProjectListTable({ projects, canManage, onDelete, isDeleting }: 
                 Created By
               </th>
               <Th field="lastEditedAt"  label="Last Edited" className="w-44" />
+              <th className="sticky top-0 z-10 border-b border-border bg-background px-3 py-2 text-left text-xs font-medium text-muted-foreground w-44">
+                Progress
+              </th>
               {canManage && (
                 <th className="sticky top-0 z-10 border-b border-border bg-background w-10" />
               )}
@@ -182,6 +313,13 @@ export function ProjectListTable({ projects, canManage, onDelete, isDeleting }: 
                   {relativeTime(project.lastEditedAt)}
                   <br />
                   <span className="text-muted-foreground/60">{project.lastEditedBy.displayName}</span>
+                </td>
+                <td className="px-3 py-2 min-w-[140px]" onClick={(e) => e.stopPropagation()}>
+                  <ProgressCell
+                    project={project}
+                    validation={validations[project.projectId]}
+                    woCounts={woCounts[project.projectId]}
+                  />
                 </td>
                 {canManage && (
                   <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
