@@ -417,13 +417,12 @@ type PartForValidation = {
 };
 
 async function walkBomForValidation(
-  tx: Prisma.TransactionClient,
   partId: number,
   topLevelRef: string,
   pathSoFar: string[],
   failures: ValidationFailure[]
 ): Promise<void> {
-  const part = await tx.part.findUniqueOrThrow({
+  const part = await prisma.part.findUniqueOrThrow({
     where: { partId },
     include: { routingTemplate: true },
   }) as PartForValidation;
@@ -465,13 +464,13 @@ async function walkBomForValidation(
   }
 
   // Walk children regardless of parent failure
-  const children = await tx.bOM.findMany({
+  const children = await prisma.bOM.findMany({
     where: { parentPartId: partId },
     select: { childPartId: true },
   });
 
   for (const child of children) {
-    await walkBomForValidation(tx, child.childPartId, topLevelRef, currentPath, failures);
+    await walkBomForValidation(child.childPartId, topLevelRef, currentPath, failures);
   }
 }
 
@@ -484,14 +483,10 @@ export async function validateProject(projectId: number): Promise<ValidationFail
 
   const failures: ValidationFailure[] = [];
 
-  // Use a read-only transaction for consistency
-  await prisma.$transaction(async (tx) => {
-    for (const item of project.topLevelItems) {
-      // Top-Level Reference: projectNumber + '.' + zero-padded topLevelIndex
-      const topLevelRef = `${project.projectNumber}.${String(item.topLevelIndex).padStart(2, "0")}`;
-      await walkBomForValidation(tx, item.partId, topLevelRef, [], failures);
-    }
-  });
+  for (const item of project.topLevelItems) {
+    const topLevelRef = `${project.projectNumber}.${String(item.topLevelIndex).padStart(2, "0")}`;
+    await walkBomForValidation(item.partId, topLevelRef, [], failures);
+  }
 
   return failures;
 }
@@ -599,6 +594,8 @@ export async function compileProject(projectId: number, actingUserId: number) {
     prisma.auditAction.findUniqueOrThrow({ where: { actionName: "WorkOrderCreated" } }),
   ]);
 
+  // timeout raised to 60 s — a 100-WO BOM with multi-step routings generates
+  // hundreds of DB writes that exceed Prisma's default 5 s interactive limit
   const result = await prisma.$transaction(async (tx) => {
     // Re-fetch project inside transaction for atomicity
     const project = await tx.project.findUniqueOrThrow({
@@ -654,7 +651,7 @@ export async function compileProject(projectId: number, actingUserId: number) {
     });
 
     return { project: compiledProject, workOrderCount: woCount.n };
-  });
+  }, { timeout: 60_000 });
 
   return result;
 }
