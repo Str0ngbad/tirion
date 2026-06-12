@@ -20,6 +20,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Filter, Layers } from "lucide-react";
+import { toast } from "sonner";
+import ReconcileStockModal from "@/app/mockups/_shared/reconcile-stock-modal";
+import { reconcileStock, type SfWorkOrder as _SfWo } from "./_data";
 
 export default function StockFulfillmentPage() {
   const [state, setState] = useState<SfState>(() => ({
@@ -32,6 +35,8 @@ export default function StockFulfillmentPage() {
   const [filterProjectId, setFilterProjectId] = useState<number | null>(null);
   // expandedWoId: the WO row with the cross-project competition panel open (Commit 6)
   const [expandedWoId, setExpandedWoId] = useState<number | null>(null);
+  // reconcileWo: the WO whose part is being reconciled (opens shared modal)
+  const [reconcileWo, setReconcileWo] = useState<{ partId: number; partNumber: string; partName: string } | null>(null);
 
   const candidates = useMemo(() => computeCandidates(state), [state]);
   const projectStats = useMemo(
@@ -50,9 +55,35 @@ export default function StockFulfillmentPage() {
   // Placeholder handlers — wired in subsequent commits
   function handleFulfill(_woId: number) { /* Commit 5 */ }
   function handlePassThrough(_woId: number) { /* Commit 6 */ }
-  function handleReconcile(_woId: number) { /* Commit 4 */ }
   function handleReleaseProject(_projectId: number) { /* Commit 7 */ }
   function handleReleaseAll() { /* Commit 7 */ }
+
+  function handleReconcile(wo: { partId: number; partNumber: string; partName: string }) {
+    setReconcileWo(wo);
+  }
+
+  function handleReconcileConfirm(newCount: number, reason: string) {
+    if (!reconcileWo) return;
+    const newState = reconcileStock(state, reconcileWo.partId, newCount, reason);
+    setState(newState);
+
+    // Report auto-pass-throughs that fired as a result of the reconciliation
+    const autoPassed = newState.auditLog
+      .filter(
+        (e) =>
+          e.action === "AutoPassThrough" &&
+          e.partId === reconcileWo.partId &&
+          !state.auditLog.some((old) => old.id === e.id)
+      )
+      .length;
+
+    const delta = newCount - (state.stockCounts[reconcileWo.partId] ?? 0);
+    const sign = delta >= 0 ? "+" : "";
+    toast.success(
+      `Stock reconciled: ${reconcileWo.partNumber} → ${newCount} (${sign}${delta})${autoPassed > 0 ? `. ${autoPassed} WO${autoPassed !== 1 ? "s" : ""} auto-passed through.` : ""}`
+    );
+    setReconcileWo(null);
+  }
 
   return (
     <div className="flex h-screen flex-col bg-background font-sans text-foreground">
@@ -302,8 +333,13 @@ export default function StockFulfillmentPage() {
                             size="sm"
                             variant="ghost"
                             className="h-6 px-2 text-xs"
-                            onClick={() => handleReconcile(wo.woId)}
-                            disabled
+                            onClick={() =>
+                              handleReconcile({
+                                partId: wo.partId,
+                                partNumber: wo.partNumber,
+                                partName: wo.partName,
+                              })
+                            }
                           >
                             Reconcile
                           </Button>
@@ -317,6 +353,17 @@ export default function StockFulfillmentPage() {
           )}
         </div>
       </div>
+
+      {/* ── Reconcile Stock modal ────────────────────────────────────────── */}
+      {reconcileWo && (
+        <ReconcileStockModal
+          partNumber={reconcileWo.partNumber}
+          partName={reconcileWo.partName}
+          currentStockCount={state.stockCounts[reconcileWo.partId] ?? 0}
+          onClose={() => setReconcileWo(null)}
+          onConfirm={handleReconcileConfirm}
+        />
+      )}
     </div>
   );
 }
