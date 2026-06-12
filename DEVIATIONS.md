@@ -1868,3 +1868,25 @@ Three changes landed in commit bc3c092:
 (No schema changes — buildableCount is computed, not stored.)
 
 ---
+
+## 2026-06-11 — add nextTopLevelIndex counter to Project for PC-21
+
+**Phase:** _To be filled in._
+**Spec section:** spec/project_creation_view_spec.md
+**Discovered by:** _To be filled in._
+**Status:** Captured (rationale TBD)
+**Commit:** 3db45e879a6e879e29933d2f7a3b3dde71dd1891
+
+### What was discovered
+
+_To be filled in._
+
+### Resolution
+
+_To be filled in._
+
+### Files affected
+
+_To be filled in._
+
+---

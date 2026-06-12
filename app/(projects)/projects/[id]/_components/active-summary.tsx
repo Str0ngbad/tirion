@@ -52,7 +52,7 @@ export function ActiveSummary({ initialProject }: Props) {
     initialProject.status !== "Archived";
   const canArchive =
     (user?.role === "Manager" || user?.role === "Admin") &&
-    initialProject.status === "Complete";
+    (initialProject.status === "Complete" || initialProject.status === "Active");
 
   const [project, setProject] = useState<ProjectDetail>(initialProject);
   const [saving, setSaving] = useState<SavingState>("idle");
