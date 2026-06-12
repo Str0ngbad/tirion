@@ -5,6 +5,7 @@ import {
   ProjectNotFoundError,
   ProjectNumberConflictError,
   ProjectNotDraftError,
+  ProjectNotArchivableError,
   TopLevelItemNotFoundError,
   TopLevelItemPartInactiveError,
   ProjectCompilationError,
@@ -60,6 +61,8 @@ export async function getProjectById(projectId: number) {
           part: { select: { partNumber: true, partName: true, partType: true } },
         },
       },
+      creator: { select: { displayName: true } },
+      lastEditedBy: { select: { displayName: true } },
     },
   });
   if (!project) throw new ProjectNotFoundError(projectId);
@@ -312,6 +315,49 @@ export async function removeTopLevelItem(
         previousValue: { topLevelItemId, topLevelIndex: item.topLevelIndex },
         newValue: null,
         result: undefined,
+      };
+    },
+  });
+}
+
+// ─── Archive ─────────────────────────────────────────────────────────────────
+
+export async function archiveProject(projectId: number, actingUserId: number) {
+  return mutateWithAudit({
+    userId: actingUserId,
+    entityType: "Project",
+    action: "ProjectArchived",
+    work: async (tx) => {
+      const project = await tx.project.findUnique({ where: { projectId } });
+      if (!project) throw new ProjectNotFoundError(projectId);
+      if (project.status !== "Complete" && project.status !== "Active") {
+        throw new ProjectNotArchivableError(projectId, project.status);
+      }
+
+      const updated = await tx.project.update({
+        where: { projectId },
+        data: {
+          status: "Archived",
+          lastEditedAt: new Date(),
+          lastEditedUserId: actingUserId,
+        },
+        include: {
+          topLevelItems: {
+            orderBy: { topLevelIndex: "asc" },
+            include: {
+              part: { select: { partNumber: true, partName: true, partType: true } },
+            },
+          },
+          creator: { select: { displayName: true } },
+          lastEditedBy: { select: { displayName: true } },
+        },
+      });
+
+      return {
+        entityId: projectId,
+        previousValue: { status: project.status },
+        newValue: { status: "Archived" },
+        result: updated,
       };
     },
   });

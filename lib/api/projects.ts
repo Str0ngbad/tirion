@@ -69,6 +69,8 @@ export type ProjectDetail = {
   lastEditedAt: string;
   lastEditedUserId: number;
   topLevelItems: TopLevelItemDetail[];
+  creator?: { displayName: string };
+  lastEditedBy?: { displayName: string };
 };
 
 export type ValidationResult = {
@@ -243,6 +245,20 @@ export function useRemoveTopLevelItem(): UseMutationResult<
       apiFetch<void>(`/api/v1/projects/${projectId}/top-level-items/${itemId}`, {
         method: "DELETE",
       }),
+  });
+}
+
+// ─── Archive ──────────────────────────────────────────────────────────────────
+
+export function useArchiveProject(): UseMutationResult<ProjectDetail, ApiError, number> {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (projectId) =>
+      apiFetch<ProjectDetail>(`/api/v1/projects/${projectId}/archive`, { method: "POST" }),
+    onSuccess: (result) => {
+      qc.setQueryData(["projects", "detail", result.projectId], result);
+      qc.invalidateQueries({ queryKey: ["projects", "list"] });
+    },
   });
 }
 

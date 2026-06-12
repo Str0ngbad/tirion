@@ -65,6 +65,17 @@ export class TopLevelItemPartInactiveError extends DomainError {
   }
 }
 
+export class ProjectNotArchivableError extends DomainError {
+  readonly statusCode = 409;
+  readonly errorCode = "PROJECT_NOT_ARCHIVABLE";
+  readonly details: Record<string, unknown>;
+
+  constructor(projectId: number, status: string) {
+    super(`Project ${projectId} cannot be archived from status '${status}' (must be Active or Complete)`);
+    this.details = { projectId, status };
+  }
+}
+
 export class ProjectCompilationError extends DomainError {
   readonly statusCode = 422;
   readonly errorCode = "PROJECT_COMPILATION_FAILED";
