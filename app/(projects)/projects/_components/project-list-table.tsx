@@ -268,15 +268,15 @@ export function ProjectListTable({ projects, canManage, onDelete, isDeleting }: 
               <Th field="projectNumber" label="Project #" className="w-36" />
               <Th field="projectName"   label="Name"      className="min-w-[200px]" />
               <Th field="status"        label="Status"    className="w-28" />
+              <th className="sticky top-0 z-10 border-b border-border bg-background px-3 py-2 text-left text-xs font-medium text-muted-foreground w-44">
+                Progress
+              </th>
               <Th field="customerName"  label="Customer"  className="w-40" />
               <Th field="dueDate"       label="Due Date"  className="w-32" />
               <th className="sticky top-0 z-10 border-b border-border bg-background px-3 py-2 text-left text-xs font-medium text-muted-foreground w-36">
                 Created By
               </th>
               <Th field="lastEditedAt"  label="Last Edited" className="w-44" />
-              <th className="sticky top-0 z-10 border-b border-border bg-background px-3 py-2 text-left text-xs font-medium text-muted-foreground w-44">
-                Progress
-              </th>
               {canManage && (
                 <th className="sticky top-0 z-10 border-b border-border bg-background w-10" />
               )}
@@ -298,6 +298,13 @@ export function ProjectListTable({ projects, canManage, onDelete, isDeleting }: 
                 <td className="px-3 py-2">
                   <StatusBadge status={project.status} />
                 </td>
+                <td className="px-3 py-2 min-w-[140px]" onClick={(e) => e.stopPropagation()}>
+                  <ProgressCell
+                    project={project}
+                    validation={validations[project.projectId]}
+                    woCounts={woCounts[project.projectId]}
+                  />
+                </td>
                 <td className="px-3 py-2 text-sm text-muted-foreground">
                   {project.customerName ?? <span className="text-muted-foreground/40">—</span>}
                 </td>
@@ -313,13 +320,6 @@ export function ProjectListTable({ projects, canManage, onDelete, isDeleting }: 
                   {relativeTime(project.lastEditedAt)}
                   <br />
                   <span className="text-muted-foreground/60">{project.lastEditedBy.displayName}</span>
-                </td>
-                <td className="px-3 py-2 min-w-[140px]" onClick={(e) => e.stopPropagation()}>
-                  <ProgressCell
-                    project={project}
-                    validation={validations[project.projectId]}
-                    woCounts={woCounts[project.projectId]}
-                  />
                 </td>
                 {canManage && (
                   <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>

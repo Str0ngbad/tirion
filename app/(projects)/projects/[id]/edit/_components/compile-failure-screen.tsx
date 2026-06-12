@@ -33,7 +33,7 @@ function deepLinkFor(failure: ValidationFailure): { href: string; label: string 
 
 export function CompileFailureScreen({ failures, onReturnToEditor }: Props) {
   return (
-    <div className="flex flex-1 flex-col overflow-hidden">
+    <div className="flex h-full flex-col overflow-hidden">
       {/* Failure header */}
       <div className="flex shrink-0 items-center gap-3 border-b border-destructive/30 bg-destructive/5 px-6 py-4">
         <AlertTriangle className="h-5 w-5 shrink-0 text-destructive" />
