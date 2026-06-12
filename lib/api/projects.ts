@@ -163,6 +163,7 @@ export function useUpdateProject(): UseMutationResult<
       }),
     onSuccess: (result) => {
       qc.setQueryData(["projects", "detail", result.projectId], result);
+      qc.invalidateQueries({ queryKey: ["projects", "list"] });
     },
   });
 }
