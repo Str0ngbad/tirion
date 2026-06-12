@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, Fragment } from "react";
 import {
   INITIAL_SF_STATE,
   type SfState,
@@ -309,9 +309,8 @@ export default function StockFulfillmentPage() {
                   const hasCompetition = competing.length > 1;
 
                   return (
-                    <>
+                    <Fragment key={wo.woId}>
                       <tr
-                        key={wo.woId}
                         className="border-b border-border/50 hover:bg-muted/30"
                         style={
                           colorMeta
@@ -469,7 +468,7 @@ export default function StockFulfillmentPage() {
                           </td>
                         </tr>
                       )}
-                    </>
+                    </Fragment>
                   );
                 })}
               </tbody>
