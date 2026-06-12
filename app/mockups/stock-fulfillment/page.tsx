@@ -19,10 +19,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Filter, Layers } from "lucide-react";
+import { Filter, Layers, ChevronDown, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import ReconcileStockModal from "@/app/mockups/_shared/reconcile-stock-modal";
-import { reconcileStock, fulfillWo } from "./_data";
+import { reconcileStock, fulfillWo, passThrough, getCompetingWos } from "./_data";
 
 export default function StockFulfillmentPage() {
   const [state, setState] = useState<SfState>(() => ({
@@ -79,8 +79,15 @@ export default function StockFulfillmentPage() {
     }
   }
 
-  // Placeholder handlers — wired in subsequent commits
-  function handlePassThrough(_woId: number) { /* Commit 6 */ }
+  function handlePassThrough(woId: number) {
+    const wo = state.workOrders.find((w) => w.woId === woId)!;
+    setState(passThrough(state, woId));
+    toast.success(`Passed through ${wo.partNumber} — WO queued for Pending Release.`);
+  }
+
+  function handleToggleExpand(woId: number) {
+    setExpandedWoId((prev) => (prev === woId ? null : woId));
+  }
   function handleReleaseProject(_projectId: number) { /* Commit 7 */ }
   function handleReleaseAll() { /* Commit 7 */ }
 
@@ -274,17 +281,21 @@ export default function StockFulfillmentPage() {
                   const colorMeta = project.color
                     ? PROJECT_COLOR_MAP[project.color]
                     : null;
+                  const isExpanded = expandedWoId === wo.woId;
+                  const competing = getCompetingWos(state, wo.partId);
+                  const hasCompetition = competing.length > 1;
 
                   return (
-                    <tr
-                      key={wo.woId}
-                      className="border-b border-border/50 hover:bg-muted/30"
-                      style={
-                        colorMeta
-                          ? { backgroundColor: colorMeta.tintRgba }
-                          : undefined
-                      }
-                    >
+                    <>
+                      <tr
+                        key={wo.woId}
+                        className="border-b border-border/50 hover:bg-muted/30"
+                        style={
+                          colorMeta
+                            ? { backgroundColor: colorMeta.tintRgba }
+                            : undefined
+                        }
+                      >
                       {/* Project */}
                       <td className="px-4 py-2">
                         <ProjectIdPill
@@ -292,9 +303,24 @@ export default function StockFulfillmentPage() {
                           color={project.color}
                         />
                       </td>
-                      {/* Part Number */}
+                      {/* Part Number — with expand toggle if cross-project competition exists */}
                       <td className="px-4 py-2 font-mono text-xs">
-                        {wo.partNumber}
+                        <div className="flex items-center gap-1">
+                          {hasCompetition && (
+                            <button
+                              className="text-muted-foreground hover:text-foreground"
+                              onClick={() => handleToggleExpand(wo.woId)}
+                              title="Show cross-project competition"
+                            >
+                              {isExpanded ? (
+                                <ChevronDown className="h-3.5 w-3.5" />
+                              ) : (
+                                <ChevronRight className="h-3.5 w-3.5" />
+                              )}
+                            </button>
+                          )}
+                          {wo.partNumber}
+                        </div>
                       </td>
                       {/* Part Name */}
                       <td className="max-w-[200px] px-4 py-2">
@@ -350,7 +376,6 @@ export default function StockFulfillmentPage() {
                             variant="outline"
                             className="h-6 px-2 text-xs"
                             onClick={() => handlePassThrough(wo.woId)}
-                            disabled
                           >
                             Pass Through
                           </Button>
@@ -370,7 +395,58 @@ export default function StockFulfillmentPage() {
                           </Button>
                         </div>
                       </td>
-                    </tr>
+                      </tr>
+                      {/* ── Inline cross-project competition panel ────────── */}
+                      {isExpanded && (
+                        <tr key={`${wo.woId}-expand`} className="bg-muted/20">
+                          <td colSpan={9} className="px-6 pb-3 pt-2">
+                            <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-2">
+                              All WOs for {wo.partNumber} — cumulative demand vs. stock {state.stockCounts[wo.partId] ?? 0}
+                            </div>
+                            <table className="w-full text-xs border border-border/40 rounded">
+                              <thead>
+                                <tr className="border-b border-border/40 bg-muted/30">
+                                  <th className="px-3 py-1.5 text-left font-medium text-muted-foreground">Project</th>
+                                  <th className="px-3 py-1.5 text-left font-medium text-muted-foreground">BOM Position</th>
+                                  <th className="px-3 py-1.5 text-right font-medium text-muted-foreground">Demand</th>
+                                  <th className="px-3 py-1.5 text-left font-medium text-muted-foreground">Status</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {competing.map((cw) => {
+                                  const cp = state.projects.find((p) => p.projectId === cw.projectId)!;
+                                  return (
+                                    <tr key={cw.woId} className="border-b border-border/30 last:border-0">
+                                      <td className="px-3 py-1.5">
+                                        <ProjectIdPill projectNumber={cp.projectNumber} color={cp.color} />
+                                      </td>
+                                      <td className="px-3 py-1.5 font-mono text-muted-foreground">
+                                        {cw.bomPath.join(" › ")}
+                                      </td>
+                                      <td className="px-3 py-1.5 text-right font-mono tabular-nums">
+                                        {cw.quantity}
+                                      </td>
+                                      <td className="px-3 py-1.5">
+                                        <span className={
+                                          cw.status === "Complete" ? "text-emerald-500" :
+                                          cw.status === "Skipped" ? "text-muted-foreground" :
+                                          cw.reviewedAt !== null ? "text-amber-500" :
+                                          "text-foreground"
+                                        }>
+                                          {cw.status === "Unreleased" && cw.reviewedAt !== null
+                                            ? "Pending Release"
+                                            : cw.status}
+                                        </span>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </td>
+                        </tr>
+                      )}
+                    </>
                   );
                 })}
               </tbody>
