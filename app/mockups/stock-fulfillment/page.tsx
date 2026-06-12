@@ -22,7 +22,7 @@ import {
 import { Filter, Layers, ChevronDown, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import ReconcileStockModal from "@/app/mockups/_shared/reconcile-stock-modal";
-import { reconcileStock, fulfillWo, passThrough, getCompetingWos } from "./_data";
+import { reconcileStock, fulfillWo, passThrough, getCompetingWos, releaseProject, releaseAll } from "./_data";
 
 export default function StockFulfillmentPage() {
   const [state, setState] = useState<SfState>(() => ({
@@ -88,8 +88,33 @@ export default function StockFulfillmentPage() {
   function handleToggleExpand(woId: number) {
     setExpandedWoId((prev) => (prev === woId ? null : woId));
   }
-  function handleReleaseProject(_projectId: number) { /* Commit 7 */ }
-  function handleReleaseAll() { /* Commit 7 */ }
+  function handleReleaseProject(projectId: number) {
+    const before = state.workOrders.filter(
+      (w) => w.projectId === projectId && w.status === "Unreleased"
+    ).length;
+    if (before === 0) {
+      toast.info("No unreleased WOs to release for this project.");
+      return;
+    }
+    setState(releaseProject(state, projectId));
+    const proj = state.projects.find((p) => p.projectId === projectId)!;
+    toast.success(`Released ${before} WO${before !== 1 ? "s" : ""} for project ${proj.projectNumber} to Open.`);
+  }
+
+  function handleReleaseAll() {
+    const scope = filterProjectId ? [filterProjectId] : undefined;
+    const before = state.workOrders.filter(
+      (w) => w.status === "Unreleased" && (scope ? scope.includes(w.projectId) : true)
+    ).length;
+    if (before === 0) {
+      toast.info("No unreleased WOs to release.");
+      return;
+    }
+    setState(releaseAll(state, scope));
+    toast.success(
+      `Released ${before} WO${before !== 1 ? "s" : ""} to Open${filterProjectId ? " for filtered project" : " across all projects"}.`
+    );
+  }
 
   function handleReconcile(wo: { partId: number; partNumber: string; partName: string }) {
     setReconcileWo(wo);
@@ -159,9 +184,8 @@ export default function StockFulfillmentPage() {
           size="sm"
           className="h-7 text-xs"
           onClick={handleReleaseAll}
-          disabled
         >
-          Release All
+          {filterProjectId ? "Release Project" : "Release All"}
         </Button>
       </div>
 
@@ -222,7 +246,6 @@ export default function StockFulfillmentPage() {
                     variant="outline"
                     className="h-7 text-xs"
                     onClick={() => handleReleaseProject(project.projectId)}
-                    disabled
                   >
                     Release ({stats?.unreleasedCount ?? 0})
                   </Button>
