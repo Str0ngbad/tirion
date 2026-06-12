@@ -330,7 +330,7 @@ export async function archiveProject(projectId: number, actingUserId: number) {
     work: async (tx) => {
       const project = await tx.project.findUnique({ where: { projectId } });
       if (!project) throw new ProjectNotFoundError(projectId);
-      if (project.status !== "Complete" && project.status !== "Active") {
+      if (project.status !== "Complete") {
         throw new ProjectNotArchivableError(projectId, project.status);
       }
 
