@@ -4,6 +4,17 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronUp, ChevronDown, ChevronsUpDown, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { ProjectIdPill } from "@/components/project/project-id-pill";
 import type { ProjectRow, ProjectStatus } from "@/lib/api/projects";
 
@@ -58,15 +69,11 @@ function SortIcon({ field, active, dir }: { field: SortField; active: SortField;
     : <ChevronDown className="h-3 w-3 text-foreground ml-1 shrink-0" />;
 }
 
-// ─── Two-click delete state ───────────────────────────────────────────────────
-
-type DeleteState = { projectId: number; timer: ReturnType<typeof setTimeout> } | null;
-
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 type Props = {
   projects: ProjectRow[];
-  canManage: boolean; // Manager or Admin
+  canManage: boolean;
   onDelete: (projectId: number) => void;
   isDeleting: boolean;
 };
@@ -75,7 +82,7 @@ export function ProjectListTable({ projects, canManage, onDelete, isDeleting }: 
   const router = useRouter();
   const [sortField, setSortField] = useState<SortField>("lastEditedAt");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
-  const [deleteState, setDeleteState] = useState<DeleteState>(null);
+  const [pendingDelete, setPendingDelete] = useState<ProjectRow | null>(null);
 
   const sorted = useMemo(() => {
     return [...projects].sort((a, b) => {
@@ -106,21 +113,10 @@ export function ProjectListTable({ projects, canManage, onDelete, isDeleting }: 
     }
   }
 
-  function handleDeleteClick(e: React.MouseEvent, projectId: number) {
-    e.stopPropagation();
-
-    if (deleteState?.projectId === projectId) {
-      // Second click — confirm
-      clearTimeout(deleteState.timer);
-      setDeleteState(null);
-      onDelete(projectId);
-      return;
-    }
-
-    // First click — arm with 3-second timeout
-    if (deleteState) clearTimeout(deleteState.timer);
-    const timer = setTimeout(() => setDeleteState(null), 3_000);
-    setDeleteState({ projectId, timer });
+  function handleDeleteConfirm() {
+    if (!pendingDelete) return;
+    onDelete(pendingDelete.projectId);
+    setPendingDelete(null);
   }
 
   const Th = ({ field, label, className = "" }: { field: SortField; label: string; className?: string }) => (
@@ -136,28 +132,27 @@ export function ProjectListTable({ projects, canManage, onDelete, isDeleting }: 
   );
 
   return (
-    <div className="flex-1 overflow-auto">
-      <table className="w-full border-collapse text-sm">
-        <thead>
-          <tr>
-            <Th field="projectNumber" label="Project #" className="w-36" />
-            <Th field="projectName"   label="Name"      className="min-w-[200px]" />
-            <Th field="status"        label="Status"    className="w-28" />
-            <Th field="customerName"  label="Customer"  className="w-40" />
-            <Th field="dueDate"       label="Due Date"  className="w-32" />
-            <th className="sticky top-0 z-10 border-b border-border bg-background px-3 py-2 text-left text-xs font-medium text-muted-foreground w-36">
-              Created By
-            </th>
-            <Th field="lastEditedAt"  label="Last Edited" className="w-44" />
-            {canManage && (
-              <th className="sticky top-0 z-10 border-b border-border bg-background w-10" />
-            )}
-          </tr>
-        </thead>
-        <tbody>
-          {sorted.map((project) => {
-            const isArmed = deleteState?.projectId === project.projectId;
-            return (
+    <>
+      <div className="flex-1 overflow-auto">
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr>
+              <Th field="projectNumber" label="Project #" className="w-36" />
+              <Th field="projectName"   label="Name"      className="min-w-[200px]" />
+              <Th field="status"        label="Status"    className="w-28" />
+              <Th field="customerName"  label="Customer"  className="w-40" />
+              <Th field="dueDate"       label="Due Date"  className="w-32" />
+              <th className="sticky top-0 z-10 border-b border-border bg-background px-3 py-2 text-left text-xs font-medium text-muted-foreground w-36">
+                Created By
+              </th>
+              <Th field="lastEditedAt"  label="Last Edited" className="w-44" />
+              {canManage && (
+                <th className="sticky top-0 z-10 border-b border-border bg-background w-10" />
+              )}
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((project) => (
               <tr
                 key={project.projectId}
                 onClick={() => handleRowClick(project)}
@@ -193,13 +188,9 @@ export function ProjectListTable({ projects, canManage, onDelete, isDeleting }: 
                     {project.status === "Draft" && (
                       <button
                         disabled={isDeleting}
-                        onClick={(e) => handleDeleteClick(e, project.projectId)}
-                        className={`rounded p-1 transition-colors ${
-                          isArmed
-                            ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            : "text-muted-foreground/70 hover:bg-destructive/10 hover:text-destructive"
-                        }`}
-                        title={isArmed ? "Click again to confirm deletion" : "Delete Draft"}
+                        onClick={(e) => { e.stopPropagation(); setPendingDelete(project); }}
+                        className="rounded p-1 transition-colors text-muted-foreground/70 hover:bg-destructive/10 hover:text-destructive"
+                        title="Delete Draft"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -207,10 +198,31 @@ export function ProjectListTable({ projects, canManage, onDelete, isDeleting }: 
                   </td>
                 )}
               </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <AlertDialog open={pendingDelete !== null} onOpenChange={(open) => { if (!open) setPendingDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Draft Project?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Delete {pendingDelete?.projectNumber} — {pendingDelete?.projectName}? This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

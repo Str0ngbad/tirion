@@ -192,7 +192,7 @@ model ProjectTopLevelItem {
   quantity        Decimal
   topLevelIndex   Int      // 1-based; immutable after assignment; never reused
 
-  project  Project  @relation(fields: [projectId], references: [projectId])
+  project  Project  @relation(fields: [projectId], references: [projectId], onDelete: Cascade)
   part     Part     @relation(fields: [partId], references: [partId])
 
   @@unique([projectId, topLevelIndex])

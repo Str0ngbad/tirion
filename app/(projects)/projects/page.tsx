@@ -50,7 +50,7 @@ export default function ProjectsPage() {
   function handleDelete(projectId: number) {
     deleteProject.mutate(projectId, {
       onSuccess: () => toast.success("Draft deleted."),
-      onError: () => toast.error("Failed to delete draft."),
+      onError: (err) => toast.error(err.message ?? "Failed to delete draft."),
     });
   }
 
