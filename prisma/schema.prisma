@@ -219,6 +219,7 @@ model WorkOrder {
   status                      WOStatus  @default(Unreleased)
   batchId                     Int?      // FK to ProductionBatch; null if unbatched
   stockFulfillmentReviewedAt  DateTime? // stamped when WO has a Stock Fulfillment decision recorded
+  bomPath                     String[]  // leaf-first ancestry chain: "{partNumber} {partName}" per ancestor. Index 0 = immediate parent, last = top-level ref. Empty for top-level WOs.
   notes                       String?
   createdAt                   DateTime  @default(now())
 
