@@ -7,7 +7,6 @@ import {
   type SfWorkOrder,
   computeCandidates,
   computeProjectStats,
-  PROJECT_COLOR_MAP,
   getCompetingCandidates,
   getAncestryChain,
 } from "./_data";
@@ -265,9 +264,6 @@ export default function StockFulfillmentPage() {
           <div className="shrink-0 border-b border-border">
             {visibleProjects.map((project) => {
               const stats = projectStats[project.projectId];
-              const colorMeta = project.color
-                ? PROJECT_COLOR_MAP[project.color]
-                : null;
               const isActiveFilter = filterProjectId === project.projectId;
               return (
                 <div
@@ -278,9 +274,6 @@ export default function StockFulfillmentPage() {
                       ? "ring-2 ring-inset ring-ring/50 bg-accent/30"
                       : "hover:bg-muted/20",
                   ].join(" ")}
-                  style={
-                    colorMeta ? { backgroundColor: colorMeta.tintRgba } : undefined
-                  }
                   onClick={() => handleHeaderClick(project.projectId)}
                   title={
                     isActiveFilter
