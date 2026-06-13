@@ -79,3 +79,12 @@ export {
   ProjectCompilationError,
 } from "@/lib/errors/project";
 export type { ValidationFailure } from "@/lib/errors/project";
+export {
+  WONotFoundError,
+  WONotUnreleasedError,
+  WONotCandidateError,
+  InsufficientStockError,
+  WOAlreadyReviewedError,
+  DescendantCompleteError,
+  ReconcileStockError,
+} from "@/lib/errors/stock-fulfillment-errors";
