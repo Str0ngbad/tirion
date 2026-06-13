@@ -116,7 +116,7 @@ export default function StockFulfillmentPage() {
 
   function handlePassThrough(woId: number) {
     const wo = state.workOrders.find((w) => w.woId === woId)!;
-    setState(passThrough(state, woId));
+    setState((prev) => passThrough(prev, woId));
     toast.success(
       `Passed through ${wo.partNumber} — WO queued for Pending Release.`
     );

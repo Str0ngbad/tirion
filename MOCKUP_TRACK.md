@@ -18,6 +18,92 @@ Entries are ordered most recent first.
 
 ---
 
+## 2026-06-13 — Stock Fulfillment View — Iteration Pass 2
+
+**Surfaces touched:** /app/mockups/stock-fulfillment/ — second iteration pass
+addressing six reviewer findings.
+
+**Mockup commits:**
+- `7509097` — fix+feat: all six items combined (see breakdown below)
+
+### Scope
+
+Six findings addressed in this session:
+
+1. **Candidates/Pending Release set semantics** — `pendingReleaseCount` was
+   previously `reviewedAt !== null` (decided WOs only). Corrected to
+   `unreleasedCount - candidateCount` so the invariant
+   `Candidates + Pending Release = total Unreleased` holds continuously.
+   `releaseProject` and `releaseAll` now exclude candidate WOs so candidates
+   persist in the view while Pending Release WOs release to Open.
+   Project headers now disappear when `unreleasedCount = 0` (not just when
+   candidates = 0). Per-Project Release button simplified to
+   "Release Project [Number]", disabled when `pendingReleaseCount = 0`.
+   Global button: "Release All Pending (N)".
+
+2. **Row shading** — removed `style={{ backgroundColor: colorMeta.tintRgba }}`
+   from candidate table rows. Project color renders only in `ProjectIdPill`.
+   Assembly rows get `bg-muted/10`, Part rows no background.
+
+3. **Cumulative Demand column** — added between Stock and Due Date. Value is
+   sum of `quantity` across candidate WOs only for the same `partId`. Renders
+   in `text-amber-500` when cumulative > stock. Non-candidate demand excluded
+   (goes to procurement regardless of planner decisions; adding noise without
+   supporting action).
+
+4. **Parent column** — replaced "BOM Position" with "Parent". Shows immediate
+   parent assembly's `partNumber` (monospace). Top-level WOs render `—`.
+   Hover tooltip shows full ancestry chain (closest ancestor first) using
+   shadcn/ui `Tooltip`. All non-top-level WOs get the tooltip; the tooltip
+   adds the part name even for single-ancestor cases.
+
+5. **Expansion row cleanup** — now filters to candidates only via
+   `getCompetingCandidates()`. Columns align with parent table (Project,
+   Parent, Part Number, Part Name, Demand, Stock, Cumul. Demand, Due Date,
+   Actions). Fulfill and Pass Through buttons on each expansion row; no
+   Reconcile (stock reconciliation is a Part-level action covered by the
+   parent row). Empty-state message when no other candidates exist.
+   `getCompetingWos` renamed to `getCompetingCandidates` and now accepts the
+   candidate list rather than full state.
+
+6. **Active filter visual** — clicking a Project Header sets the project
+   filter and shows a ring + "Filtered" label on that header. Clicking again
+   clears it.
+
+### Spec gaps / notes for implementation handoff
+
+- **BOM Position → Parent**: The spec still says "BOM Position" column. This
+  was a spec wording issue — the actionable info is the immediate parent, with
+  deeper context via hover. The spec should be updated before real
+  implementation references it.
+
+- **Stale-state capture in handlers** (fixed in this pass for `handlePassThrough`
+  via functional setState; `handleFulfill` and `handleReconcileConfirm` use
+  derived values from the pre-action state which is acceptable since those
+  handlers don't chain). Mockup-level issue; real implementation uses server
+  actions so this pattern doesn't apply.
+
+- **Header active-filter UX**: Clicking a header filters to that project AND
+  the dropdown select stays at "All Projects" (not synced). If the user
+  clears filter via the header (click again), the select returns to "All
+  Projects" automatically. This is fine for a mockup but the real
+  implementation should use a single filter state source.
+
+### Verification results (Playwright)
+
+All key assertions passed:
+- Invariant holds on load: C+P=U for all 4 projects ✓
+- No project-color inline style on candidate rows (tintedCount=0) ✓
+- Top-level WOs show `—` in Parent column ✓
+- Amber fires correctly: Tailstock Brake Assembly cumDemand=2 > stock=1 ✓
+- Expansion: only competing candidate (10412) shown, 2 buttons, no Reconcile ✓
+- Fulfill from expansion triggers auto-pass-through on 10121 Tailstock ✓
+- Pass Through: C-1, P+1, invariant maintained ✓
+- Per-Project Release: pending→0, button disabled, candidates unchanged ✓
+- Active filter: ring styling, "Filtered" label, header/rows scoped ✓
+
+---
+
 ## 2026-06-11 — Project Creation View — Surface Lock
 
 **Surfaces touched:** /app/mockups/project-creation/ — final iteration pass before
