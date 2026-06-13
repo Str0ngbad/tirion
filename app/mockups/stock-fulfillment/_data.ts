@@ -321,8 +321,9 @@ export function computeCandidates(state: SfState): SfWorkOrder[] {
 export type SfProjectStats = {
   projectId: number;
   candidateCount: number;
-  pendingReleaseCount: number; // Unreleased with reviewedAt set (decided, not yet released)
-  unreleasedCount: number;     // all Unreleased (candidates, passed-through, undecided)
+  // All Unreleased WOs that are NOT current candidates. Invariant: candidateCount + pendingReleaseCount = unreleasedCount
+  pendingReleaseCount: number;
+  unreleasedCount: number;
 };
 
 export function computeProjectStats(
@@ -343,10 +344,10 @@ export function computeProjectStats(
     const s = result[w.projectId];
     if (!s) continue;
     if (candidateSet.has(w.woId)) s.candidateCount++;
-    if (w.status === "Unreleased") {
-      s.unreleasedCount++;
-      if (w.reviewedAt !== null) s.pendingReleaseCount++;
-    }
+    if (w.status === "Unreleased") s.unreleasedCount++;
+  }
+  for (const s of Object.values(result)) {
+    s.pendingReleaseCount = s.unreleasedCount - s.candidateCount;
   }
   return result;
 }
@@ -372,12 +373,29 @@ export function getDescendantWoIds(
   return result;
 }
 
-// Returns all WOs for the same partId across all projects (for inline expansion).
-export function getCompetingWos(
-  state: SfState,
+// Returns candidate WOs for the same partId across all projects (for inline expansion).
+// Filters to candidates only so the expansion matches the Cumulative Demand column's semantic.
+export function getCompetingCandidates(
+  candidates: SfWorkOrder[],
   partId: number
 ): SfWorkOrder[] {
-  return state.workOrders.filter((w) => w.partId === partId);
+  return candidates.filter((w) => w.partId === partId);
+}
+
+// Walk up parentWoId chain and return ancestor WOs closest-first, top-level last.
+export function getAncestryChain(
+  workOrders: SfWorkOrder[],
+  wo: SfWorkOrder
+): Array<{ partNumber: string; partName: string }> {
+  const chain: Array<{ partNumber: string; partName: string }> = [];
+  let currentId = wo.parentWoId;
+  while (currentId !== null) {
+    const parent = workOrders.find((w) => w.woId === currentId);
+    if (!parent) break;
+    chain.push({ partNumber: parent.partNumber, partName: parent.partName });
+    currentId = parent.parentWoId;
+  }
+  return chain;
 }
 
 // ─── Actions ─────────────────────────────────────────────────────────────────
@@ -579,13 +597,14 @@ export function reconcileStock(
   };
 }
 
-// Release all Unreleased WOs for a single project → Open.
-export function releaseProject(state: SfState, projectId: number): SfState {
+// Release Pending Release WOs (non-candidate Unreleased) for a single project → Open.
+// candidateWoIds: the current candidate set — excluded from this release so candidates stay in the view.
+export function releaseProject(state: SfState, projectId: number, candidateWoIds: ReadonlySet<number>): SfState {
   const now = new Date().toISOString();
   const released: number[] = [];
 
   const newWorkOrders = state.workOrders.map((w) => {
-    if (w.projectId === projectId && w.status === "Unreleased") {
+    if (w.projectId === projectId && w.status === "Unreleased" && !candidateWoIds.has(w.woId)) {
       released.push(w.woId);
       return { ...w, status: "Open" as SfWoStatus, reviewedAt: w.reviewedAt ?? now };
     }
@@ -611,9 +630,10 @@ export function releaseProject(state: SfState, projectId: number): SfState {
   };
 }
 
-// Release all Unreleased WOs across all projects (or a filtered subset) → Open.
+// Release Pending Release WOs (non-candidate Unreleased) across all projects (or a filtered subset) → Open.
 export function releaseAll(
   state: SfState,
+  candidateWoIds: ReadonlySet<number>,
   projectIds?: number[]
 ): SfState {
   const now = new Date().toISOString();
@@ -623,6 +643,7 @@ export function releaseAll(
   const newWorkOrders = state.workOrders.map((w) => {
     if (
       w.status === "Unreleased" &&
+      !candidateWoIds.has(w.woId) &&
       (scope === null || scope.has(w.projectId))
     ) {
       released.push(w.woId);
