@@ -66,14 +66,14 @@ function formatDate(iso: string | null): string {
   });
 }
 
-// Get immediate parent partNumber from bomPath (last element before the part itself).
-// bomPath is [rootPart, ..., immediateParent]. The WO's own partNumber is NOT in bomPath.
+// bomPath is leaf-first: [immediateParent, ..., rootPart]. Empty for top-level WOs.
+// Returns the immediate parent's identifier (index 0).
 function getParentFromBomPath(bomPath: string[]): string | null {
   if (bomPath.length === 0) return null;
-  return bomPath[bomPath.length - 1] ?? null;
+  return bomPath[0] ?? null;
 }
 
-// Returns ancestors closest-first (bomPath is root-first, so we reverse for tooltip display).
+// Returns ancestors root-first for breadcrumb tooltip display (reverses the leaf-first bomPath).
 function getAncestryDisplay(bomPath: string[]): string[] {
   return [...bomPath].reverse();
 }
@@ -391,7 +391,7 @@ export default function StockFulfillmentPage() {
                 <Filter className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent position="popper">
                 <SelectItem value="all">All Projects</SelectItem>
                 {projectStats.map((p) => (
                   <SelectItem key={p.projectId} value={String(p.projectId)}>
