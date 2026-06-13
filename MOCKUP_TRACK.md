@@ -69,7 +69,15 @@ Two changes supporting the planner's physical pull workflow:
 
 ### Verification results (Playwright)
 
-(to be filled in after Playwright run)
+All key assertions passed:
+- Toggle visible in toolbar, summary text gone ✓
+- Toggle off (default): all candidates shown ✓
+- Toggle on (all projects): only amber rows visible — 8 rows across 4 projects ✓
+- Toggle on + project filter 10030 (AND composition): 3 amber rows for 10030 only ✓
+- Per-project Release with toggle on: released 98 WOs (full Pending Release set, not scoped to toggle), button disabled, candidates intact ✓
+- Fulfill competing row: auto-passes duplicate competitor across project; candidate count decrements correctly ✓
+- Empty state: after fulfilling all competing rows in 10030 scope, "No competing candidates. Toggle off to see all rows." renders ✓
+- Cross-project auto-pass: fulfilling 10030's Photo Eye Cable Assembly auto-passed 10489's (stock depleted) ✓
 
 ---
 
