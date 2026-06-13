@@ -26,6 +26,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { Filter, Layers, ChevronDown, ChevronRight, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import ReconcileStockModal from "@/app/mockups/_shared/reconcile-stock-modal";
@@ -66,6 +68,7 @@ export default function StockFulfillmentPage() {
   }));
 
   const [filterProjectId, setFilterProjectId] = useState<number | null>(null);
+  const [competingOnly, setCompetingOnly] = useState(false);
   const [expandedWoId, setExpandedWoId] = useState<number | null>(null);
   const [reconcileWo, setReconcileWo] = useState<{
     partId: number;
@@ -83,9 +86,19 @@ export default function StockFulfillmentPage() {
     [state, candidates]
   );
 
-  const visibleCandidates = filterProjectId
-    ? candidates.filter((c) => c.projectId === filterProjectId)
-    : candidates;
+  const visibleCandidates = useMemo(() => {
+    const scoped = filterProjectId
+      ? candidates.filter((c) => c.projectId === filterProjectId)
+      : candidates;
+    if (!competingOnly) return scoped;
+    return scoped.filter((c) => {
+      const cumDemand = getCompetingCandidates(candidates, c.partId).reduce(
+        (sum, w) => sum + w.quantity,
+        0
+      );
+      return cumDemand > (state.stockCounts[c.partId] ?? 0);
+    });
+  }, [candidates, filterProjectId, competingOnly, state.stockCounts]);
 
   // Only show project headers for projects that still have unreleased WOs.
   const visibleProjects = (
@@ -243,11 +256,16 @@ export default function StockFulfillmentPage() {
                 ))}
               </SelectContent>
             </Select>
-            <span className="text-xs text-muted-foreground">
-              {visibleCandidates.length} candidate
-              {visibleCandidates.length !== 1 ? "s" : ""}
-              {filterProjectId ? "" : ` across ${state.projects.length} projects`}
-            </span>
+            <div className="flex items-center gap-2">
+              <Switch
+                id="competing-only"
+                checked={competingOnly}
+                onCheckedChange={setCompetingOnly}
+              />
+              <Label htmlFor="competing-only" className="cursor-pointer text-xs text-muted-foreground">
+                Competing only
+              </Label>
+            </div>
           </div>
           <Button
             size="sm"
@@ -343,7 +361,11 @@ export default function StockFulfillmentPage() {
             {visibleCandidates.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-sm text-muted-foreground">
                 <Layers className="mb-3 h-8 w-8 opacity-25" />
-                <p>No candidates meet fulfillment criteria.</p>
+                {competingOnly ? (
+                  <p>No competing candidates. Toggle off to see all rows.</p>
+                ) : (
+                  <p>No candidates meet fulfillment criteria.</p>
+                )}
               </div>
             ) : (
               <table className="w-full text-sm">

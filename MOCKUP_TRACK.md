@@ -18,6 +18,61 @@ Entries are ordered most recent first.
 
 ---
 
+## 2026-06-13 — Stock Fulfillment View — Iteration Pass 3
+
+**Surfaces touched:** /app/mockups/stock-fulfillment/ — third iteration pass
+adding Location-based sibling sort and Competing-only toggle filter.
+
+**Mockup commits:**
+- `81cc63e` — feat(mockup): add Location as fourth sort key within BOM sibling groups
+- (pending) — feat(mockup): replace candidate summary with Competing-only filter toggle
+
+### Scope
+
+Two changes supporting the planner's physical pull workflow:
+
+1. **Location sort as 4th sort key** — within BOM sibling groups (same `parentWoId`),
+   candidates now sort by `inventoryLocation` ascending (nulls last), then `bomOrder`
+   for stability. Top-level WOs (`.01`, `.02`, …) keep their reference `bomOrder`
+   sequence. The sort is tree-aware: `locationSortedProject()` in `_data.ts` performs
+   a DFS traversal per project with location-based sibling ordering rather than a
+   flat comparator. Handles both candidate-parent and orphan-root cases (where the
+   Assembly parent has no stock and isn't a candidate itself).
+   Plain string sort used per spec direction; natural sort deferred unless real bin
+   codes expose ordering problems.
+
+2. **Competing-only toggle** — replaces the "N candidates across M projects" summary
+   text. When on, candidate rows filter to only WOs where cumulative demand > stock
+   (the amber rows). Composes with project filter via AND. Empty state shows
+   "No competing candidates. Toggle off to see all rows." when no amber rows exist
+   in scope. Per-project Release button is unaffected by the toggle (project-level
+   affordance, not list-filtered). Global Release scopes to the current project
+   filter only (toggle doesn't change release scope — toggle filters the candidates
+   view, not the Pending Release set).
+
+### Spec gaps logged here (not in spec/stock_fulfillment_view_spec.md)
+
+- **Location sort**: The spec (`spec/stock_fulfillment_view_spec.md`) is silent on
+  sort order within sibling groups. The `bomOrder` DFS traversal was the prior
+  implicit sort. Location-within-siblings is a mockup addition — should be validated
+  with real bin code data before implementation locks this behavior.
+
+- **Competing-only filter**: Not in spec. The spec describes the candidate list and
+  filtering by project, but has no toggle for competing/amber-only rows. This is a
+  UX addition surfaced from the two-phase cognitive workflow described in the prompt.
+  Needs spec review and formal addition before implementation.
+
+- **Per-project Release vs. toggle**: The decision that per-project Release ignores
+  the Competing-only toggle (releases the full project's Pending Release set) is a
+  mockup-level judgment call. The spec does not address this interaction; it should
+  be made explicit in the spec before implementation.
+
+### Verification results (Playwright)
+
+(to be filled in after Playwright run)
+
+---
+
 ## 2026-06-13 — Stock Fulfillment View — Iteration Pass 2
 
 **Surfaces touched:** /app/mockups/stock-fulfillment/ — second iteration pass
