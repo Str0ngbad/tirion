@@ -1616,3 +1616,20 @@ Implementation choices made for Rev 1:
 
 Discovered: Phase 2 Routing Template Library UI implementation.
 First implementation: this commit. Next planned use: Parts Grid.
+
+---
+
+## Spec Gap: Location column missing from Stock Fulfillment candidate list
+
+`spec/stock_fulfillment_view_spec.md` does not include an Inventory Location
+column in the candidate table column list. During mockup iteration, Location
+was added to support the physical pull step of fulfillment — planners need
+to know where to walk. The data exists on Part and Assembly records
+(`inventoryLocation` field) but the spec is silent on surfacing it.
+
+**Gap:** The spec column list and column-placement rules need to be updated
+to include Location (after Due Date, before Parent) with a note that null
+values render as a dash and the purpose is operational pull-step support.
+
+Discovered: Stock Fulfillment mockup iteration (Location column + expansion
+row alignment pass).

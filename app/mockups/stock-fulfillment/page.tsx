@@ -11,6 +11,7 @@ import {
   getCompetingCandidates,
   getAncestryChain,
 } from "./_data";
+import { MOCK_PARTS } from "@/app/mockups/parts/_data";
 import ProjectIdPill from "@/app/mockups/project-creation/_components/project-id-pill";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,6 +37,10 @@ import {
   releaseProject,
   releaseAll,
 } from "./_data";
+
+function getPartLocation(partId: number): string {
+  return MOCK_PARTS.find((p) => p.partId === partId)?.inventoryLocation || "—";
+}
 
 export default function StockFulfillmentPage() {
   const [state, setState] = useState<SfState>(() => ({
@@ -343,9 +348,6 @@ export default function StockFulfillmentPage() {
                       Project
                     </th>
                     <th className="px-4 py-2 text-left text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                      Parent
-                    </th>
-                    <th className="px-4 py-2 text-left text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                       Part Number
                     </th>
                     <th className="px-4 py-2 text-left text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -362,6 +364,12 @@ export default function StockFulfillmentPage() {
                     </th>
                     <th className="px-4 py-2 text-left text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                       Due Date
+                    </th>
+                    <th className="px-4 py-2 text-left text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                      Location
+                    </th>
+                    <th className="px-4 py-2 text-left text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                      Parent
                     </th>
                     <th className="px-4 py-2 text-right text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                       Actions
@@ -406,30 +414,6 @@ export default function StockFulfillmentPage() {
                               projectNumber={project.projectNumber}
                               color={project.color}
                             />
-                          </td>
-                          {/* Parent */}
-                          <td className="px-4 py-2 font-mono text-xs">
-                            {parentPartNumber === null ? (
-                              <span className="text-muted-foreground">—</span>
-                            ) : (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span className="cursor-help underline decoration-dotted underline-offset-2">
-                                    {parentPartNumber}
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent
-                                  side="right"
-                                  className="font-mono text-xs whitespace-pre"
-                                >
-                                  {ancestry
-                                    .map(
-                                      (a) => `${a.partNumber} — ${a.partName}`
-                                    )
-                                    .join("\n")}
-                                </TooltipContent>
-                              </Tooltip>
-                            )}
                           </td>
                           {/* Part Number — with expand toggle if cross-project candidates exist */}
                           <td className="px-4 py-2 font-mono text-xs">
@@ -477,6 +461,34 @@ export default function StockFulfillmentPage() {
                           <td className="px-4 py-2 text-xs text-muted-foreground">
                             {project.dueDate ?? "—"}
                           </td>
+                          {/* Location */}
+                          <td className="px-4 py-2 font-mono text-xs">
+                            {getPartLocation(wo.partId)}
+                          </td>
+                          {/* Parent */}
+                          <td className="px-4 py-2 font-mono text-xs">
+                            {parentPartNumber === null ? (
+                              <span className="text-muted-foreground">—</span>
+                            ) : (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="cursor-help underline decoration-dotted underline-offset-2">
+                                    {parentPartNumber}
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent
+                                  side="right"
+                                  className="font-mono text-xs whitespace-pre"
+                                >
+                                  {ancestry
+                                    .map(
+                                      (a) => `${a.partNumber} — ${a.partName}`
+                                    )
+                                    .join("\n")}
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                          </td>
                           {/* Actions */}
                           <td className="px-4 py-2">
                             <div className="flex items-center justify-end gap-1.5">
@@ -515,7 +527,7 @@ export default function StockFulfillmentPage() {
                         {/* ── Inline competing-candidates expansion ────────── */}
                         {isExpanded && (
                           <tr key={`${wo.woId}-expand`} className="bg-muted/20">
-                            <td colSpan={9} className="px-6 pb-3 pt-2">
+                            <td colSpan={10} className="px-6 pb-3 pt-2">
                               <div className="mb-2 text-[10px] uppercase tracking-wide text-muted-foreground">
                                 All candidate WOs for {wo.partNumber} — stock{" "}
                                 {stockCount}
@@ -534,9 +546,6 @@ export default function StockFulfillmentPage() {
                                         Project
                                       </th>
                                       <th className="px-3 py-1.5 text-left font-medium text-muted-foreground">
-                                        Parent
-                                      </th>
-                                      <th className="px-3 py-1.5 text-left font-medium text-muted-foreground">
                                         Part Number
                                       </th>
                                       <th className="px-3 py-1.5 text-left font-medium text-muted-foreground">
@@ -553,6 +562,12 @@ export default function StockFulfillmentPage() {
                                       </th>
                                       <th className="px-3 py-1.5 text-left font-medium text-muted-foreground">
                                         Due Date
+                                      </th>
+                                      <th className="px-3 py-1.5 text-left font-medium text-muted-foreground">
+                                        Location
+                                      </th>
+                                      <th className="px-3 py-1.5 text-left font-medium text-muted-foreground">
+                                        Parent
                                       </th>
                                       <th className="px-3 py-1.5 text-right font-medium text-muted-foreground">
                                         Actions
@@ -586,32 +601,6 @@ export default function StockFulfillmentPage() {
                                               />
                                             </td>
                                             <td className="px-3 py-1.5 font-mono">
-                                              {cwParent === null ? (
-                                                <span className="text-muted-foreground">
-                                                  —
-                                                </span>
-                                              ) : (
-                                                <Tooltip>
-                                                  <TooltipTrigger asChild>
-                                                    <span className="cursor-help underline decoration-dotted underline-offset-2">
-                                                      {cwParent}
-                                                    </span>
-                                                  </TooltipTrigger>
-                                                  <TooltipContent
-                                                    side="right"
-                                                    className="font-mono text-xs whitespace-pre"
-                                                  >
-                                                    {cwAncestry
-                                                      .map(
-                                                        (a) =>
-                                                          `${a.partNumber} — ${a.partName}`
-                                                      )
-                                                      .join("\n")}
-                                                  </TooltipContent>
-                                                </Tooltip>
-                                              )}
-                                            </td>
-                                            <td className="px-3 py-1.5 font-mono">
                                               {cw.partNumber}
                                             </td>
                                             <td className="px-3 py-1.5 max-w-[160px]">
@@ -640,6 +629,35 @@ export default function StockFulfillmentPage() {
                                             </td>
                                             <td className="px-3 py-1.5 text-muted-foreground">
                                               {cp.dueDate ?? "—"}
+                                            </td>
+                                            <td className="px-3 py-1.5 font-mono">
+                                              {getPartLocation(cw.partId)}
+                                            </td>
+                                            <td className="px-3 py-1.5 font-mono">
+                                              {cwParent === null ? (
+                                                <span className="text-muted-foreground">
+                                                  —
+                                                </span>
+                                              ) : (
+                                                <Tooltip>
+                                                  <TooltipTrigger asChild>
+                                                    <span className="cursor-help underline decoration-dotted underline-offset-2">
+                                                      {cwParent}
+                                                    </span>
+                                                  </TooltipTrigger>
+                                                  <TooltipContent
+                                                    side="right"
+                                                    className="font-mono text-xs whitespace-pre"
+                                                  >
+                                                    {cwAncestry
+                                                      .map(
+                                                        (a) =>
+                                                          `${a.partNumber} — ${a.partName}`
+                                                      )
+                                                      .join("\n")}
+                                                  </TooltipContent>
+                                                </Tooltip>
+                                              )}
                                             </td>
                                             <td className="px-3 py-1.5">
                                               <div className="flex items-center justify-end gap-1">
