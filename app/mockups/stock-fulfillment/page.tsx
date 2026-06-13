@@ -27,7 +27,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Filter, Layers, ChevronDown, ChevronRight } from "lucide-react";
+import { Filter, Layers, ChevronDown, ChevronRight, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import ReconcileStockModal from "@/app/mockups/_shared/reconcile-stock-modal";
 import {
@@ -41,6 +41,22 @@ import {
 function getPartLocation(partId: number): string {
   return MOCK_PARTS.find((p) => p.partId === partId)?.inventoryLocation || "—";
 }
+
+// Shared cell classes — keeps parent rows and expansion rows in sync.
+const CX = {
+  project: "px-4 py-2",
+  partNumber: "px-4 py-2 font-mono text-xs whitespace-nowrap",
+  partName: "w-[200px] max-w-[200px] px-4 py-2",
+  demand: "px-4 py-2 text-right font-mono text-sm tabular-nums",
+  stock: "px-4 py-2 text-right font-mono text-sm tabular-nums",
+  cumDemand: "px-4 py-2 text-right font-mono text-sm tabular-nums",
+  dueDate: "px-4 py-2 text-xs text-muted-foreground whitespace-nowrap",
+  location: "px-4 py-2 font-mono text-xs whitespace-nowrap",
+  parent: "px-4 py-2 font-mono text-xs whitespace-nowrap",
+  actions: "px-4 py-2",
+  // Expansion rows use the same classes but with extra left indent on first cell.
+  projectExpanded: "pl-8 pr-4 py-2",
+} as const;
 
 export default function StockFulfillmentPage() {
   const [state, setState] = useState<SfState>(() => ({
@@ -73,14 +89,12 @@ export default function StockFulfillmentPage() {
     : candidates;
 
   // Only show project headers for projects that still have unreleased WOs.
-  // Filter to the active project filter if set.
   const visibleProjects = (
     filterProjectId
       ? state.projects.filter((p) => p.projectId === filterProjectId)
       : state.projects
   ).filter((p) => (projectStats[p.projectId]?.unreleasedCount ?? 0) > 0);
 
-  // Total pending release across visible projects (for the global Release button label).
   const totalPendingRelease = visibleProjects.reduce(
     (sum, p) => sum + (projectStats[p.projectId]?.pendingReleaseCount ?? 0),
     0
@@ -92,7 +106,6 @@ export default function StockFulfillmentPage() {
       toast.error(result.error);
       return;
     }
-    // Collapse expansion if the fulfilled WO was the expanded row
     if (expandedWoId === woId) setExpandedWoId(null);
     setState(result.state);
 
@@ -137,8 +150,7 @@ export default function StockFulfillmentPage() {
   }
 
   function handleReleaseProject(projectId: number) {
-    const pendingCount =
-      projectStats[projectId]?.pendingReleaseCount ?? 0;
+    const pendingCount = projectStats[projectId]?.pendingReleaseCount ?? 0;
     if (pendingCount === 0) {
       toast.info("No pending WOs to release for this project.");
       return;
@@ -342,6 +354,18 @@ export default function StockFulfillmentPage() {
               </div>
             ) : (
               <table className="w-full text-sm">
+                <colgroup>
+                  <col className="w-[80px]" />
+                  <col className="w-[140px]" />
+                  <col className="w-[200px]" />
+                  <col className="w-[70px]" />
+                  <col className="w-[90px]" />
+                  <col className="w-[100px]" />
+                  <col className="w-[90px]" />
+                  <col className="w-[90px]" />
+                  <col className="w-[130px]" />
+                  <col />
+                </colgroup>
                 <thead className="sticky top-0 z-10 bg-background">
                   <tr className="border-b border-border">
                     <th className="px-4 py-2 text-left text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -400,8 +424,14 @@ export default function StockFulfillmentPage() {
                     const parentPartNumber =
                       ancestry.length > 0 ? ancestry[0]!.partNumber : null;
 
+                    // Competing rows (expansion): exclude the parent WO itself.
+                    const competitors = competingCandidates.filter(
+                      (cw) => cw.woId !== wo.woId
+                    );
+
                     return (
                       <Fragment key={wo.woId}>
+                        {/* ── Candidate row ──────────────────────────────── */}
                         <tr
                           className={[
                             "border-b border-border/50 hover:bg-muted/30",
@@ -409,14 +439,14 @@ export default function StockFulfillmentPage() {
                           ].join(" ")}
                         >
                           {/* Project */}
-                          <td className="px-4 py-2">
+                          <td className={CX.project}>
                             <ProjectIdPill
                               projectNumber={project.projectNumber}
                               color={project.color}
                             />
                           </td>
-                          {/* Part Number — with expand toggle if cross-project candidates exist */}
-                          <td className="px-4 py-2 font-mono text-xs">
+                          {/* Part Number — with expand toggle if competing candidates exist */}
+                          <td className={CX.partNumber}>
                             <div className="flex items-center gap-1">
                               {hasCompetition && (
                                 <button
@@ -435,38 +465,55 @@ export default function StockFulfillmentPage() {
                             </div>
                           </td>
                           {/* Part Name */}
-                          <td className="max-w-[200px] px-4 py-2">
+                          <td className={CX.partName}>
                             <span className="block truncate" title={wo.partName}>
                               {wo.partName}
                             </span>
                           </td>
                           {/* Demand */}
-                          <td className="px-4 py-2 text-right font-mono text-sm tabular-nums">
-                            {wo.quantity}
-                          </td>
-                          {/* Stock */}
-                          <td className="px-4 py-2 text-right font-mono text-sm tabular-nums">
-                            {stockCount}
+                          <td className={CX.demand}>{wo.quantity}</td>
+                          {/* Stock — inline reconcile icon */}
+                          <td className={CX.stock}>
+                            <div className="flex items-center justify-end gap-2">
+                              <span>{stockCount}</span>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button
+                                    className="text-muted-foreground hover:text-foreground"
+                                    onClick={() =>
+                                      handleReconcile({
+                                        partId: wo.partId,
+                                        partNumber: wo.partNumber,
+                                        partName: wo.partName,
+                                      })
+                                    }
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent side="top">
+                                  Reconcile stock
+                                </TooltipContent>
+                              </Tooltip>
+                            </div>
                           </td>
                           {/* Cumulative Demand */}
                           <td
                             className={[
-                              "px-4 py-2 text-right font-mono text-sm tabular-nums",
+                              CX.cumDemand,
                               cumulativeAmber ? "text-amber-500" : "",
                             ].join(" ")}
                           >
                             {cumulativeDemand}
                           </td>
                           {/* Due Date */}
-                          <td className="px-4 py-2 text-xs text-muted-foreground">
-                            {project.dueDate ?? "—"}
-                          </td>
+                          <td className={CX.dueDate}>{project.dueDate ?? "—"}</td>
                           {/* Location */}
-                          <td className="px-4 py-2 font-mono text-xs">
+                          <td className={CX.location}>
                             {getPartLocation(wo.partId)}
                           </td>
                           {/* Parent */}
-                          <td className="px-4 py-2 font-mono text-xs">
+                          <td className={CX.parent}>
                             {parentPartNumber === null ? (
                               <span className="text-muted-foreground">—</span>
                             ) : (
@@ -481,16 +528,14 @@ export default function StockFulfillmentPage() {
                                   className="font-mono text-xs whitespace-pre"
                                 >
                                   {ancestry
-                                    .map(
-                                      (a) => `${a.partNumber} — ${a.partName}`
-                                    )
+                                    .map((a) => `${a.partNumber} — ${a.partName}`)
                                     .join("\n")}
                                 </TooltipContent>
                               </Tooltip>
                             )}
                           </td>
                           {/* Actions */}
-                          <td className="px-4 py-2">
+                          <td className={CX.actions}>
                             <div className="flex items-center justify-end gap-1.5">
                               <Button
                                 size="sm"
@@ -507,188 +552,151 @@ export default function StockFulfillmentPage() {
                               >
                                 Pass Through
                               </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-6 px-2 text-xs"
-                                onClick={() =>
-                                  handleReconcile({
-                                    partId: wo.partId,
-                                    partNumber: wo.partNumber,
-                                    partName: wo.partName,
-                                  })
-                                }
-                              >
-                                Reconcile
-                              </Button>
                             </div>
                           </td>
                         </tr>
-                        {/* ── Inline competing-candidates expansion ────────── */}
+
+                        {/* ── Expansion: section label ──────────────────── */}
                         {isExpanded && (
-                          <tr key={`${wo.woId}-expand`} className="bg-muted/20">
-                            <td colSpan={10} className="px-6 pb-3 pt-2">
-                              <div className="mb-2 text-[10px] uppercase tracking-wide text-muted-foreground">
-                                All candidate WOs for {wo.partNumber} — stock{" "}
-                                {stockCount}
-                              </div>
-                              {competingCandidates.filter(
-                                (cw) => cw.woId !== wo.woId
-                              ).length === 0 ? (
-                                <p className="text-xs text-muted-foreground italic">
-                                  No other candidates competing for this Part.
-                                </p>
-                              ) : (
-                                <table className="w-full rounded border border-border/40 text-xs">
-                                  <thead>
-                                    <tr className="border-b border-border/40 bg-muted/30">
-                                      <th className="px-3 py-1.5 text-left font-medium text-muted-foreground">
-                                        Project
-                                      </th>
-                                      <th className="px-3 py-1.5 text-left font-medium text-muted-foreground">
-                                        Part Number
-                                      </th>
-                                      <th className="px-3 py-1.5 text-left font-medium text-muted-foreground">
-                                        Part Name
-                                      </th>
-                                      <th className="px-3 py-1.5 text-right font-medium text-muted-foreground">
-                                        Demand
-                                      </th>
-                                      <th className="px-3 py-1.5 text-right font-medium text-muted-foreground">
-                                        Stock
-                                      </th>
-                                      <th className="px-3 py-1.5 text-right font-medium text-muted-foreground">
-                                        Cumul. Demand
-                                      </th>
-                                      <th className="px-3 py-1.5 text-left font-medium text-muted-foreground">
-                                        Due Date
-                                      </th>
-                                      <th className="px-3 py-1.5 text-left font-medium text-muted-foreground">
-                                        Location
-                                      </th>
-                                      <th className="px-3 py-1.5 text-left font-medium text-muted-foreground">
-                                        Parent
-                                      </th>
-                                      <th className="px-3 py-1.5 text-right font-medium text-muted-foreground">
-                                        Actions
-                                      </th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {competingCandidates
-                                      .filter((cw) => cw.woId !== wo.woId)
-                                      .map((cw) => {
-                                        const cp = state.projects.find(
-                                          (p) => p.projectId === cw.projectId
-                                        )!;
-                                        const cwAncestry = getAncestryChain(
-                                          state.workOrders,
-                                          cw
-                                        );
-                                        const cwParent =
-                                          cwAncestry.length > 0
-                                            ? cwAncestry[0]!.partNumber
-                                            : null;
-                                        return (
-                                          <tr
-                                            key={cw.woId}
-                                            className="border-b border-border/30 last:border-0"
-                                          >
-                                            <td className="px-3 py-1.5">
-                                              <ProjectIdPill
-                                                projectNumber={cp.projectNumber}
-                                                color={cp.color}
-                                              />
-                                            </td>
-                                            <td className="px-3 py-1.5 font-mono">
-                                              {cw.partNumber}
-                                            </td>
-                                            <td className="px-3 py-1.5 max-w-[160px]">
-                                              <span
-                                                className="block truncate"
-                                                title={cw.partName}
-                                              >
-                                                {cw.partName}
-                                              </span>
-                                            </td>
-                                            <td className="px-3 py-1.5 text-right font-mono tabular-nums">
-                                              {cw.quantity}
-                                            </td>
-                                            <td className="px-3 py-1.5 text-right font-mono tabular-nums">
-                                              {stockCount}
-                                            </td>
-                                            <td
-                                              className={[
-                                                "px-3 py-1.5 text-right font-mono tabular-nums",
-                                                cumulativeAmber
-                                                  ? "text-amber-500"
-                                                  : "",
-                                              ].join(" ")}
-                                            >
-                                              {cumulativeDemand}
-                                            </td>
-                                            <td className="px-3 py-1.5 text-muted-foreground">
-                                              {cp.dueDate ?? "—"}
-                                            </td>
-                                            <td className="px-3 py-1.5 font-mono">
-                                              {getPartLocation(cw.partId)}
-                                            </td>
-                                            <td className="px-3 py-1.5 font-mono">
-                                              {cwParent === null ? (
-                                                <span className="text-muted-foreground">
-                                                  —
-                                                </span>
-                                              ) : (
-                                                <Tooltip>
-                                                  <TooltipTrigger asChild>
-                                                    <span className="cursor-help underline decoration-dotted underline-offset-2">
-                                                      {cwParent}
-                                                    </span>
-                                                  </TooltipTrigger>
-                                                  <TooltipContent
-                                                    side="right"
-                                                    className="font-mono text-xs whitespace-pre"
-                                                  >
-                                                    {cwAncestry
-                                                      .map(
-                                                        (a) =>
-                                                          `${a.partNumber} — ${a.partName}`
-                                                      )
-                                                      .join("\n")}
-                                                  </TooltipContent>
-                                                </Tooltip>
-                                              )}
-                                            </td>
-                                            <td className="px-3 py-1.5">
-                                              <div className="flex items-center justify-end gap-1">
-                                                <Button
-                                                  size="sm"
-                                                  className="h-5 px-1.5 text-[11px]"
-                                                  onClick={() =>
-                                                    handleFulfill(cw.woId)
-                                                  }
-                                                >
-                                                  Fulfill from Stock
-                                                </Button>
-                                                <Button
-                                                  size="sm"
-                                                  variant="outline"
-                                                  className="h-5 px-1.5 text-[11px]"
-                                                  onClick={() =>
-                                                    handlePassThrough(cw.woId)
-                                                  }
-                                                >
-                                                  Pass Through
-                                                </Button>
-                                              </div>
-                                            </td>
-                                          </tr>
-                                        );
-                                      })}
-                                  </tbody>
-                                </table>
-                              )}
+                          <tr className="bg-muted/20">
+                            <td
+                              colSpan={10}
+                              className="px-8 pb-1 pt-2 text-[10px] uppercase tracking-wide text-muted-foreground"
+                            >
+                              All candidate WOs for {wo.partNumber} — stock{" "}
+                              {stockCount}
                             </td>
+                          </tr>
+                        )}
+
+                        {/* ── Expansion: one real <tr> per competing candidate ── */}
+                        {isExpanded &&
+                          (competitors.length === 0 ? (
+                            <tr className="bg-muted/20">
+                              <td
+                                colSpan={10}
+                                className="px-8 pb-3 text-xs italic text-muted-foreground"
+                              >
+                                No other candidates competing for this Part.
+                              </td>
+                            </tr>
+                          ) : (
+                            competitors.map((cw) => {
+                              const cp = state.projects.find(
+                                (p) => p.projectId === cw.projectId
+                              )!;
+                              const cwAncestry = getAncestryChain(
+                                state.workOrders,
+                                cw
+                              );
+                              const cwParent =
+                                cwAncestry.length > 0
+                                  ? cwAncestry[0]!.partNumber
+                                  : null;
+                              return (
+                                <tr
+                                  key={`${wo.woId}-cw-${cw.woId}`}
+                                  className="border-b border-border/30 bg-muted/20 hover:bg-muted/40"
+                                >
+                                  {/* Project — indented to show nesting */}
+                                  <td className={CX.projectExpanded}>
+                                    <ProjectIdPill
+                                      projectNumber={cp.projectNumber}
+                                      color={cp.color}
+                                    />
+                                  </td>
+                                  {/* Part Number — no expand toggle on competitors */}
+                                  <td className={CX.partNumber}>
+                                    {cw.partNumber}
+                                  </td>
+                                  {/* Part Name */}
+                                  <td className={CX.partName}>
+                                    <span
+                                      className="block truncate"
+                                      title={cw.partName}
+                                    >
+                                      {cw.partName}
+                                    </span>
+                                  </td>
+                                  {/* Demand */}
+                                  <td className={CX.demand}>{cw.quantity}</td>
+                                  {/* Stock — value only, no reconcile icon */}
+                                  <td className={CX.stock}>{stockCount}</td>
+                                  {/* Cumulative Demand */}
+                                  <td
+                                    className={[
+                                      CX.cumDemand,
+                                      cumulativeAmber ? "text-amber-500" : "",
+                                    ].join(" ")}
+                                  >
+                                    {cumulativeDemand}
+                                  </td>
+                                  {/* Due Date */}
+                                  <td className={CX.dueDate}>
+                                    {cp.dueDate ?? "—"}
+                                  </td>
+                                  {/* Location */}
+                                  <td className={CX.location}>
+                                    {getPartLocation(cw.partId)}
+                                  </td>
+                                  {/* Parent */}
+                                  <td className={CX.parent}>
+                                    {cwParent === null ? (
+                                      <span className="text-muted-foreground">
+                                        —
+                                      </span>
+                                    ) : (
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <span className="cursor-help underline decoration-dotted underline-offset-2">
+                                            {cwParent}
+                                          </span>
+                                        </TooltipTrigger>
+                                        <TooltipContent
+                                          side="right"
+                                          className="font-mono text-xs whitespace-pre"
+                                        >
+                                          {cwAncestry
+                                            .map(
+                                              (a) =>
+                                                `${a.partNumber} — ${a.partName}`
+                                            )
+                                            .join("\n")}
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    )}
+                                  </td>
+                                  {/* Actions */}
+                                  <td className={CX.actions}>
+                                    <div className="flex items-center justify-end gap-1">
+                                      <Button
+                                        size="sm"
+                                        className="h-5 px-1.5 text-[11px]"
+                                        onClick={() => handleFulfill(cw.woId)}
+                                      >
+                                        Fulfill from Stock
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-5 px-1.5 text-[11px]"
+                                        onClick={() =>
+                                          handlePassThrough(cw.woId)
+                                        }
+                                      >
+                                        Pass Through
+                                      </Button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          ))}
+
+                        {/* ── Expansion: closing spacer ─────────────────── */}
+                        {isExpanded && (
+                          <tr className="bg-muted/20">
+                            <td colSpan={10} className="pb-2" />
                           </tr>
                         )}
                       </Fragment>
