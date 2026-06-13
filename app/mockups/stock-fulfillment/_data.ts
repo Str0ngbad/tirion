@@ -269,7 +269,8 @@ export const INITIAL_SF_STATE: SfState = {
 
 // ─── Derived state: candidates ────────────────────────────────────────────────
 
-// Returns the candidate list sorted by: dueDate ASC (nulls last), projectId, bomOrder.
+// Returns the candidate list sorted by: dueDate ASC (nulls last), projectId, then
+// Location ASC (nulls last) within BOM sibling groups, preserving DFS pre-order.
 // Defensive rule: Assembly WOs are excluded when any descendant in the same project
 // is already Complete (descendant-then-ancestor enforcement).
 export function computeCandidates(state: SfState): SfWorkOrder[] {
@@ -299,21 +300,114 @@ export function computeCandidates(state: SfState): SfWorkOrder[] {
 
   const filtered = basicEligible.filter((w) => !disqualifiedIds.has(w.woId));
 
-  // Step 3: sort
+  // Step 3: sort — (dueDate, projectId) for inter-project order, then location-aware
+  // DFS within each project.
   const dueDateByProject: Record<number, string | null> = {};
   for (const p of projects) dueDateByProject[p.projectId] = p.dueDate;
 
-  return filtered.sort((a, b) => {
-    const da = dueDateByProject[a.projectId];
-    const db = dueDateByProject[b.projectId];
-    if (da !== db) {
-      if (!da) return 1;
-      if (!db) return -1;
-      return da < db ? -1 : 1;
+  // Determine project emit order by (dueDate ASC nulls-last, projectId ASC)
+  const projectIds = [
+    ...new Set(
+      filtered
+        .slice()
+        .sort((a, b) => {
+          const da = dueDateByProject[a.projectId];
+          const db = dueDateByProject[b.projectId];
+          if (da !== db) {
+            if (!da) return 1;
+            if (!db) return -1;
+            return da < db ? -1 : 1;
+          }
+          return a.projectId - b.projectId;
+        })
+        .map((w) => w.projectId)
+    ),
+  ];
+
+  // Group candidates by project
+  const byProject = new Map<number, SfWorkOrder[]>();
+  for (const wo of filtered) {
+    if (!byProject.has(wo.projectId)) byProject.set(wo.projectId, []);
+    byProject.get(wo.projectId)!.push(wo);
+  }
+
+  // Emit each project's candidates in location-aware DFS order
+  const result: SfWorkOrder[] = [];
+  for (const pid of projectIds) {
+    result.push(...locationSortedProject(byProject.get(pid)!));
+  }
+  return result;
+}
+
+// Sort a single project's candidates in DFS pre-order with Location as the sibling
+// tiebreaker. Top-level WOs (parentWoId === null) keep their bomOrder (reference
+// sequence .01, .02, …). Children of any Assembly sort by Location ascending nulls-last,
+// then bomOrder for stability.
+function locationSortedProject(projectCandidates: SfWorkOrder[]): SfWorkOrder[] {
+  const candidateIds = new Set(projectCandidates.map((c) => c.woId));
+
+  // Group by actual parentWoId
+  const byParent = new Map<number | null, SfWorkOrder[]>();
+  for (const wo of projectCandidates) {
+    const key = wo.parentWoId;
+    if (!byParent.has(key)) byParent.set(key, []);
+    byParent.get(key)!.push(wo);
+  }
+
+  // Sort each sibling group
+  for (const [parentId, siblings] of byParent) {
+    if (parentId === null) {
+      // True top-level references: preserve bomOrder (.01, .02, …)
+      siblings.sort((a, b) => a.bomOrder - b.bomOrder);
+    } else {
+      // Children of any Assembly: sort by Location (nulls last), then bomOrder
+      siblings.sort((a, b) => {
+        const la = MOCK_PARTS.find((p) => p.partId === a.partId)?.inventoryLocation ?? null;
+        const lb = MOCK_PARTS.find((p) => p.partId === b.partId)?.inventoryLocation ?? null;
+        if (la !== lb) {
+          if (la === null) return 1;
+          if (lb === null) return -1;
+          return la < lb ? -1 : 1;
+        }
+        return a.bomOrder - b.bomOrder;
+      });
     }
-    if (a.projectId !== b.projectId) return a.projectId - b.projectId;
-    return a.bomOrder - b.bomOrder;
-  });
+  }
+
+  // Determine traversal roots: candidates with no candidate ancestor.
+  // True top-levels (parentWoId === null) form one group each.
+  // Orphan candidates (non-null parentWoId whose parent is not a candidate) are grouped by
+  // their actual parentWoId so siblings remain together and location-sorted.
+  const rootGroups: Array<{ minBomOrder: number; wos: SfWorkOrder[] }> = [];
+
+  for (const wo of byParent.get(null) ?? []) {
+    rootGroups.push({ minBomOrder: wo.bomOrder, wos: [wo] });
+  }
+  for (const [parentId, group] of byParent) {
+    if (parentId === null || candidateIds.has(parentId)) continue;
+    rootGroups.push({
+      minBomOrder: Math.min(...group.map((o) => o.bomOrder)),
+      wos: group,
+    });
+  }
+  rootGroups.sort((a, b) => a.minBomOrder - b.minBomOrder);
+
+  // DFS emission
+  function dfsEmit(wo: SfWorkOrder): SfWorkOrder[] {
+    const out: SfWorkOrder[] = [wo];
+    for (const child of byParent.get(wo.woId) ?? []) {
+      out.push(...dfsEmit(child));
+    }
+    return out;
+  }
+
+  const result: SfWorkOrder[] = [];
+  for (const group of rootGroups) {
+    for (const wo of group.wos) {
+      result.push(...dfsEmit(wo));
+    }
+  }
+  return result;
 }
 
 // ─── Derived state: project stats ────────────────────────────────────────────
