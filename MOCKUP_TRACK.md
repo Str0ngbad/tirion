@@ -18,6 +18,55 @@ Entries are ordered most recent first.
 
 ---
 
+## 2026-06-13 — Stock Fulfillment View — Surface Lock
+
+**Surfaces touched:** /app/mockups/stock-fulfillment/ — documentation and lock pass
+
+**Mockup commits:** no code changes this session (all code landed in iteration passes)
+
+### Scope
+
+This session produces the implementation handoff documentation for the Stock
+Fulfillment View. The surface iterated across three passes before reaching
+this lock; the committed code reflects all three passes.
+
+**Iteration arc at a glance:**
+
+*Initial build* — core view structure: Project Header strip with Candidates /
+Pending Release counts and per-project Release button; Global Release button;
+candidate table with Fulfill / Pass Through / Reconcile Stock actions; set
+semantics (`computeProjectStats`, `computeCandidates`); Assembly cascade;
+auto-pass-through; inline expansion for cross-project competition; BOM DFS
+pre-order as default sort.
+
+*Iteration Pass 2 (commit `7509097`)* — corrected `pendingReleaseCount` to
+`unreleasedCount - candidateCount`; removed project-color row tinting (color
+belongs only in `ProjectIdPill`); added Cumulative Demand column (candidates
+only, amber when > stock); replaced "BOM Position" with "Parent" column
+(immediate parent `partNumber`, hover for full ancestry); expansion rows
+filtered to candidates only; active header filter ring; per-project Release
+button label simplified to "Release Project [Number]" with no embedded count.
+
+*Iteration Pass 3 (commits `81cc63e`, `73a1575`, `e8d55ff`)* — Location
+column (sourced from `inventoryLocation`); Location as 4th sort key within
+BOM sibling groups (`locationSortedProject()` DFS traversal); Competing-only
+toggle replacing the summary text; toggle composes with project filter via AND;
+Global Release scopes to project filter; per-project Release ignores toggle;
+Playwright verification results filled in.
+
+### Surface status
+
+**Locked for implementation.** Handoff document:
+`mockup_track/stock_fulfillment_handoff.md`.
+
+### Spec gaps
+
+All identified spec gaps — including every gap surfaced across the three
+iteration passes — are captured in the handoff doc. They are not duplicated
+here.
+
+---
+
 ## 2026-06-13 — Stock Fulfillment View — Iteration Pass 3
 
 **Surfaces touched:** /app/mockups/stock-fulfillment/ — third iteration pass
@@ -25,7 +74,8 @@ adding Location-based sibling sort and Competing-only toggle filter.
 
 **Mockup commits:**
 - `81cc63e` — feat(mockup): add Location as fourth sort key within BOM sibling groups
-- (pending) — feat(mockup): replace candidate summary with Competing-only filter toggle
+- `73a1575` — feat(mockup): replace candidate summary with Competing-only filter toggle
+- `e8d55ff` — docs: fill in Playwright verification results for SF iter 3
 
 ### Scope
 
