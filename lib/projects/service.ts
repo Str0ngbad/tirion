@@ -505,7 +505,8 @@ async function walkAndCreateWOs(
   projectAuditActionId: number,
   woAuditActionId: number,
   actingUserId: number,
-  woCount: { n: number }
+  woCount: { n: number },
+  parentBomPath: string[] = []
 ): Promise<void> {
   const part = await tx.part.findUniqueOrThrow({
     where: { partId },
@@ -527,6 +528,7 @@ async function walkAndCreateWOs(
       priority,
       dueDate,
       status: "Unreleased",
+      bomPath: parentBomPath,
     },
   });
 
@@ -564,6 +566,9 @@ async function walkAndCreateWOs(
     orderBy: { bomId: "asc" },
   });
 
+  // bomPath for children: prepend this part's identifier to our own bomPath
+  const childBomPath = [`${part.partNumber} ${part.partName}`, ...parentBomPath];
+
   for (const child of children) {
     const childQty = quantity.mul(child.quantity);
     await walkAndCreateWOs(
@@ -578,7 +583,8 @@ async function walkAndCreateWOs(
       projectAuditActionId,
       woAuditActionId,
       actingUserId,
-      woCount
+      woCount,
+      childBomPath
     );
   }
 }
@@ -629,7 +635,8 @@ export async function compileProject(projectId: number, actingUserId: number) {
         projectCompiledAction.auditActionId,
         woCreatedAction.auditActionId,
         actingUserId,
-        woCount
+        woCount,
+        [] // top-level WOs have no ancestors
       );
     }
 
