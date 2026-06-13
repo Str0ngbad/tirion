@@ -460,7 +460,8 @@ export default function StockFulfillmentPage() {
                           : `Click to filter by project ${stat.projectNumber}`
                       }
                     >
-                      <div className="flex items-center gap-3">
+                      {/* Identity — left half */}
+                      <div className="flex w-1/2 items-center gap-3">
                         <ProjectIdPill
                           projectNumber={stat.projectNumber}
                           color={stat.color as ProjectColor | null}
@@ -483,11 +484,12 @@ export default function StockFulfillmentPage() {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3">
-                        <div className="grid grid-cols-2 gap-x-3 text-right">
+                      {/* Stats + action — right half, right-aligned */}
+                      <div className="flex w-1/2 items-center justify-end gap-3">
+                        <div className="grid grid-cols-2 gap-x-4 text-right">
                           <div>
                             <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                              Cands
+                              Candidates
                             </div>
                             <div className="font-mono text-sm font-semibold tabular-nums">
                               {stat.candidateCount}
@@ -523,7 +525,7 @@ export default function StockFulfillmentPage() {
               </div>
 
               {/* Info card — fixed width, outside the clickable project cards */}
-              <div className="w-64 shrink-0 border-l border-border bg-muted/30 px-4 py-3">
+              <div className="w-2/5 shrink-0 border-l border-border bg-muted/30 px-4 py-3">
                 <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   About This View
                 </p>
