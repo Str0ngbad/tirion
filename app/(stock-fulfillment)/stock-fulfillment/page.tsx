@@ -385,8 +385,9 @@ export default function StockFulfillmentPage() {
       <div className="flex h-full flex-col bg-background text-foreground">
 
         {/* ── Toolbar ─────────────────────────────────────────────────────────── */}
-        <div className="flex shrink-0 items-center justify-between border-b border-border px-6 py-2.5">
-          <div className="flex items-center gap-3">
+        <div className="flex shrink-0 border-b border-border">
+          {/* Left 60% — controls and global action */}
+          <div className="flex min-w-0 flex-1 items-center gap-3 px-6 py-2.5">
             <Select
               value={filterProjectId ? String(filterProjectId) : "all"}
               onValueChange={(v) => {
@@ -422,18 +423,21 @@ export default function StockFulfillmentPage() {
                 Competing only
               </Label>
             </div>
+
+            {canAct && (
+              <Button
+                size="sm"
+                className="ml-auto h-7 text-xs"
+                disabled={totalPendingRelease === 0 || isMutating}
+                onClick={handleReleaseAllClick}
+              >
+                Release All Pending ({totalPendingRelease})
+              </Button>
+            )}
           </div>
 
-          {canAct && (
-            <Button
-              size="sm"
-              className="h-7 text-xs"
-              disabled={totalPendingRelease === 0 || isMutating}
-              onClick={handleReleaseAllClick}
-            >
-              Release All Pending ({totalPendingRelease})
-            </Button>
-          )}
+          {/* Right 40% — visual top of the info panel column */}
+          <div className="w-2/5 shrink-0 border-l border-border bg-muted/30" />
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
