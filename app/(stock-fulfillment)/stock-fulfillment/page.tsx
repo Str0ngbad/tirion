@@ -73,6 +73,13 @@ function getParentFromBomPath(bomPath: string[]): string | null {
   return bomPath[0] ?? null;
 }
 
+// Strips the leading part-number token from a bomPath element, leaving only the part name.
+// bomPath elements are "{partNumber} {partName}" — the part number is the first whitespace token.
+function bomPathEntryToName(entry: string): string {
+  const idx = entry.indexOf(" ");
+  return idx === -1 ? entry : entry.slice(idx + 1);
+}
+
 // Returns ancestors root-first for breadcrumb tooltip display (reverses the leaf-first bomPath).
 function getAncestryDisplay(bomPath: string[]): string[] {
   return [...bomPath].reverse();
@@ -432,83 +439,101 @@ export default function StockFulfillmentPage() {
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           {/* ── Project header strip ─────────────────────────────────────────── */}
           {visibleProjectStats.length > 0 && (
-            <div className="shrink-0 border-b border-border">
-              {visibleProjectStats.map((stat) => {
-                const isActiveFilter = filterProjectId === stat.projectId;
-                return (
-                  <div
-                    key={stat.projectId}
-                    className={[
-                      "flex cursor-pointer items-center justify-between px-6 py-3 transition-colors",
-                      isActiveFilter
-                        ? "ring-2 ring-inset ring-ring/50 bg-accent/30"
-                        : "hover:bg-muted/20",
-                    ].join(" ")}
-                    onClick={() => handleHeaderClick(stat.projectId)}
-                    title={
-                      isActiveFilter
-                        ? "Click to clear filter"
-                        : `Click to filter by project ${stat.projectNumber}`
-                    }
-                  >
-                    <div className="flex items-center gap-3">
-                      <ProjectIdPill
-                        projectNumber={stat.projectNumber}
-                        color={stat.color as ProjectColor | null}
-                      />
-                      <div>
-                        <div className="flex items-center gap-2 text-sm font-semibold leading-tight">
-                          Project {stat.projectNumber}
-                          {isActiveFilter && (
-                            <span className="text-[10px] font-medium text-ring/70">
-                              Filtered
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {stat.customerName ?? "—"}
-                          {stat.dueDate
-                            ? ` · Due ${formatDate(stat.dueDate)}`
-                            : " · No due date"}
+            <div className="flex shrink-0 items-stretch border-b border-border">
+              {/* Project cards column */}
+              <div className="min-w-0 flex-1">
+                {visibleProjectStats.map((stat) => {
+                  const isActiveFilter = filterProjectId === stat.projectId;
+                  return (
+                    <div
+                      key={stat.projectId}
+                      className={[
+                        "flex cursor-pointer items-center justify-between px-6 py-3 transition-colors",
+                        isActiveFilter
+                          ? "ring-2 ring-inset ring-ring/50 bg-accent/30"
+                          : "hover:bg-muted/20",
+                      ].join(" ")}
+                      onClick={() => handleHeaderClick(stat.projectId)}
+                      title={
+                        isActiveFilter
+                          ? "Click to clear filter"
+                          : `Click to filter by project ${stat.projectNumber}`
+                      }
+                    >
+                      <div className="flex items-center gap-3">
+                        <ProjectIdPill
+                          projectNumber={stat.projectNumber}
+                          color={stat.color as ProjectColor | null}
+                        />
+                        <div>
+                          <div className="flex items-center gap-2 text-sm font-semibold leading-tight">
+                            Project {stat.projectNumber}
+                            {isActiveFilter && (
+                              <span className="text-[10px] font-medium text-ring/70">
+                                Filtered
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {stat.customerName ?? "—"}
+                            {stat.dueDate
+                              ? ` · Due ${formatDate(stat.dueDate)}`
+                              : " · No due date"}
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="flex items-center gap-5">
-                      <div className="text-right">
-                        <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                          Candidates
+                      <div className="flex items-center gap-3">
+                        <div className="grid grid-cols-2 gap-x-3 text-right">
+                          <div>
+                            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                              Cands
+                            </div>
+                            <div className="font-mono text-sm font-semibold tabular-nums">
+                              {stat.candidateCount}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                              Pending
+                            </div>
+                            <div className="font-mono text-sm font-semibold tabular-nums">
+                              {stat.pendingReleaseCount}
+                            </div>
+                          </div>
                         </div>
-                        <div className="font-mono text-sm font-semibold tabular-nums">
-                          {stat.candidateCount}
-                        </div>
+                        {canAct && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 shrink-0 text-xs"
+                            disabled={stat.pendingReleaseCount === 0 || isMutating}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleReleaseProjectClick(stat);
+                            }}
+                          >
+                            Release
+                          </Button>
+                        )}
                       </div>
-                      <div className="text-right">
-                        <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                          Pending Release
-                        </div>
-                        <div className="font-mono text-sm font-semibold tabular-nums">
-                          {stat.pendingReleaseCount}
-                        </div>
-                      </div>
-                      {canAct && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-xs"
-                          disabled={stat.pendingReleaseCount === 0 || isMutating}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleReleaseProjectClick(stat);
-                          }}
-                        >
-                          Release Project {stat.projectNumber}
-                        </Button>
-                      )}
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
+
+              {/* Info card — fixed width, outside the clickable project cards */}
+              <div className="w-64 shrink-0 border-l border-border bg-muted/30 px-4 py-3">
+                <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  About This View
+                </p>
+                <ul className="space-y-1.5 text-[11px] text-muted-foreground">
+                  <li>• Review WOs where on-hand stock meets demand</li>
+                  <li>• Fulfill from stock or pass through to procurement</li>
+                  <li>• Release decided WOs to the Batching queue</li>
+                  <li>• Reconcile stock counts inline via the pencil icon</li>
+                </ul>
+              </div>
             </div>
           )}
 
@@ -689,8 +714,11 @@ export default function StockFulfillmentPage() {
                             ) : (
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <span className="cursor-help underline decoration-dotted underline-offset-2">
-                                    {parentPartNumber}
+                                  <span
+                                    className="block max-w-[160px] cursor-help overflow-hidden text-ellipsis whitespace-nowrap underline decoration-dotted underline-offset-2"
+                                    title={parentPartNumber}
+                                  >
+                                    {bomPathEntryToName(parentPartNumber)}
                                   </span>
                                 </TooltipTrigger>
                                 <TooltipContent
