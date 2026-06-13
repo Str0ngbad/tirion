@@ -222,7 +222,7 @@ export async function getSfViewData(filters?: SfFilters): Promise<SfViewData> {
     topLevelIndex: w.topLevelIndex,
     parentWoId: w.parentWoId,
     inventoryLocation: w.part.inventoryLocation,
-    bomPath: w.bomPath,
+    bomPath: w.bomPath ?? [],
     cumulativeDemand: cumulativeByPart.get(w.partId) ?? w.quantity,
   }));
 
