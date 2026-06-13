@@ -32,6 +32,13 @@ export const NAV_ITEMS: NavItem[] = [
     hiddenForRoles: ["Operator"],
   },
   {
+    type: "link",
+    slug: "stock-fulfillment",
+    label: "Stock Fulfillment",
+    href: "/stock-fulfillment",
+    hiddenForRoles: ["Operator"],
+  },
+  {
     type: "category",
     id: "production",
     label: "Production Views",

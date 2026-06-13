@@ -271,7 +271,7 @@ export async function getSfViewData(filters?: SfFilters): Promise<SfViewData> {
   // Fetch project metadata for stats.
   const projectMeta = await prisma.project.findMany({
     where: { projectId: { in: projectIdSet } },
-    select: { projectId: true, projectNumber: true, customerName: true, dueDate: true },
+    select: { projectId: true, projectNumber: true, customerName: true, dueDate: true, color: true },
   });
   const metaByProjectId = new Map(projectMeta.map((p) => [p.projectId, p]));
 
@@ -303,6 +303,7 @@ export async function getSfViewData(filters?: SfFilters): Promise<SfViewData> {
       projectNumber: meta?.projectNumber ?? String(pid),
       customerName: meta?.customerName ?? null,
       dueDate: meta?.dueDate ?? null,
+      color: (meta?.color ?? null) as import("@/components/project/project-id-pill").ProjectColor | null,
       candidateCount,
       pendingReleaseCount,
       unreleasedCount,

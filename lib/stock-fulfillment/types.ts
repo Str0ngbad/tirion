@@ -1,4 +1,5 @@
 import type { PartType, Prisma } from "@prisma/client";
+import type { ProjectColor } from "@/components/project/project-id-pill";
 
 type Decimal = Prisma.Decimal;
 
@@ -25,6 +26,7 @@ export type ProjectStats = {
   projectNumber: string;
   customerName: string | null;
   dueDate: Date | null;
+  color: ProjectColor | null;
   candidateCount: number;
   pendingReleaseCount: number;
   unreleasedCount: number;
