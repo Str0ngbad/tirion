@@ -1871,22 +1871,26 @@ Three changes landed in commit bc3c092:
 
 ## 2026-06-11 — add nextTopLevelIndex counter to Project for PC-21
 
-**Phase:** _To be filled in._
+**Phase:** Phase 2 (Project Creation)
 **Spec section:** spec/project_creation_view_spec.md
-**Discovered by:** _To be filled in._
-**Status:** Captured (rationale TBD)
+**Discovered by:** Implementation bug found during testing
+**Status:** Resolved
 **Commit:** 3db45e879a6e879e29933d2f7a3b3dde71dd1891
 
 ### What was discovered
 
-_To be filled in._
+PC-21 requires that TopLevelItem indices are never reused once assigned. The spec does not prescribe an implementation approach. The initial implementation computed the next index using `MAX(topLevelIndex)` over existing rows. After removing a TopLevelItem, `MAX()` drops back to the previous value, causing index reuse on the next add — violating the non-reuse requirement.
 
 ### Resolution
 
-_To be filled in._
+Added `nextTopLevelIndex Int @default(1)` to the `Project` model as a monotonic counter. `addTopLevelItem` reads the counter value, assigns it as the new item's `topLevelIndex`, and increments the counter in the same transaction. The counter never decrements on removal, guaranteeing the non-reuse invariant regardless of which rows currently exist.
+
+This is a correct implementation of the spec's intent — not a deviation from it. The entry documents the implementation approach chosen and the failure mode of the discarded `MAX()` strategy.
 
 ### Files affected
 
-_To be filled in._
+- `prisma/schema.prisma` — added `nextTopLevelIndex Int @default(1)` to `Project`
+- `prisma/migrations/` — new migration for the counter column
+- `lib/projects/top-level-items.ts` — `addTopLevelItem` uses counter instead of `MAX()`
 
 ---

@@ -325,13 +325,6 @@ export function DraftEditor({ initialProject }: Props) {
       },
       onError: (err) => {
         setCompiling(false);
-        // Temporary diagnostic — remove once root cause is confirmed
-        console.log("[compile error]", err instanceof ApiError ? {
-          status: err.statusCode,
-          code: err.errorCode,
-          message: err.message,
-          rawBody: err.rawBody,
-        } : err);
         if (err instanceof ApiError && err.statusCode === 422) {
           const body = err.rawBody as { failures?: ValidationFailure[] } | undefined;
           const failures = body?.failures;
