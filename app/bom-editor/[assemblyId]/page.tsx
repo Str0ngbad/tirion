@@ -76,7 +76,7 @@ export default function BomEditorAssemblyPage({ params }: BomEditorAssemblyPageP
 
   if (isNaN(assemblyId)) {
     return (
-      <div className="h-screen flex flex-col bg-background">
+      <div className="h-full flex flex-col bg-background">
         <BomEditorChrome />
         <div className="flex-1 flex items-center justify-center text-muted-foreground">
           Invalid assembly ID
@@ -87,7 +87,7 @@ export default function BomEditorAssemblyPage({ params }: BomEditorAssemblyPageP
 
   if (isLoading) {
     return (
-      <div className="h-screen flex flex-col bg-background">
+      <div className="h-full flex flex-col bg-background">
         <BomEditorChrome selectedAssemblyId={assemblyId} />
         <div className="flex-1 flex items-center justify-center text-muted-foreground">
           Loading…
@@ -98,7 +98,7 @@ export default function BomEditorAssemblyPage({ params }: BomEditorAssemblyPageP
 
   if (error || !tree) {
     return (
-      <div className="h-screen flex flex-col bg-background">
+      <div className="h-full flex flex-col bg-background">
         <BomEditorChrome selectedAssemblyId={assemblyId} />
         <div className="flex-1 flex items-center justify-center text-muted-foreground">
           Assembly not found
@@ -110,7 +110,7 @@ export default function BomEditorAssemblyPage({ params }: BomEditorAssemblyPageP
   const directChildCount = tree.children?.length ?? 0;
 
   return (
-    <div className="h-screen flex flex-col bg-background">
+    <div className="h-full flex flex-col bg-background">
       <BomEditorChrome selectedAssemblyId={assemblyId} />
       <AssemblyIdentityBand
         partId={tree.partId}

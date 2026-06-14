@@ -175,6 +175,7 @@ export function DraftEditor({ initialProject }: Props) {
       setProjectNumberError("Project Number is required");
       return;
     }
+    if (pn === project.projectNumber) return;
     // Let the server detect conflicts — PATCH returns 409 on collision
     setSaving("saving");
     updateProject.mutate(

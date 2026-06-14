@@ -101,7 +101,7 @@ export default function RoutingTemplatesPage() {
   const errorMessage = error?.message ?? null;
 
   return (
-    <div className="min-h-screen bg-background font-sans text-foreground">
+    <div className="h-full overflow-y-auto bg-background font-sans text-foreground">
       {/* Page header */}
       <div className="border-b border-border px-8 py-5">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
