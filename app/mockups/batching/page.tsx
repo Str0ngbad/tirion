@@ -49,7 +49,9 @@ function CompositionCell({
   chipMovedAway,
   placementNoteTargetRef,
   onChipClick,
+  onCellClick,
   selectedChipWoId,
+  isEligibleForSelected,
   state,
   wos,
 }: {
@@ -61,7 +63,9 @@ function CompositionCell({
   chipMovedAway: boolean;
   placementNoteTargetRef: string | null; // non-null when home chip is away
   onChipClick: (woId: number) => void;
+  onCellClick?: (hostWoId: number) => void;
   selectedChipWoId: number | null;
+  isEligibleForSelected: boolean;
   state: BtSessionState;
   wos: BtWorkOrder[];
 }) {
@@ -72,13 +76,16 @@ function CompositionCell({
   });
 
   const showDropHighlight = isOver && isEligible;
+  const showSelectHighlight = isEligibleForSelected && !isDragActive;
 
   return (
     <div
       ref={setNodeRef}
+      onClick={() => onCellClick?.(hostWoId)}
       className={[
         "flex flex-wrap gap-1 p-1 rounded min-h-[2.5rem] min-w-[130px] transition-colors",
         showDropHighlight ? "bg-emerald-500/15 ring-1 ring-emerald-500/50" : "",
+        showSelectHighlight ? "bg-sky-500/10 ring-1 ring-sky-500/50 cursor-pointer" : "",
         isEligible && isDragActive ? "ring-1 ring-border/50" : "",
       ]
         .filter(Boolean)
@@ -207,6 +214,7 @@ function CandidateRow({
   activeChipWoId,
   isGreyedOut,
   onChipClick,
+  onCellClick,
   selectedChipWoId,
   onToggleConfirm,
   onUpdatePlannedQty,
@@ -220,6 +228,7 @@ function CandidateRow({
   activeChipWoId: number | null;
   isGreyedOut: boolean;
   onChipClick: (woId: number) => void;
+  onCellClick: (hostWoId: number) => void;
   selectedChipWoId: number | null;
   onToggleConfirm: (hostWoId: number) => void;
   onUpdatePlannedQty: (hostWoId: number, qty: number | null) => void;
@@ -246,6 +255,18 @@ function CandidateRow({
     isDragActive && activeChipWoId !== null
       ? isEligibleTarget(
           activeChipWoId,
+          wo.woId,
+          wos,
+          state.chipHome,
+          state.confirmedWoIds
+        )
+      : false;
+
+  // Eligible click-to-select target?
+  const isEligibleForSelected =
+    !isDragActive && selectedChipWoId !== null
+      ? isEligibleTarget(
+          selectedChipWoId,
           wo.woId,
           wos,
           state.chipHome,
@@ -304,7 +325,9 @@ function CandidateRow({
             hostWo ? `${hostWo.topLevelRef}` : null
           }
           onChipClick={onChipClick}
+          onCellClick={onCellClick}
           selectedChipWoId={selectedChipWoId}
+          isEligibleForSelected={isEligibleForSelected}
           state={state}
           wos={wos}
         />
@@ -624,6 +647,7 @@ export default function BatchingPage() {
           activeChipWoId={activeChipWoId}
           isGreyedOut={isGreyedOut}
           onChipClick={handleChipClick}
+          onCellClick={handleCellClickForSelected}
           selectedChipWoId={selectedChipWoId}
           onToggleConfirm={handleToggleConfirm}
           onUpdatePlannedQty={handleUpdatePlannedQty}
@@ -699,18 +723,21 @@ export default function BatchingPage() {
           />
 
           {/* Show Hidden Singletons */}
-          <label className="flex items-center gap-1.5 text-xs cursor-pointer select-none">
-            <button
-              role="switch"
-              aria-checked={state.showHiddenSingletons}
-              onClick={() =>
-                setState((prev) => ({
-                  ...prev,
-                  showHiddenSingletons: !prev.showHiddenSingletons,
-                }))
-              }
+          <button
+            role="switch"
+            aria-checked={state.showHiddenSingletons}
+            aria-label="Show Hidden Singletons"
+            onClick={() =>
+              setState((prev) => ({
+                ...prev,
+                showHiddenSingletons: !prev.showHiddenSingletons,
+              }))
+            }
+            className="flex items-center gap-1.5 text-xs cursor-pointer select-none focus:outline-none"
+          >
+            <span
               className={[
-                "relative inline-flex h-4 w-8 items-center rounded-full transition-colors",
+                "relative inline-flex h-4 w-8 items-center rounded-full transition-colors shrink-0",
                 state.showHiddenSingletons ? "bg-primary" : "bg-muted",
               ].join(" ")}
             >
@@ -720,9 +747,9 @@ export default function BatchingPage() {
                   state.showHiddenSingletons ? "translate-x-4" : "translate-x-0.5",
                 ].join(" ")}
               />
-            </button>
+            </span>
             Show Hidden Singletons
-          </label>
+          </button>
 
           <div className="flex-1" />
 
@@ -794,17 +821,17 @@ export default function BatchingPage() {
           ) : (
             <table className="w-full text-sm border-collapse">
               <colgroup>
-                <col style={{ width: 150 }} /> {/* Composition */}
-                <col style={{ width: 80 }} />  {/* WO ID */}
-                <col style={{ width: 120 }} /> {/* Part # */}
-                <col style={{ width: 180 }} /> {/* Part Name */}
-                <col style={{ width: 70 }} />  {/* Demand */}
-                <col style={{ width: 90 }} />  {/* Planned */}
-                <col style={{ width: 60 }} />  {/* Priority */}
-                <col style={{ width: 100 }} /> {/* Due Date */}
-                <col style={{ width: 100 }} /> {/* Project(s) */}
-                <col style={{ width: 200 }} /> {/* Routing */}
-                <col style={{ width: 70 }} />  {/* Confirm */}
+                <col style={{ width: 150 }} />
+                <col style={{ width: 80 }} />
+                <col style={{ width: 120 }} />
+                <col style={{ width: 180 }} />
+                <col style={{ width: 70 }} />
+                <col style={{ width: 90 }} />
+                <col style={{ width: 60 }} />
+                <col style={{ width: 100 }} />
+                <col style={{ width: 100 }} />
+                <col style={{ width: 200 }} />
+                <col style={{ width: 70 }} />
               </colgroup>
               <thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur-sm">
                 <tr className="border-b border-border">

@@ -18,6 +18,61 @@ Entries are ordered most recent first.
 
 ---
 
+## Session: Batching Lens Phase 1 Mockup
+**Date:** 2026-06-14
+**Surface:** `/app/mockups/batching/`
+**Status:** Phase 1 locked
+
+### What was built
+
+Full Phase 1 candidate-only workspace for the Batching Lens mockup:
+
+- **Chip-based composition model** — each candidate WO has a home chip in its own Composition Column cell. Chips are draggable via @dnd-kit (already installed; no new dependency added) with a 5px PointerSensor activation constraint and DragOverlay. Click-to-select keyboard fallback also implemented: click a chip to select it (sky-blue ring + count bar indicator), then click any highlighted eligible cell to place.
+- **Draft batch state** — 2+ chips composited in one cell → demand sums, priority takes MAX, due date takes MIN. Changed values render in signal-blue `#0EA5E9`. The hosting row's cell shows all chips stacked.
+- **Aggressive grey-out** during drag — rows ineligible for the dragged chip drop to 30% opacity and are pointer-events-none.
+- **Sky-blue highlight** on eligible drop targets during click-to-select mode.
+- **Confirm Toggle** per row (default ON; deactivates when home chip has moved away).
+- **Confirm Draft** atomically confirms all toggled-ON rows, displaying a toast: "Confirmed N WOs (X draft batches, Y standalone). Open in execution lenses."
+- **Hidden Singletons** — partIDs with exactly 1 candidate WO are hidden by default behind "Show Hidden Singletons" toggle button.
+- **Routing template mismatch demo** — first 3 multi-project Part-type partIds get split across `tmpl_mill` and `tmpl_lathe`, making inter-row drag ineligible. Remaining shared partIds use consistent templates and are draggable to each other.
+- **Filters** — project select, Part/Assembly toggle group, part# / name search.
+
+**New files:**
+- `app/mockups/batching/_data.ts` — BOM walk, WO generation, session state logic
+- `app/mockups/batching/page.tsx` — full page component with DnD, click-to-select, and all interactions
+- `app/mockups/_shared/project-chip.tsx` — `ProjectChip` (draggable) and `ProjectChipOverlay` (DragOverlay clone)
+
+### Design decisions made
+
+1. **`ProjectChip` is distinct from `ProjectIdPill`** — different lifecycle (draggable, confirmed state), different layout (two-line pill with topLevelRef + Qty), different role. Created as `_shared/project-chip.tsx`, not extending the existing pill.
+2. **Click-to-select eligibility highlight is sky-blue** (`bg-sky-500/10 ring-sky-500/50`) — distinct from drag-hover emerald green. Differentiating the two interactions visually was important for clarity.
+3. **Placement note text** in vacated cells reads "Drafted → {targetRef}" — a terse label that communicates where the chip went without needing a tooltip.
+4. **Singleton detection is live** — recomputed from visible WOs after confirms. When the last partner WO in a pair is confirmed, the remaining WO becomes a singleton and migrates to the hidden row automatically.
+5. **Assembly rows** get `bg-muted/30` background tint and hide the Planned Qty column (shows "—") since assemblies use demand-based qty.
+
+### Spec gaps logged
+
+1. **BT-GAP-01: Confirm Toggle inactive UX** — spec says toggle is "inactive" when home chip moves away, but doesn't specify whether inactive = hidden, disabled, or visually greyed. Implemented as: toggle button hidden (no-op column) with the visual indicator showing "chip moved" state instead. Implementation track should clarify.
+2. **BT-GAP-02: Click-to-select scope** — spec describes the drag interaction in detail but only mentions click-to-select as a fallback without specifying: should ineligible rows be greyed-out during selection the same way they are during drag? Implemented: yes, greyed-out during selection is NOT done (only highlight on eligible cells). Could go either way.
+3. **BT-GAP-03: Planned Qty field initialization** — spec says Planned Qty defaults to Demand but doesn't say whether the field is pre-filled or shown as placeholder. Implemented: placeholder = demand value, field is empty until user types.
+4. **BT-GAP-04: Draft batch confirmation granularity** — spec says "Confirm Draft" is atomic across all toggled-ON rows. No guidance on partial failure (e.g., if a row's WO transitions to a non-Unreleased state mid-session). Not relevant for mockup but implementation track needs to handle.
+
+### Verified behaviors
+
+- Page load: 101 visible candidate rows (non-singleton multi-WO groups)
+- Show Hidden Singletons: exposes 202 singleton WOs
+- Chip placement via click-to-select: chip moves to target cell, demand aggregates in blue, "Drafted →" note appears in source cell
+- Confirm Draft: "Confirmed 303 WOs (1 draft batch, 301 standalone). Open in execution lenses." toast; workspace shows "All candidates confirmed."
+- Routing template mismatch: first-3 mismatched groups only highlight home cell when selected (ineligible inter-row placement correctly blocked)
+
+### Screenshots
+
+- `batching-01-initial.png` — initial loaded state
+- `batching-02-draft-batch-blue.png` — draft batch with blue demand value
+- `batching-03-confirm-toast.png` — confirmation toast and empty workspace
+
+---
+
 ## 2026-06-13 — Stock Fulfillment View — Surface Lock
 
 **Surfaces touched:** /app/mockups/stock-fulfillment/ — documentation and lock pass
