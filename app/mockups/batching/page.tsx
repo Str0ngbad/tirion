@@ -32,6 +32,8 @@ import {
   toggleConfirm,
   updatePlannedQty,
   confirmDraft,
+  autoBatchCandidates,
+  resetDraft,
 } from "./_data";
 
 import ProjectChip, {
@@ -616,6 +618,53 @@ export default function BatchingPage() {
     );
   }
 
+  // WO IDs currently visible in the table — used by auto-batch to know its scope.
+  const visibleCandidateWoIds = useMemo(() => {
+    const ids: number[] = [];
+    for (const g of filteredNonSingletonGroups) ids.push(...g.woIds);
+    if (state.showHiddenSingletons) {
+      for (const g of singletonGroups) ids.push(...g.woIds);
+    }
+    return ids;
+  }, [filteredNonSingletonGroups, singletonGroups, state.showHiddenSingletons]);
+
+  // Auto-batch is enabled when at least one visible PartID has 2+ members to batch.
+  const autoBatchEnabled = useMemo(
+    () => filteredNonSingletonGroups.some((g) => g.woIds.length >= 2),
+    [filteredNonSingletonGroups]
+  );
+
+  // Reset Draft is enabled when any chip is not at home.
+  const hasAnyChipNotAtHome = useMemo(
+    () => Object.entries(state.chipHome).some(([id, host]) => Number(id) !== host),
+    [state.chipHome]
+  );
+
+  function handleAutoBatch() {
+    // Phase 2: populate openRowHostWoIds from Open Production Rows when they exist.
+    // Phase 1: no Open rows — empty set is correct and Phase-2-ready.
+    const openRowHostWoIds = new Set<number>();
+    const { newState, stats } = autoBatchCandidates(
+      state,
+      ALL_BT_WOS,
+      visibleCandidateWoIds,
+      openRowHostWoIds
+    );
+    setState(newState);
+    if (stats.batchesCreated === 0) {
+      toast("No batchable candidates found.");
+      return;
+    }
+    toast.success(
+      `Auto-batched ${stats.totalBatched} candidate${stats.totalBatched !== 1 ? "s" : ""} into ${stats.batchesCreated} draft batch${stats.batchesCreated !== 1 ? "es" : ""}.`
+    );
+  }
+
+  function handleResetDraft() {
+    setState((prev) => resetDraft(prev));
+    toast("Draft reset. All candidates returned home.");
+  }
+
   const isDragActive = activeChipWoId !== null;
 
   // Render a group of rows
@@ -752,6 +801,44 @@ export default function BatchingPage() {
           </button>
 
           <div className="flex-1" />
+
+          {/* Auto-Batch Candidates button */}
+          <button
+            disabled={!autoBatchEnabled}
+            title={
+              autoBatchEnabled
+                ? "Combines all eligible candidates into draft batches by PartID. Preserves any chips manually placed on existing Open work."
+                : "No batchable candidates available"
+            }
+            onClick={handleAutoBatch}
+            className={[
+              "rounded px-3 py-1.5 text-sm font-medium transition-colors",
+              autoBatchEnabled
+                ? "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                : "bg-muted text-muted-foreground cursor-not-allowed",
+            ].join(" ")}
+          >
+            Auto-Batch Candidates
+          </button>
+
+          {/* Reset Draft button */}
+          <button
+            disabled={!hasAnyChipNotAtHome}
+            title={
+              hasAnyChipNotAtHome
+                ? "Returns all chips home. Clears any draft batches and any chips placed on Open rows."
+                : "No chips have been moved"
+            }
+            onClick={handleResetDraft}
+            className={[
+              "rounded px-3 py-1.5 text-sm font-medium transition-colors",
+              hasAnyChipNotAtHome
+                ? "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                : "bg-muted text-muted-foreground cursor-not-allowed",
+            ].join(" ")}
+          >
+            Reset Draft
+          </button>
 
           {/* Confirm Draft button */}
           <button
