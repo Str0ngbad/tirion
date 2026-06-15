@@ -229,66 +229,19 @@ const ALL_WOS_BASE: BtWorkOrder[] = [
 
 // ─── Routing template assignment ──────────────────────────────────────────────
 
-// Default: Assembly → tmpl_assembly; Part even partId → tmpl_mill; Part odd → tmpl_lathe
+// Each partId maps to exactly one routing template — Assembly → tmpl_assembly,
+// Part even partId → tmpl_mill, Part odd → tmpl_lathe.
+// (A partId has exactly one routing template by spec definition; the earlier
+// mismatch-demo data that split the same partId across templates was structurally invalid.)
 function defaultTemplateId(partType: "Part" | "Assembly", partId: number): string {
   if (partType === "Assembly") return "tmpl_assembly";
   return partId % 2 === 0 ? "tmpl_mill" : "tmpl_lathe";
 }
 
-// Pick the first 3 Part-type partIds that appear across 2+ different projects
-// and assign them mismatched templates — for the drag eligibility demo.
-function buildMismatchMap(wos: BtWorkOrder[]): Map<number, Map<number, string>> {
-  const partProjectMap = new Map<number, Set<number>>();
-  for (const wo of wos) {
-    if (wo.partType !== "Part") continue;
-    if (!partProjectMap.has(wo.partId)) partProjectMap.set(wo.partId, new Set());
-    partProjectMap.get(wo.partId)!.add(wo.projectId);
-  }
-
-  const mismatchPartIds: number[] = [];
-  for (const [partId, projects] of partProjectMap) {
-    if (projects.size >= 2) mismatchPartIds.push(partId);
-  }
-  mismatchPartIds.sort((a, b) => a - b);
-
-  // Take first 3
-  const chosen = mismatchPartIds.slice(0, 3);
-  const result = new Map<number, Map<number, string>>();
-
-  const templatePairs: [string, string][] = [
-    ["tmpl_mill", "tmpl_lathe"],
-    ["tmpl_lathe", "tmpl_mill"],
-    ["tmpl_mill", "tmpl_lathe"],
-  ];
-
-  chosen.forEach((partId, i) => {
-    const projects = [
-      ...new Set(wos.filter((w) => w.partId === partId).map((w) => w.projectId)),
-    ].sort((a, b) => a - b);
-    const m = new Map<number, string>();
-    const pair = templatePairs[i] ?? (["tmpl_mill", "tmpl_lathe"] as [string, string]);
-    const [t1, t2] = pair;
-    projects.forEach((pid, j) => {
-      m.set(pid, j === 0 ? t1 : t2);
-    });
-    result.set(partId, m);
-  });
-
-  return result;
-}
-
-function assignRoutingTemplates(wos: BtWorkOrder[]): BtWorkOrder[] {
-  const mismatchMap = buildMismatchMap(wos);
-  return wos.map((wo) => {
-    const mismatch = mismatchMap.get(wo.partId);
-    const templateId = mismatch
-      ? (mismatch.get(wo.projectId) ?? defaultTemplateId(wo.partType, wo.partId))
-      : defaultTemplateId(wo.partType, wo.partId);
-    return { ...wo, routingTemplateId: templateId };
-  });
-}
-
-export const ALL_BT_WOS: BtWorkOrder[] = assignRoutingTemplates(ALL_WOS_BASE);
+export const ALL_BT_WOS: BtWorkOrder[] = ALL_WOS_BASE.map((wo) => ({
+  ...wo,
+  routingTemplateId: defaultTemplateId(wo.partType, wo.partId),
+}));
 
 // ─── Candidate group computation ──────────────────────────────────────────────
 
@@ -476,11 +429,9 @@ export function isEligibleTarget(
   const targetWo = wos.find((w) => w.woId === targetHostWoId);
   if (!dragWo || !targetWo) return false;
 
-  // PartID must match
+  // PartID must match — routing template check is redundant because a partId
+  // has exactly one routing template by definition.
   if (dragWo.partId !== targetWo.partId) return false;
-
-  // Routing template must match
-  if (dragWo.routingTemplateId !== targetWo.routingTemplateId) return false;
 
   return true;
 }
@@ -625,4 +576,92 @@ export function confirmDraft(
     },
     stats: { totalWOs, draftBatches, standalone },
   };
+}
+
+// ─── Auto-Batch Candidates ────────────────────────────────────────────────────
+
+export type AutoBatchResult = {
+  newState: BtSessionState;
+  stats: { totalBatched: number; batchesCreated: number };
+};
+
+export function autoBatchCandidates(
+  state: BtSessionState,
+  wos: BtWorkOrder[],
+  visibleWoIds: number[],
+  // Phase 2: pass the set of hostWoIds that are Open Production Rows.
+  // The auto-batcher excludes any chip whose current host is in this set —
+  // those represent explicit planner decisions to join existing Open work.
+  // Phase 1: no Open rows exist, so this is always an empty set.
+  openRowHostWoIds: Set<number>
+): AutoBatchResult {
+  // Step 1: classify each visible chip as eligible or excluded.
+  const eligibleWoIds: number[] = [];
+  for (const woId of visibleWoIds) {
+    const currentHost = state.chipHome[woId];
+    if (currentHost === undefined) continue;
+
+    // Phase 2 branch: chip manually placed onto an Open Production Row → exclude.
+    // The planner made an explicit operational decision; the auto-batcher respects it.
+    if (openRowHostWoIds.has(currentHost) && currentHost !== woId) continue;
+
+    eligibleWoIds.push(woId);
+  }
+
+  // Step 2: reset all eligible chips to home.
+  const newChipHome = { ...state.chipHome };
+  for (const woId of eligibleWoIds) {
+    newChipHome[woId] = woId;
+  }
+
+  // Step 3: group eligible candidates by partId.
+  const byPartId = new Map<number, number[]>();
+  for (const woId of eligibleWoIds) {
+    const wo = wos.find((w) => w.woId === woId);
+    if (!wo) continue;
+    if (!byPartId.has(wo.partId)) byPartId.set(wo.partId, []);
+    byPartId.get(wo.partId)!.push(woId);
+  }
+
+  // Step 4: form one draft batch per partId group with 2+ eligible members.
+  // Host = lowest WO ID in the group (deterministic).
+  let totalBatched = 0;
+  let batchesCreated = 0;
+
+  for (const [, woIds] of byPartId) {
+    if (woIds.length < 2) continue; // singleton-eligible stays home — no batch formed
+
+    const sorted = [...woIds].sort((a, b) => a - b);
+    const hostWoId = sorted[0]!;
+
+    for (const woId of sorted) {
+      if (woId !== hostWoId) {
+        newChipHome[woId] = hostWoId;
+      }
+    }
+
+    totalBatched += sorted.length;
+    batchesCreated++;
+    console.log(`[AuditLog] Auto-batch group partId=${wos.find(w => w.woId === hostWoId)?.partId}: host WO-${hostWoId}, members: ${sorted.join(', ')}`);
+  }
+
+  return {
+    newState: { ...state, chipHome: newChipHome },
+    stats: { totalBatched, batchesCreated },
+  };
+}
+
+// ─── Reset Draft ──────────────────────────────────────────────────────────────
+
+export function resetDraft(state: BtSessionState): BtSessionState {
+  // Return ALL chips home — including any placed on Open Production Rows.
+  // Unlike auto-batch (which preserves Open-row placements), Reset Draft is
+  // the planner's explicit "clear everything" action.
+  const newChipHome = { ...state.chipHome };
+  for (const woIdStr of Object.keys(newChipHome)) {
+    const woId = Number(woIdStr);
+    newChipHome[woId] = woId;
+  }
+  console.log("[AuditLog] Draft reset — all chips returned home");
+  return { ...state, chipHome: newChipHome };
 }

@@ -18,10 +18,61 @@ Entries are ordered most recent first.
 
 ---
 
+## Session: Batching Lens — Auto-Batch + Data Fix
+**Date:** 2026-06-14
+**Surface:** `/app/mockups/batching/`
+**Status:** Phase 1 active
+
+### Data correctness fix (routing template model)
+
+The original Phase 1 build synthesized routing template assignments so that
+some partIds had *different* templates across projects — e.g., partId 1942
+got `tmpl_mill` from project 10121 and `tmpl_lathe` from project 10412.
+This was structurally invalid: by spec definition, a partId has exactly one
+routing template. The mismatch was a demo artifact, not a real data shape.
+
+**Fix:** Routing templates are now assigned purely by `defaultTemplateId(partType, partId)`,
+giving every partId a single consistent template regardless of which project the WO
+belongs to. The eligibility check in `isEligibleTarget` no longer compares routing
+templates — partId match alone is the eligibility criterion, which is the operationally
+meaningful rule.
+
+The three mock templates (`tmpl_mill`, `tmpl_lathe`, `tmpl_assembly`) remain; different
+partIds still use different templates, which is correct. The ineligibility grey-out still
+fires — it just reflects partId mismatch only, not the synthetic template-mismatch demo.
+
+**Implementation handoff note:** The Phase 1 session log below referenced "routing template
+mismatch demo" as a Phase 1 feature. Disregard that framing — the correct model is
+partId-based eligibility only.
+
+### New actions: Auto-Batch Candidates + Reset Draft
+
+**Auto-Batch Candidates button** — single click combines all eligible visible candidates
+into draft batches by partId. One draft batch per partId group with 2+ eligible members;
+singletons stay home. Host row = lowest WO ID in the group (deterministic). Chips that
+are manually placed on Open Production Rows are excluded from the reshuffle (Phase 2
+forward-compatibility; in Phase 1 no Open rows exist so this branch never fires but the
+code path is correct). Auto-batched and manually created draft batches look identical —
+no visual distinction.
+
+**Reset Draft button** — returns all chips home unconditionally, including any placed on
+Open rows. This is broader than auto-batch's exclusion: Reset Draft is "start over from
+scratch," so it overrides all placements including operationally significant ones.
+
+**Button enabled states:**
+- Auto-Batch: enabled when `filteredNonSingletonGroups` has any group with 2+ visible members
+- Reset Draft: enabled when any chip is not at home
+
+**Phase 2 forward-compatibility:**  `autoBatchCandidates` accepts an `openRowHostWoIds: Set<number>`
+parameter. In Phase 1 the caller passes an empty set. When Open rows arrive in Phase 2,
+populate this set with their host WO IDs and the exclusion logic works automatically.
+
+---
+
 ## Session: Batching Lens Phase 1 Mockup
 **Date:** 2026-06-14
 **Surface:** `/app/mockups/batching/`
-**Status:** Phase 1 locked
+**Status:** Superseded by session above
 
 ### What was built
 
