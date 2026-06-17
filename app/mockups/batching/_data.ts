@@ -445,9 +445,9 @@ export function getDerivedRowValues(
 //   Rule 1: R is C's own home row (targetHostWoId === dragWoId), OR
 //   Rule 2: R is a host row (root WO chip present in cell) AND C shares R's PartID.
 //
-// Root WO immobility: a chip at its own home row is the row's root chip and cannot be
-// dragged away. In practice, root chips are also `disabled` in dnd-kit so drags cannot
-// start — this gate is a defense-in-depth check.
+// Root WO immobility: a chip is the root of its home row. The root is anchored ONLY
+// when the row is in HOST state (root + guests). In HOME state (root alone), the root
+// chip is draggable — that is how manual batches are formed from the initial state.
 //
 // Shell rows (chip has moved away, cell empty) are valid only for their own root returning
 // home (Rule 1). No other chip may land on a shell row.
@@ -474,8 +474,18 @@ export function isEligibleTarget(
   // Rule 1: a chip can always return to its own home row.
   if (targetHostWoId === dragWoId) return true;
 
-  // Root WO immobility: chip is at its own home row → it is the root chip → cannot leave.
-  if (currentHost === dragWoId) return false;
+  // Root WO immobility: root chip cannot leave when its row is in HOST state
+  // (root present + at least one guest). In HOME state (root alone), the chip IS
+  // draggable — this is how the planner manually forms batches.
+  //
+  // Bug in prior version: fired unconditionally when currentHost === dragWoId, blocking
+  // ALL home-state drags and making manual batch formation impossible. The host-state
+  // guard (rowOccupancy > 1) is the correct discriminator.
+  if (currentHost === dragWoId) {
+    const rowOccupancy = Object.values(chipHome).filter((h) => h === dragWoId).length;
+    if (rowOccupancy > 1) return false; // host state → root anchored
+    // home state (occupancy === 1) → root can leave to form a batch
+  }
 
   // Rule 2: target must be a host row — its root WO chip must still be present in the cell.
   // Shell rows (chipHome[target] ≠ target) are invalid drop targets for any other chip.

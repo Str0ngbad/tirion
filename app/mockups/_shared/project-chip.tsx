@@ -16,7 +16,8 @@ type Props = {
   demandQty: number;
   color: ProjectColor | null;
   isAtHome: boolean; // true when chip is in its own home cell
-  isRoot: boolean; // true when this chip is the row's root WO (anchored, non-draggable)
+  isRoot: boolean; // true when this chip is the row's root WO (shows anchor icon)
+  isAnchoredRoot: boolean; // true when root AND row is in host state (drag disabled)
   disabled?: boolean; // true during someone else's drag or if confirmed
 };
 
@@ -28,13 +29,15 @@ export default function ProjectChip({
   color,
   isAtHome,
   isRoot,
+  isAnchoredRoot,
   disabled = false,
 }: Props) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: `chip-${woId}`,
-      // Root chips are anchored — disable drag without the "disabled" visual treatment.
-      disabled: disabled || isRoot,
+      // Anchored only when root AND row is in host state (guests present).
+      // Home-state roots ARE draggable — that's how manual batches are formed.
+      disabled: disabled || isAnchoredRoot,
       data: { woId },
     });
 
@@ -63,7 +66,7 @@ export default function ProjectChip({
         !isAtHome ? "opacity-90" : "",
         disabled
           ? "cursor-not-allowed opacity-50"
-          : isRoot
+          : isAnchoredRoot
           ? "cursor-default"
           : "cursor-grab active:cursor-grabbing hover:shadow-md",
       ]
@@ -86,7 +89,7 @@ export default function ProjectChip({
 }
 
 // A static (non-draggable) clone used in the DragOverlay while dragging
-type OverlayProps = Omit<Props, "woId" | "disabled" | "isAtHome" | "isRoot">;
+type OverlayProps = Omit<Props, "woId" | "disabled" | "isAtHome" | "isRoot" | "isAnchoredRoot">;
 export function ProjectChipOverlay({
   projectNumber,
   topLevelRef,
