@@ -93,7 +93,7 @@ function CompositionCell({
       ref={setNodeRef}
       onClick={() => onCellClick?.(hostWoId)}
       className={[
-        "flex flex-wrap gap-1 p-1 rounded min-h-[2.5rem] min-w-[130px] transition-colors",
+        "flex flex-wrap gap-1 p-1 rounded min-h-[1.75rem] min-w-[130px] transition-colors items-center",
         showDropHighlight ? "bg-emerald-500/15 ring-1 ring-emerald-500/50" : "",
         showSelectHighlight ? "bg-sky-500/10 ring-1 ring-sky-500/50 cursor-pointer" : "",
         isEligible && isDragActive ? "ring-1 ring-border/50" : "",
