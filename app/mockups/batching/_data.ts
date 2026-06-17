@@ -429,8 +429,22 @@ export function getDerivedRowValues(
   };
 }
 
-// Eligibility check: can dragWoId's chip be dropped in targetHostWoId's cell?
-// Locked rows are immobile: chips cannot be dragged into or out of locked rows.
+// Eligibility rule (re-derived from first principles to fix de-emphasis bug):
+//
+// A chip C can drop on row R when:
+//   Rule 1: R is C's own home row (targetHostWoId === dragWoId), OR
+//   Rule 2: R is a host row (root WO chip present in cell) AND C shares R's PartID.
+//
+// Root WO immobility: a chip at its own home row is the row's root chip and cannot be
+// dragged away. In practice, root chips are also `disabled` in dnd-kit so drags cannot
+// start — this gate is a defense-in-depth check.
+//
+// Shell rows (chip has moved away, cell empty) are valid only for their own root returning
+// home (Rule 1). No other chip may land on a shell row.
+//
+// The prior implementation allowed "drop on current host" as a shortcut before the PartID
+// check. This conflated the home-row case with peer-row eligibility, producing incorrect
+// de-emphasis when the drag source chip was at home (the common default state).
 export function isEligibleTarget(
   dragWoId: number,
   targetHostWoId: number,
@@ -442,25 +456,26 @@ export function isEligibleTarget(
   if (confirmedWoIds.has(targetHostWoId)) return false;
   if (confirmedWoIds.has(dragWoId)) return false;
 
-  // Source: chip is immobile if its current host row is locked
+  // Lock constraints: chips cannot leave locked rows; locked rows cannot receive chips.
   const currentHost = chipHome[dragWoId];
   if (currentHost !== undefined && lockedWoIds.has(currentHost)) return false;
-
-  // Target: locked rows cannot receive chips
   if (lockedWoIds.has(targetHostWoId)) return false;
 
-  // Dropping back on the current host is a no-op but allowed
-  if (currentHost === targetHostWoId) return true;
+  // Rule 1: a chip can always return to its own home row.
+  if (targetHostWoId === dragWoId) return true;
 
+  // Root WO immobility: chip is at its own home row → it is the root chip → cannot leave.
+  if (currentHost === dragWoId) return false;
+
+  // Rule 2: target must be a host row — its root WO chip must still be present in the cell.
+  // Shell rows (chipHome[target] ≠ target) are invalid drop targets for any other chip.
+  if (chipHome[targetHostWoId] !== targetHostWoId) return false;
+
+  // PartID match: chips compose only with peers of the same PartID.
   const dragWo = wos.find((w) => w.woId === dragWoId);
   const targetWo = wos.find((w) => w.woId === targetHostWoId);
   if (!dragWo || !targetWo) return false;
-
-  // PartID must match — routing template check is redundant because a partId
-  // has exactly one routing template by definition.
-  if (dragWo.partId !== targetWo.partId) return false;
-
-  return true;
+  return dragWo.partId === targetWo.partId;
 }
 
 // ─── Actions ─────────────────────────────────────────────────────────────────
