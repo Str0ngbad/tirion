@@ -82,7 +82,7 @@ export default function ProjectChip({
       <span className="opacity-60">/</span>
       <span className="opacity-80">Qty: {demandQty}</span>
       {isRoot && (
-        <Anchor className="h-2.5 w-2.5 opacity-50 shrink-0 ml-0.5" aria-hidden="true" />
+        <Anchor className="h-2.5 w-2.5 opacity-50 shrink-0 ml-0.5" strokeWidth={2.5} aria-label="Root of batch" />
       )}
     </div>
   );
