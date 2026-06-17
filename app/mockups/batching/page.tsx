@@ -710,7 +710,6 @@ export default function BatchingPage() {
 
   // Filters
   const [filterProjectId, setFilterProjectId] = useState<number | null>(null);
-  const [filterPartType, setFilterPartType] = useState<"All" | "Part" | "Assembly">("All");
   const [filterSearch, setFilterSearch] = useState("");
 
   const sensors = useSensors(
@@ -765,7 +764,6 @@ export default function BatchingPage() {
       const wo = visibleWOs.find((w) => w.woId === woId);
       if (!wo) return false;
       if (filterProjectId && wo.projectId !== filterProjectId) return false;
-      if (filterPartType !== "All" && wo.partType !== filterPartType) return false;
       if (filterSearch) {
         const q = filterSearch.toLowerCase();
         if (
@@ -776,7 +774,7 @@ export default function BatchingPage() {
       }
       return true;
     },
-    [visibleWOs, filterProjectId, filterPartType, filterSearch]
+    [visibleWOs, filterProjectId, filterSearch]
   );
 
   // View mode filter predicate
@@ -1086,7 +1084,7 @@ export default function BatchingPage() {
 
     if (viewMode === "Batching") {
       if (hasAnyLockedNonSingleton || hasAnySingletonWOs) {
-        return "All candidates are locked. Switch to Quantity Planning view to set quantities, or to All to see everything.";
+        return "All candidates are locked. Switch to Quantity Planning view to set quantities, or All to see everything.";
       }
       return "No candidates yet.";
     }
@@ -1099,7 +1097,7 @@ export default function BatchingPage() {
     }
 
     // All view
-    if (filterProjectId || filterPartType !== "All" || filterSearch) {
+    if (filterProjectId || filterSearch) {
       return "No candidates match the current filters.";
     }
     return "No candidates yet.";
@@ -1215,24 +1213,6 @@ export default function BatchingPage() {
               ))}
             </select>
 
-            {/* Part Type filter */}
-            <div className="flex rounded border border-border overflow-hidden text-xs">
-              {(["All", "Part", "Assembly"] as const).map((v) => (
-                <button
-                  key={v}
-                  onClick={() => setFilterPartType(v)}
-                  className={[
-                    "px-2.5 py-1 transition-colors",
-                    filterPartType === v
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-background hover:bg-muted text-foreground",
-                  ].join(" ")}
-                >
-                  {v}
-                </button>
-              ))}
-            </div>
-
             {/* Search */}
             <input
               type="search"
@@ -1246,7 +1226,7 @@ export default function BatchingPage() {
             <button
               role="switch"
               aria-checked={state.showHiddenSingletons}
-              aria-label="Show Hidden Singletons"
+              aria-label="Show Unbatchable Parts"
               onClick={() =>
                 setState((prev) => ({
                   ...prev,
@@ -1270,7 +1250,7 @@ export default function BatchingPage() {
                   ].join(" ")}
                 />
               </span>
-              Show Hidden Singletons
+              Show Unbatchable Parts
             </button>
 
             <div className="flex-1" />
@@ -1357,7 +1337,7 @@ export default function BatchingPage() {
                   <span>
                     {totalVisibleCandidates > 0 ? " · " : ""}
                     <span className="text-muted-foreground">
-                      {hiddenSingletonCount} hidden singleton
+                      {hiddenSingletonCount} unbatchable part
                       {hiddenSingletonCount !== 1 ? "s" : ""}
                     </span>
                   </span>
@@ -1366,7 +1346,7 @@ export default function BatchingPage() {
                   <span>
                     {totalVisibleCandidates > 0 ? " · " : ""}
                     <span className="text-muted-foreground">
-                      {visibleSingletonCount} singleton
+                      {visibleSingletonCount} unbatchable part
                       {visibleSingletonCount !== 1 ? "s" : ""}
                     </span>
                   </span>
@@ -1450,7 +1430,7 @@ export default function BatchingPage() {
                       Planned
                     </th>
                     <th className="px-2 py-2 text-center text-xs font-semibold text-muted-foreground">
-                      Pri
+                      Priority
                     </th>
                     <th className="px-2 py-2 text-right text-xs font-semibold text-muted-foreground">
                       Due Date
@@ -1483,7 +1463,7 @@ export default function BatchingPage() {
                             colSpan={12}
                             className="px-4 py-2 text-xs font-semibold text-muted-foreground border-t-4 border-border bg-muted/20 uppercase tracking-wide"
                           >
-                            Hidden Singletons ({visibleSingletonCount})
+                            Unbatchable Parts ({visibleSingletonCount})
                           </td>
                         </tr>
                         {filteredSingletonGroups.map((group) => (
