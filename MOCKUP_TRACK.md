@@ -18,6 +18,156 @@ Entries are ordered most recent first.
 
 ---
 
+## Session: Batching Lens — Lock State Architecture + View Modes + Multi-Select
+**Date:** 2026-06-17
+**Surface:** `/app/mockups/batching/`
+**Status:** Phase 1 active (mid-phase)
+
+### Architectural change: Lock state replaces Confirm toggle
+
+The Confirm Toggle model (ON/OFF per row, gating commit) conflated two
+distinct planner workflows: composition decisions and quantity planning.
+This session replaces it entirely with a **Lock state** per row plus
+**View Modes** that surface each workflow independently.
+
+**Prior Confirm toggle pattern is superseded.** The Phase 1 session log below
+referenced a Confirm Toggle with default-ON state. Disregard that model —
+it no longer exists in the codebase.
+
+### State model
+
+`BtSessionState.confirmToggles` removed. Replaced by:
+- `lockedWoIds: Set<number>` — which rows are locked
+- `plannedQty[hostWoId]` — now only meaningful for locked rows (null = unlocked row)
+
+**Default lock states on page load:**
+- Singletons → **Locked** (chips at home, no composition decision needed)
+- Multi-WO candidates → **Unlocked** (composition decision pending)
+
+`computeDefaultLockState(wos)` computes initial and reset lock state from the
+WO list. Called at `buildInitialSessionState` and `resetDraft`.
+
+**Lock toggle disabled** when `chipHome[woId] !== woId` (source row — chip
+donated elsewhere). Source rows commit as part of their host's batch.
+
+**Lock immobility** enforced in `isEligibleTarget`:
+- Cannot drag OUT of a locked row (chip's current host is locked)
+- Cannot drag INTO a locked row (target is locked)
+
+### View modes
+
+Three-way segmented control (Batching | Qty Planning | All) added to the
+filter bar. View mode composes with all existing filters.
+
+- **Batching**: shows unlocked rows only. Composition workspace.
+- **Qty Planning (QP)**: shows locked rows only. Quantity planning workspace.
+- **All**: shows all rows.
+
+Default view on load: **Batching**.
+
+Selection clears on view switch.
+
+### Planned Qty column behavior change
+
+Previously: shown as editable for all Part-type rows.
+
+Now:
+- **Locked rows**: editable input, default value = current demand total.
+  Bright blue when > demand (new signal meaning, analogous to composition signal).
+- **Unlocked rows**: shows "—" (no value).
+
+When locking a row (via toggle or multi-select), `plannedQty[hostWoId]` is
+set to the row's current demand. When unlocking, `plannedQty[hostWoId]` is
+deleted (loses edits — matches spec).
+
+### Workspace-level button behavior changes
+
+**Confirm Draft (N):**
+- N = sum of chip counts in **visible locked host rows** only.
+- Disabled in Batching view (no locked rows visible). Tooltip explains.
+- Enabled in QP and All views when visible locked rows exist.
+- `confirmDraft()` now accepts `visibleLockedHostWoIds: Set<number>` from the UI.
+
+**Auto-Batch Candidates:**
+- Disabled in QP view (no unlocked rows to batch). Tooltip explains.
+- Skips locked rows entirely (lock immobility respected in auto-batcher).
+
+**Reset Draft:**
+- Now opens a confirmation modal before executing.
+- Modal text: "Reset Draft will return all chips to their home rows, restore
+  default lock states (singletons locked, batch candidates unlocked), and
+  clear all Planned Quantity edits. This cannot be undone."
+- Cancel (default focus) and Reset (destructive styling) buttons.
+- On Reset: chips home, lock states restored to defaults via
+  `computeDefaultLockState`, planned qty edits cleared.
+- Enabled when any chip is not at home OR any planned qty edited above demand.
+
+### New UI: per-row selection + multi-select toolbar
+
+Leftmost narrow column added with per-row checkboxes. Header checkbox
+selects/deselects all visible rows. Selection state is `Set<number>` in
+component state. Clears on view switch.
+
+**Multi-select toolbar** — floating sticky bar at page bottom, visible when
+1+ rows selected. View-scoped actions:
+
+| View | Actions |
+|------|---------|
+| Batching | Lock selected, Clear |
+| Qty Planning | Unlock selected, Reset Planned to Demand, ×N Apply, +N Apply, Clear |
+| All | All above (silently skips inapplicable rows) |
+
+Toast confirms each action with count. `lockMultiple`, `unlockMultiple`,
+`resetPlannedToDemand`, `multiplyPlannedQty`, `addToPlannedQty` functions
+added to `_data.ts`.
+
+### Empty states
+
+View-specific messages distinguish "items exist in other state-axis" from
+"no items at all":
+
+| View | Items in other state | No items |
+|------|----------------------|----------|
+| Batching | "All candidates are locked. Switch to Quantity Planning…" | "No candidates yet." |
+| Qty Planning | "No locked rows yet. Lock candidates in Batching view to plan quantities." | "No candidates yet." |
+| All | "No candidates match the current filters." | "No candidates yet." |
+
+### Spec gaps logged
+
+No new spec gaps beyond existing BT-GAP-01 through BT-GAP-04. The Lock
+state model is a deliberate design change (supersedes the Confirm toggle
+which was the prior gap area). The view mode design is new and has no
+direct spec counterpart — it should be added to `spec/batching_lens_spec.md`
+before implementation work begins on the Batching Lens.
+
+### Verified behaviors (Playwright)
+
+- Initial load: Batching view default, multi-WO candidates unlocked and visible,
+  singletons hidden, Confirm Draft (0) disabled, Auto-Batch enabled ✓
+- QP view (empty): "No locked rows yet. Lock candidates in Batching view to
+  plan quantities." empty state ✓
+- Manual lock in Batching: row disappears from Batching, appears in QP ✓
+- Planned Qty: unlocked rows show "—", locked row shows editable input at demand ✓
+- Planned Qty bright blue when edited above demand ✓
+- Reset Draft modal: opens on click, Cancel dismisses, Reset executes with toast ✓
+- Multi-select toolbar: appears on row checkbox, shows QP actions in QP view ✓
+- Auto-Batch in Batching view: batches 101 candidates into 49 draft batches,
+  demand aggregates in bright blue, source rows show "Drafted →", toast confirms ✓
+- Auto-Batch disabled tooltip in QP view ✓
+- Confirm Draft (0) disabled in Batching view ✓
+
+### Screenshots captured
+
+- `batching-01-initial.png` — initial Batching view load
+- `batching-02-qp-empty.png` — QP view empty state
+- `batching-04-qp-with-locked-row.png` — locked row in QP view with Planned Qty
+- `batching-05-planned-qty-blue.png` — Planned Qty input at 5 (> demand 1, bright blue)
+- `batching-07-reset-modal.png` — Reset Draft confirmation modal
+- `batching-08-multiselect-toolbar.png` — multi-select toolbar in QP view
+- `batching-09-auto-batch.png` — post-auto-batch Batching view with draft batches
+
+---
+
 ## Session: Batching Lens — Auto-Batch + Data Fix
 **Date:** 2026-06-14
 **Surface:** `/app/mockups/batching/`

@@ -285,14 +285,44 @@ export function computeCandidateGroups(wos: BtWorkOrder[]): BtCandidateGroup[] {
 export const INITIAL_CANDIDATE_GROUPS: BtCandidateGroup[] =
   computeCandidateGroups(ALL_BT_WOS);
 
+// ─── Default lock state computation ──────────────────────────────────────────
+
+// Singletons default to Locked; multi-WO candidates default to Unlocked.
+// Called at initial load and on Reset Draft.
+export function computeDefaultLockState(
+  wos: BtWorkOrder[]
+): { lockedWoIds: Set<number>; plannedQty: Record<number, number | null> } {
+  const byPartId = new Map<number, BtWorkOrder[]>();
+  for (const wo of wos) {
+    if (!byPartId.has(wo.partId)) byPartId.set(wo.partId, []);
+    byPartId.get(wo.partId)!.push(wo);
+  }
+
+  const lockedWoIds = new Set<number>();
+  const plannedQty: Record<number, number | null> = {};
+
+  for (const [, partWOs] of byPartId) {
+    if (partWOs.length === 1) {
+      const wo = partWOs[0]!;
+      lockedWoIds.add(wo.woId);
+      // Singletons' planned qty defaults to their own demand (chips at home = just themselves)
+      plannedQty[wo.woId] = wo.quantity;
+    }
+    // Multi-WO candidates: unlocked, no planned qty set
+  }
+
+  return { lockedWoIds, plannedQty };
+}
+
 // ─── Session state ─────────────────────────────────────────────────────────────
 
 export type BtSessionState = {
   // chipHome[woId] = hostWoId where the chip currently lives (initially woId itself)
   chipHome: Record<number, number>;
-  // confirmToggles[hostWoId] = true → confirm ON for that cell
-  confirmToggles: Record<number, boolean>;
-  // plannedQty[hostWoId] = manually set planned qty (null = unset)
+  // lockedWoIds: WO IDs of rows that are locked (composition settled, quantity planning active).
+  // Singletons default to Locked. Multi-WO candidates default to Unlocked.
+  lockedWoIds: Set<number>;
+  // plannedQty[hostWoId] = planned qty for locked rows (null = not set / unlocked row)
   plannedQty: Record<number, number | null>;
   // confirmedWoIds: WOs transitioned to Open (removed from view)
   confirmedWoIds: Set<number>;
@@ -308,18 +338,15 @@ export type BtSessionState = {
 
 export function buildInitialSessionState(wos: BtWorkOrder[]): BtSessionState {
   const chipHome: Record<number, number> = {};
-  const confirmToggles: Record<number, boolean> = {};
-  const plannedQty: Record<number, number | null> = {};
-
   for (const wo of wos) {
     chipHome[wo.woId] = wo.woId;
-    confirmToggles[wo.woId] = true;
-    plannedQty[wo.woId] = null;
   }
+
+  const { lockedWoIds, plannedQty } = computeDefaultLockState(wos);
 
   return {
     chipHome,
-    confirmToggles,
+    lockedWoIds,
     plannedQty,
     confirmedWoIds: new Set(),
     committedBatches: [],
@@ -402,28 +429,28 @@ export function getDerivedRowValues(
   };
 }
 
-// Whether a cell's confirm toggle should be interactive (has at least one chip)
-export function isToggleActive(
-  hostWoId: number,
-  chipHome: Record<number, number>
-): boolean {
-  return getChipsInCell(chipHome, hostWoId).length > 0;
-}
-
 // Eligibility check: can dragWoId's chip be dropped in targetHostWoId's cell?
+// Locked rows are immobile: chips cannot be dragged into or out of locked rows.
 export function isEligibleTarget(
   dragWoId: number,
   targetHostWoId: number,
   wos: BtWorkOrder[],
   chipHome: Record<number, number>,
-  confirmedWoIds: Set<number>
+  confirmedWoIds: Set<number>,
+  lockedWoIds: Set<number>
 ): boolean {
   if (confirmedWoIds.has(targetHostWoId)) return false;
   if (confirmedWoIds.has(dragWoId)) return false;
 
-  // Dropping back on the current host is technically a no-op, but allowed
+  // Source: chip is immobile if its current host row is locked
   const currentHost = chipHome[dragWoId];
-  if (currentHost === targetHostWoId) return true; // "return home" is always valid
+  if (currentHost !== undefined && lockedWoIds.has(currentHost)) return false;
+
+  // Target: locked rows cannot receive chips
+  if (lockedWoIds.has(targetHostWoId)) return false;
+
+  // Dropping back on the current host is a no-op but allowed
+  if (currentHost === targetHostWoId) return true;
 
   const dragWo = wos.find((w) => w.woId === dragWoId);
   const targetWo = wos.find((w) => w.woId === targetHostWoId);
@@ -449,7 +476,16 @@ export function moveChip(
   const currentHost = state.chipHome[woId];
   if (currentHost === targetHostWoId) return state; // no-op
 
-  if (!isEligibleTarget(woId, targetHostWoId, wos, state.chipHome, state.confirmedWoIds)) {
+  if (
+    !isEligibleTarget(
+      woId,
+      targetHostWoId,
+      wos,
+      state.chipHome,
+      state.confirmedWoIds,
+      state.lockedWoIds
+    )
+  ) {
     return state;
   }
 
@@ -462,18 +498,143 @@ export function moveChip(
   return { ...state, chipHome: newChipHome };
 }
 
-export function toggleConfirm(
+// Lock/unlock a single row. Disabled for source rows (chip moved away).
+export function toggleLock(
   hostWoId: number,
-  state: BtSessionState
+  state: BtSessionState,
+  wos: BtWorkOrder[]
 ): BtSessionState {
-  if (!isToggleActive(hostWoId, state.chipHome)) return state;
+  // Source rows cannot be locked independently
+  const isSourceRow = state.chipHome[hostWoId] !== hostWoId;
+  if (isSourceRow) return state;
+
+  const isCurrentlyLocked = state.lockedWoIds.has(hostWoId);
+  const newLockedWoIds = new Set(state.lockedWoIds);
+  const newPlannedQty = { ...state.plannedQty };
+
+  if (isCurrentlyLocked) {
+    newLockedWoIds.delete(hostWoId);
+    delete newPlannedQty[hostWoId];
+  } else {
+    newLockedWoIds.add(hostWoId);
+    const derived = getDerivedRowValues(hostWoId, wos, state.chipHome);
+    newPlannedQty[hostWoId] = derived.demand;
+  }
+
+  return { ...state, lockedWoIds: newLockedWoIds, plannedQty: newPlannedQty };
+}
+
+// Multi-select: lock a set of WO IDs (skips source rows and already-locked rows silently)
+export function lockMultiple(
+  woIds: number[],
+  state: BtSessionState,
+  wos: BtWorkOrder[]
+): { newState: BtSessionState; count: number } {
+  const newLockedWoIds = new Set(state.lockedWoIds);
+  const newPlannedQty = { ...state.plannedQty };
+  let count = 0;
+
+  for (const woId of woIds) {
+    if (state.chipHome[woId] !== woId) continue; // source row — skip
+    if (state.lockedWoIds.has(woId)) continue; // already locked — skip
+
+    newLockedWoIds.add(woId);
+    const derived = getDerivedRowValues(woId, wos, state.chipHome);
+    newPlannedQty[woId] = derived.demand;
+    count++;
+  }
+
   return {
-    ...state,
-    confirmToggles: {
-      ...state.confirmToggles,
-      [hostWoId]: !state.confirmToggles[hostWoId],
-    },
+    newState: { ...state, lockedWoIds: newLockedWoIds, plannedQty: newPlannedQty },
+    count,
   };
+}
+
+// Multi-select: unlock a set of WO IDs (skips already-unlocked rows silently, clears planned qty)
+export function unlockMultiple(
+  woIds: number[],
+  state: BtSessionState
+): { newState: BtSessionState; count: number } {
+  const newLockedWoIds = new Set(state.lockedWoIds);
+  const newPlannedQty = { ...state.plannedQty };
+  let count = 0;
+
+  for (const woId of woIds) {
+    if (!state.lockedWoIds.has(woId)) continue; // already unlocked — skip
+
+    newLockedWoIds.delete(woId);
+    delete newPlannedQty[woId];
+    count++;
+  }
+
+  return {
+    newState: { ...state, lockedWoIds: newLockedWoIds, plannedQty: newPlannedQty },
+    count,
+  };
+}
+
+// Multi-select: reset planned qty to demand for locked rows (skips unlocked rows silently)
+export function resetPlannedToDemand(
+  woIds: number[],
+  state: BtSessionState,
+  wos: BtWorkOrder[]
+): { newState: BtSessionState; count: number } {
+  const newPlannedQty = { ...state.plannedQty };
+  let count = 0;
+
+  for (const woId of woIds) {
+    if (!state.lockedWoIds.has(woId)) continue; // unlocked — skip
+    const derived = getDerivedRowValues(woId, wos, state.chipHome);
+    const current = state.plannedQty[woId] ?? derived.demand;
+    if (current !== derived.demand) {
+      newPlannedQty[woId] = derived.demand;
+      count++;
+    }
+  }
+
+  return { newState: { ...state, plannedQty: newPlannedQty }, count };
+}
+
+// Multi-select: set planned qty = N × Demand for locked rows (skips unlocked silently)
+export function multiplyPlannedQty(
+  woIds: number[],
+  multiplier: number,
+  state: BtSessionState,
+  wos: BtWorkOrder[]
+): { newState: BtSessionState; count: number } {
+  const newPlannedQty = { ...state.plannedQty };
+  let count = 0;
+
+  for (const woId of woIds) {
+    if (!state.lockedWoIds.has(woId)) continue;
+    const derived = getDerivedRowValues(woId, wos, state.chipHome);
+    const newQty = Math.max(Math.round(derived.demand * multiplier), derived.demand);
+    newPlannedQty[woId] = newQty;
+    count++;
+  }
+
+  return { newState: { ...state, plannedQty: newPlannedQty }, count };
+}
+
+// Multi-select: set planned qty = Demand + N for locked rows (skips unlocked silently)
+export function addToPlannedQty(
+  woIds: number[],
+  addend: number,
+  state: BtSessionState,
+  wos: BtWorkOrder[]
+): { newState: BtSessionState; count: number } {
+  const newPlannedQty = { ...state.plannedQty };
+  let count = 0;
+
+  for (const woId of woIds) {
+    if (!state.lockedWoIds.has(woId)) continue;
+    const derived = getDerivedRowValues(woId, wos, state.chipHome);
+    const current = state.plannedQty[woId] ?? derived.demand;
+    newPlannedQty[woId] = Math.max(current + addend, derived.demand);
+    count++;
+  }
+
+  return { newState: { ...state, plannedQty: newPlannedQty }, count };
 }
 
 export function updatePlannedQty(
@@ -492,25 +653,32 @@ export type ConfirmDraftResult = {
   stats: { totalWOs: number; draftBatches: number; standalone: number };
 };
 
+// Confirm Draft scoped to visibleLockedHostWoIds — the set of WO IDs
+// that are both (a) locked and (b) visible in the current view + filters.
+// The UI computes this set and passes it in.
 export function confirmDraft(
   state: BtSessionState,
-  wos: BtWorkOrder[]
+  wos: BtWorkOrder[],
+  visibleLockedHostWoIds: Set<number>
 ): ConfirmDraftResult {
-  // Collect all unique host cells (rows that have chips)
-  const hostWoIds = new Set(Object.values(state.chipHome));
-
   const newConfirmedWoIds = new Set(state.confirmedWoIds);
   const newCommittedBatches = [...state.committedBatches];
   let draftBatches = 0;
   let standalone = 0;
   let totalWOs = 0;
 
-  for (const hostWoId of hostWoIds) {
+  for (const hostWoId of visibleLockedHostWoIds) {
     if (state.confirmedWoIds.has(hostWoId)) continue;
-    if (!state.confirmToggles[hostWoId]) continue; // toggle OFF
 
     const chipsInCell = getChipsInCell(state.chipHome, hostWoId);
     if (chipsInCell.length === 0) continue;
+
+    const plannedQtyAtCommit =
+      state.plannedQty[hostWoId] ??
+      chipsInCell.reduce((sum, id) => {
+        const wo = wos.find((w) => w.woId === id);
+        return sum + (wo?.quantity ?? 0);
+      }, 0);
 
     totalWOs += chipsInCell.length;
 
@@ -523,7 +691,7 @@ export function confirmDraft(
         isStandalone: false,
       });
       console.log(
-        `[AuditLog] Batch ${batchId} created — members: ${chipsInCell.join(", ")}`
+        `[AuditLog] Batch ${batchId} created — members: ${chipsInCell.join(", ")}, plannedQty: ${plannedQtyAtCommit}`
       );
     } else {
       standalone++;
@@ -534,7 +702,7 @@ export function confirmDraft(
         isStandalone: true,
       });
       console.log(
-        `[AuditLog] WO ${chipsInCell[0]} confirmed as standalone Open`
+        `[AuditLog] WO ${chipsInCell[0]} confirmed as standalone Open, plannedQty: ${plannedQtyAtCommit}`
       );
     }
 
@@ -545,13 +713,13 @@ export function confirmDraft(
 
   // Remove confirmed WOs from mutable state
   const newChipHome = { ...state.chipHome };
-  const newConfirmToggles = { ...state.confirmToggles };
+  const newLockedWoIds = new Set(state.lockedWoIds);
   const newPlannedQty = { ...state.plannedQty };
 
   for (const woId of newConfirmedWoIds) {
     if (!state.confirmedWoIds.has(woId)) {
       delete newChipHome[woId];
-      delete newConfirmToggles[woId];
+      newLockedWoIds.delete(woId);
       delete newPlannedQty[woId];
     }
   }
@@ -560,7 +728,6 @@ export function confirmDraft(
   for (const [chipWoIdStr, hostId] of Object.entries(newChipHome)) {
     const chipWoId = Number(chipWoIdStr);
     if (newConfirmedWoIds.has(hostId) && !newConfirmedWoIds.has(chipWoId)) {
-      // Orphaned chip — return it home
       newChipHome[chipWoId] = chipWoId;
     }
   }
@@ -569,7 +736,7 @@ export function confirmDraft(
     newState: {
       ...state,
       chipHome: newChipHome,
-      confirmToggles: newConfirmToggles,
+      lockedWoIds: newLockedWoIds,
       plannedQty: newPlannedQty,
       confirmedWoIds: newConfirmedWoIds,
       committedBatches: newCommittedBatches,
@@ -602,8 +769,10 @@ export function autoBatchCandidates(
     if (currentHost === undefined) continue;
 
     // Phase 2 branch: chip manually placed onto an Open Production Row → exclude.
-    // The planner made an explicit operational decision; the auto-batcher respects it.
     if (openRowHostWoIds.has(currentHost) && currentHost !== woId) continue;
+
+    // Lock constraint: chips in locked rows are immobile — auto-batch skips them.
+    if (state.lockedWoIds.has(currentHost)) continue;
 
     eligibleWoIds.push(woId);
   }
@@ -642,7 +811,9 @@ export function autoBatchCandidates(
 
     totalBatched += sorted.length;
     batchesCreated++;
-    console.log(`[AuditLog] Auto-batch group partId=${wos.find(w => w.woId === hostWoId)?.partId}: host WO-${hostWoId}, members: ${sorted.join(', ')}`);
+    console.log(
+      `[AuditLog] Auto-batch group partId=${wos.find((w) => w.woId === hostWoId)?.partId}: host WO-${hostWoId}, members: ${sorted.join(", ")}`
+    );
   }
 
   return {
@@ -653,15 +824,27 @@ export function autoBatchCandidates(
 
 // ─── Reset Draft ──────────────────────────────────────────────────────────────
 
-export function resetDraft(state: BtSessionState): BtSessionState {
-  // Return ALL chips home — including any placed on Open Production Rows.
-  // Unlike auto-batch (which preserves Open-row placements), Reset Draft is
-  // the planner's explicit "clear everything" action.
-  const newChipHome = { ...state.chipHome };
-  for (const woIdStr of Object.keys(newChipHome)) {
-    const woId = Number(woIdStr);
-    newChipHome[woId] = woId;
+// Return ALL chips home, restore default lock states (singletons locked, batch candidates
+// unlocked), clear all Planned Qty edits.
+export function resetDraft(
+  state: BtSessionState,
+  wos: BtWorkOrder[]
+): BtSessionState {
+  const visibleWos = wos.filter((w) => !state.confirmedWoIds.has(w.woId));
+
+  const newChipHome: Record<number, number> = {};
+  for (const wo of visibleWos) {
+    newChipHome[wo.woId] = wo.woId;
   }
-  console.log("[AuditLog] Draft reset — all chips returned home");
-  return { ...state, chipHome: newChipHome };
+
+  const { lockedWoIds, plannedQty } = computeDefaultLockState(visibleWos);
+
+  console.log("[AuditLog] Draft reset — all chips returned home, lock states restored to defaults");
+
+  return {
+    ...state,
+    chipHome: newChipHome,
+    lockedWoIds,
+    plannedQty,
+  };
 }
