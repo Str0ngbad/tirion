@@ -401,11 +401,22 @@ function CandidateRow({
         />
       </td>
 
-      {/* WO ID */}
+      {/* Parent */}
       <td className="px-2 py-1.5 align-middle">
-        <span className="font-mono text-xs text-muted-foreground">
-          WO-{wo.woId}
-        </span>
+        {wo.parentPartNumber ? (
+          <span
+            className="font-mono text-xs text-muted-foreground cursor-default"
+            title={
+              wo.ancestryPath.length > 0
+                ? wo.ancestryPath.join(" › ")
+                : wo.parentPartNumber
+            }
+          >
+            {wo.parentPartNumber}
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground/40">—</span>
+        )}
       </td>
 
       {/* Part Number */}
@@ -1424,7 +1435,7 @@ export default function BatchingPage() {
                       Composition
                     </th>
                     <th className="px-2 py-2 text-left text-xs font-semibold text-muted-foreground">
-                      WO ID
+                      Parent
                     </th>
                     <th className="px-2 py-2 text-left text-xs font-semibold text-muted-foreground">
                       Part #

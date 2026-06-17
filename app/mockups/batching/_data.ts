@@ -60,6 +60,10 @@ export type BtWorkOrder = {
   // All Phase 1 WOs are Unreleased + reviewed
   status: "Unreleased";
   stockFulfillmentReviewedAt: string;
+  // BOM ancestry — null for top-level project line items
+  parentPartNumber: string | null;
+  // Part numbers from the top-level item down to the immediate parent (for hover tooltip)
+  ancestryPath: string[];
 };
 
 // ─── WO Generation (BOM walk) ─────────────────────────────────────────────────
@@ -75,7 +79,9 @@ function buildBtWOs(
   projectDueDate: string | null,
   topLevelRef: string,
   woIdCounter: { next: number },
-  visited: Set<number>
+  visited: Set<number>,
+  parentPartNumber: string | null = null,
+  ancestryPath: string[] = []
 ): BtWorkOrder[] {
   if (visited.has(partId)) return [];
   const part = MOCK_PARTS.find((p) => p.partId === partId);
@@ -103,6 +109,8 @@ function buildBtWOs(
     routingTemplateId: "", // assigned post-generation
     status: "Unreleased",
     stockFulfillmentReviewedAt: REVIEWED_AT,
+    parentPartNumber,
+    ancestryPath,
   };
 
   const children: BtWorkOrder[] = [];
@@ -118,7 +126,9 @@ function buildBtWOs(
           projectDueDate,
           topLevelRef,
           woIdCounter,
-          visited2
+          visited2,
+          part.partNumber,
+          [...ancestryPath, part.partNumber]
         )
       );
     }
