@@ -18,6 +18,126 @@ Entries are ordered most recent first.
 
 ---
 
+## Session: Batching Lens — Root WO Rule, Eligibility Fix, Visual Polish
+**Date:** 2026-06-17
+**Surface:** `/app/mockups/batching/`
+**Status:** Phase 1 active (mid-phase)
+
+### Root WO rule
+
+Every candidate row has exactly one root WO — the WO whose home the row is.
+The root WO chip is permanently anchored to its home row and cannot be dragged
+away. Only guest chips (chips that have been moved to a host by Auto-Batch or
+a prior manual move) are draggable.
+
+**Why this matters:** without the root rule, users could drag the host chip out
+of a row that already has guests, creating an ambiguous state where the host
+identity moved but the row still existed. The root rule eliminates this class of
+invalid state.
+
+**Consequence — shell rows:** a row whose chip moved away is a "shell." Shell
+rows accept only their own root returning home (Rule 1), never a different chip.
+Shells display "Drafted → [topLevelRef]" as before.
+
+**Practical workflow under the new rule:**
+
+1. Initial load: all chips at home (roots). No chip is draggable yet.
+2. "Auto-Batch Candidates" programmatically moves guest chips to hosts (bypasses
+   eligibility — this is by design; Auto-Batch is the entry point).
+3. After Auto-Batch, guest chips (those at a non-home host) have `cursor-grab`
+   and can be dragged to other valid hosts or back home.
+4. Root chips (WO ID = host row ID) always have `cursor-default` — drag
+   disabled via dnd-kit's `disabled` option.
+
+### Eligibility re-derive (bug fix)
+
+`isEligibleTarget` rewritten from first principles. The unified rule:
+
+1. **Rule 1:** chip can always return to its own home row
+   (`targetHostWoId === dragWoId` → true).
+2. **Root immobility:** chip currently at home (`currentHost === dragWoId`)
+   → false for all non-home targets.
+3. **Shell exclusion:** target row with root chip absent
+   (`chipHome[target] !== target`) → false; only Rule 1 can override this.
+4. **PartID match:** target must share the drag chip's PartID.
+
+The prior code had a `if (currentHost === targetHostWoId) return true` shortcut
+before PartID validation. This allowed dropping a chip on its current host
+(trivially true), but caused incorrect de-emphasis of same-PartID home rows
+in default state by conflating the home-row path with peer-row eligibility.
+
+### Root WO visual marker
+
+Root chips display a small `Anchor` icon (h-2.5 w-2.5, opacity-50, `aria-hidden`)
+inset at the right end of the chip (inline with `/ Qty: N`). Chip tooltip adds
+"(root — anchored)" suffix for root chips. No color or shadow change — the icon
+is sufficient visual signal at the chip scale.
+
+Verified: host rows show exactly 1 anchor SVG in the composition cell; shell
+rows and guest chips show 0.
+
+### Column changes
+
+- **WO ID column removed.** Replaced by **Parent column** (immediate parent's
+  part number). Top-level project line-item WOs show "—". Hover tooltip shows
+  the full ancestry path (part numbers from top-level to parent, "›"-separated).
+- **Parent data added to `BtWorkOrder`:** `parentPartNumber: string | null` and
+  `ancestryPath: string[]`, threaded through the recursive `buildBtWOs` BOM walk.
+
+### ProjectChip: flattened to single-line
+
+Layout changed from `flex-col py-1` (stacked) to `flex-row items-center gap-1 py-0.5`
+(inline). Content: `topLevelRef / Qty: N [⚓?]` on one line. Significant row
+height reduction; more rows visible per viewport. DragOverlay overlay also
+updated to the inline layout.
+
+### Filter and label cleanup
+
+- **Part/Assembly filter removed** from filter bar. `filterPartType` state and
+  all usages deleted. Parts and Assemblies remain mixed in the table.
+- **"Hidden Singletons" → "Unbatchable Parts"** everywhere: toggle aria-label,
+  toggle visible label, count bar text, table section header, variable count
+  references.
+- **"Pri" → "Priority"** column header spelled out in full.
+
+### Column spacing condensed
+
+`colgroup` widths recalibrated to absorb the Parent column without overflow:
+checkbox 36→32, composition 150→140, parent 90 (new), part# 120→110, part name
+180→160, demand 70→60, planned 90→80, priority 60→64, due date 100→92,
+project(s) 100→90, routing 200→190, lock 60→48.
+
+### Spec gaps / deferred items
+
+- **Pill shape (rectangle with rounded corners):** deferred. Evaluate flattened
+  single-line pill first before committing to shape change.
+- **Dividing line contrast:** deferred alongside pill shape. Both will land as
+  one "visual polish" follow-up iteration.
+
+### Prior behavior note
+
+Root chip immobility means **initial state drag is non-functional.** The
+intended workflow is: use Auto-Batch first to form draft batches, then drag
+guest chips to adjust. Click-to-select (selectedChipWoId) also requires Auto-
+Batch first, as it uses the same eligibility gate. This is a deliberate design
+constraint from the root WO rule, not an oversight.
+
+### Verified behaviors (Playwright)
+
+- Initial state: Batching view, unlocked rows, chips single-line with anchor
+  icon on root chips ✓
+- Auto-Batch: forms draft batches; host rows show root chip (`cursor-default`)
+  + guest chip(s) (`cursor-grab opacity-90`) ✓
+- Root chip has `cursor-default`, guest chip has `cursor-grab` — confirmed by
+  class inspection of a multi-chip cell ✓
+- Anchor SVG count in composition cell: host rows = 1, shell rows = 0 ✓
+- Parent column shows parent part numbers; "—" for top-level WOs ✓
+- Priority column header fully spelled out ✓
+- "Show Unbatchable Parts" toggle label ✓
+- No hydration errors after colgroup whitespace fix ✓
+
+---
+
 ## Session: Batching Lens — Lock State Architecture + View Modes + Multi-Select
 **Date:** 2026-06-17
 **Surface:** `/app/mockups/batching/`
