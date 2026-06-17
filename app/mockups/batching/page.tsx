@@ -1381,19 +1381,20 @@ export default function BatchingPage() {
               </div>
             ) : (
               <table className="w-full text-sm border-collapse">
+                {/* col order: checkbox, composition, parent, part#, part name, demand, planned, priority, due date, project(s), routing, lock */}
                 <colgroup>
-                  <col style={{ width: 32 }} />   {/* checkbox */}
-                  <col style={{ width: 140 }} />  {/* composition */}
-                  <col style={{ width: 90 }} />   {/* parent */}
-                  <col style={{ width: 110 }} />  {/* part # */}
-                  <col style={{ width: 160 }} />  {/* part name */}
-                  <col style={{ width: 60 }} />   {/* demand */}
-                  <col style={{ width: 80 }} />   {/* planned */}
-                  <col style={{ width: 64 }} />   {/* priority */}
-                  <col style={{ width: 92 }} />   {/* due date */}
-                  <col style={{ width: 90 }} />   {/* project(s) */}
-                  <col style={{ width: 190 }} />  {/* routing */}
-                  <col style={{ width: 48 }} />   {/* lock */}
+                  <col style={{ width: 32 }} />
+                  <col style={{ width: 140 }} />
+                  <col style={{ width: 90 }} />
+                  <col style={{ width: 110 }} />
+                  <col style={{ width: 160 }} />
+                  <col style={{ width: 60 }} />
+                  <col style={{ width: 80 }} />
+                  <col style={{ width: 64 }} />
+                  <col style={{ width: 92 }} />
+                  <col style={{ width: 90 }} />
+                  <col style={{ width: 190 }} />
+                  <col style={{ width: 48 }} />
                 </colgroup>
                 <thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur-sm">
                   <tr className="border-b border-border">
