@@ -6,7 +6,7 @@
 
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { GripHorizontal } from "lucide-react";
+import { Anchor } from "lucide-react";
 import { PROJECT_COLOR_MAP, type ProjectColor } from "../project-creation/_data";
 
 type Props = {
@@ -16,6 +16,7 @@ type Props = {
   demandQty: number;
   color: ProjectColor | null;
   isAtHome: boolean; // true when chip is in its own home cell
+  isRoot: boolean; // true when this chip is the row's root WO (anchored, non-draggable)
   disabled?: boolean; // true during someone else's drag or if confirmed
 };
 
@@ -26,12 +27,14 @@ export default function ProjectChip({
   demandQty,
   color,
   isAtHome,
+  isRoot,
   disabled = false,
 }: Props) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: `chip-${woId}`,
-      disabled,
+      // Root chips are anchored — disable drag without the "disabled" visual treatment.
+      disabled: disabled || isRoot,
       data: { woId },
     });
 
@@ -54,26 +57,40 @@ export default function ProjectChip({
       {...listeners}
       {...attributes}
       className={[
-        "inline-flex flex-col rounded-full px-2.5 py-1 text-xs select-none",
+        "relative inline-flex flex-col rounded-full px-2.5 py-1 text-xs select-none",
         "shadow-sm transition-shadow",
         isDragging ? "opacity-0" : "",
         !isAtHome ? "opacity-90" : "",
         disabled
           ? "cursor-not-allowed opacity-50"
+          : isRoot
+          ? "cursor-default"
           : "cursor-grab active:cursor-grabbing hover:shadow-md",
       ]
         .filter(Boolean)
         .join(" ")}
-      title={`WO for ${topLevelRef} — Qty ${demandQty}`}
+      title={
+        isRoot
+          ? `WO for ${topLevelRef} — Qty ${demandQty} (root — anchored)`
+          : `WO for ${topLevelRef} — Qty ${demandQty}`
+      }
     >
       <span className="font-mono font-semibold leading-tight">{topLevelRef}</span>
       <span className="leading-tight opacity-80">Qty: {demandQty}</span>
+      {isRoot && (
+        <span
+          className="absolute bottom-0.5 right-1.5 opacity-50"
+          aria-hidden="true"
+        >
+          <Anchor className="h-2.5 w-2.5" />
+        </span>
+      )}
     </div>
   );
 }
 
 // A static (non-draggable) clone used in the DragOverlay while dragging
-type OverlayProps = Omit<Props, "woId" | "disabled" | "isAtHome">;
+type OverlayProps = Omit<Props, "woId" | "disabled" | "isAtHome" | "isRoot">;
 export function ProjectChipOverlay({
   projectNumber,
   topLevelRef,

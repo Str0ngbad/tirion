@@ -126,6 +126,7 @@ function CompositionCell({
               demandQty={wo.quantity}
               color={wo.projectColor}
               isAtHome={state.chipHome[wo.woId] === hostWoId && wo.woId === hostWoId}
+              isRoot={wo.woId === hostWoId}
               disabled={isDragActive}
             />
           </button>
