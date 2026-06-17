@@ -432,7 +432,7 @@ function CandidateRow({
       </td>
 
       {/* Part Name */}
-      <td className="px-2 py-1.5 align-middle max-w-[200px]">
+      <td className="px-2 py-1.5 align-middle max-w-[160px]">
         <span className="text-xs truncate block" title={wo.partName}>
           {wo.partName}
         </span>
@@ -1382,18 +1382,18 @@ export default function BatchingPage() {
             ) : (
               <table className="w-full text-sm border-collapse">
                 <colgroup>
-                  <col style={{ width: 36 }} />
-                  <col style={{ width: 150 }} />
-                  <col style={{ width: 80 }} />
-                  <col style={{ width: 120 }} />
-                  <col style={{ width: 180 }} />
-                  <col style={{ width: 70 }} />
-                  <col style={{ width: 90 }} />
-                  <col style={{ width: 60 }} />
-                  <col style={{ width: 100 }} />
-                  <col style={{ width: 100 }} />
-                  <col style={{ width: 200 }} />
-                  <col style={{ width: 60 }} />
+                  <col style={{ width: 32 }} />   {/* checkbox */}
+                  <col style={{ width: 140 }} />  {/* composition */}
+                  <col style={{ width: 90 }} />   {/* parent */}
+                  <col style={{ width: 110 }} />  {/* part # */}
+                  <col style={{ width: 160 }} />  {/* part name */}
+                  <col style={{ width: 60 }} />   {/* demand */}
+                  <col style={{ width: 80 }} />   {/* planned */}
+                  <col style={{ width: 64 }} />   {/* priority */}
+                  <col style={{ width: 92 }} />   {/* due date */}
+                  <col style={{ width: 90 }} />   {/* project(s) */}
+                  <col style={{ width: 190 }} />  {/* routing */}
+                  <col style={{ width: 48 }} />   {/* lock */}
                 </colgroup>
                 <thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur-sm">
                   <tr className="border-b border-border">
