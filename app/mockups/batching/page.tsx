@@ -363,8 +363,8 @@ function CandidateRow({
       className={[
         rowBg,
         isFirstInGroup
-          ? "border-t-2 border-border"
-          : "border-t border-border/50",
+          ? "border-t-2 border-foreground/30"
+          : "border-t border-foreground/15",
         isGreyedOut ? "opacity-30 pointer-events-none" : "",
         isSelected ? "bg-sky-500/5" : "",
         "transition-opacity",
