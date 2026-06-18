@@ -60,7 +60,7 @@ export default function ProjectChip({
       {...listeners}
       {...attributes}
       className={[
-        "relative inline-flex flex-row items-center gap-1 rounded-full px-2.5 py-0.5 text-xs select-none",
+        "relative inline-flex flex-row items-center gap-1 rounded-full px-2.5 py-0.5 text-xs select-none whitespace-nowrap",
         "shadow-sm transition-shadow",
         isDragging ? "opacity-0" : "",
         !isAtHome ? "opacity-90" : "",
@@ -78,12 +78,12 @@ export default function ProjectChip({
           : `WO for ${topLevelRef} — Qty ${demandQty}`
       }
     >
+      {isRoot && (
+        <Anchor className="h-3 w-3 opacity-70 shrink-0" strokeWidth={3} aria-label="Root of batch" />
+      )}
       <span className="font-mono font-semibold">{topLevelRef}</span>
       <span className="opacity-60">/</span>
       <span className="opacity-80">Qty: {demandQty}</span>
-      {isRoot && (
-        <Anchor className="h-2.5 w-2.5 opacity-50 shrink-0 ml-0.5" strokeWidth={2.5} aria-label="Root of batch" />
-      )}
     </div>
   );
 }
