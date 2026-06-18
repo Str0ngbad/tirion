@@ -1199,7 +1199,13 @@ export default function BatchingPage() {
       }
       // View mode filter
       if (!openRowVisibleInMode(row.openHostId)) return false;
-      // Show Only Actionable filter
+      // Show Only Actionable Production Rows filter:
+      //   Case 1: always actionable (open to new members)
+      //   Case 3: always shown (terminal state, no drops accepted but visible for context)
+      //   Case 2: actionable only when mockHeadroom >= minCandidateDemand (some room exists)
+      //   When ON and a Case 2 row has 0 or null headroom → hidden from view.
+      // minCandidateDemand is simplified to 1 for the mockup; real implementation
+      // would derive the minimum demand across actual candidate WOs for this partId.
       if (state.showOnlyActionable) {
         const minCandidateDemand = 1; // simplified: minimum possible demand
         const isActionable = (() => {
