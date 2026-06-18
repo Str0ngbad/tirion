@@ -1302,7 +1302,10 @@ export function confirmDraft(
     }
   }
 
-  // Phase 2: also commit Open rows that received candidate chips
+  // Phase 2: extend Confirm Draft scope to Open rows with draft additions.
+  // Open rows that received candidate chips are committed atomically alongside
+  // candidate-to-candidate batches. The stats return openRowsExtended so the
+  // UI can surface "M Open rows extended" in the confirmation toast.
   for (const [openHostIdStr, draftWoIds] of Object.entries(state.openRowChips)) {
     const openHostId = Number(openHostIdStr);
     if (draftWoIds.length === 0) continue;
