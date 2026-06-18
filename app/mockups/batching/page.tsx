@@ -373,7 +373,7 @@ function CandidateRow({
         .join(" ")}
     >
       {/* Select checkbox */}
-      <td className="px-2 py-1.5 align-middle text-center w-9">
+      <td className="px-4 py-1.5 align-middle text-center w-9">
         <input
           type="checkbox"
           checked={isSelected}
@@ -383,7 +383,7 @@ function CandidateRow({
       </td>
 
       {/* Composition Column */}
-      <td className="px-2 py-1.5 align-top">
+      <td className="px-4 py-1.5 align-top">
         <CompositionCell
           hostWoId={wo.woId}
           chips={chipsInCell}
@@ -401,48 +401,37 @@ function CandidateRow({
         />
       </td>
 
-      {/* Parent */}
-      <td className="px-2 py-1.5 align-middle">
-        {wo.parentPartName ? (
-          <span
-            className="text-xs text-muted-foreground cursor-default truncate max-w-[120px] inline-block"
-            title={
-              wo.ancestryPath.length > 0
-                ? [...wo.ancestryPath]
-                    .reverse()
-                    .map((a) => `${a.partNumber} — ${a.partName}`)
-                    .join("\n")
-                : wo.parentPartName
-            }
-          >
-            {wo.parentPartName}
-          </span>
-        ) : (
-          <span className="text-xs text-muted-foreground/40">—</span>
-        )}
-      </td>
-
-      {/* Part Number */}
-      <td className="px-2 py-1.5 align-middle">
+      {/* Part Number — hover shows ancestry for non-top-level WOs */}
+      <td className="px-4 py-1.5 align-middle">
         <span
           className={[
             "font-mono text-xs",
             isAssembly ? "text-foreground/70" : "text-foreground",
           ].join(" ")}
+          title={
+            wo.parentPartName
+              ? wo.ancestryPath.length > 0
+                ? [...wo.ancestryPath]
+                    .reverse()
+                    .map((a) => `${a.partNumber} — ${a.partName}`)
+                    .join("\n")
+                : wo.parentPartName
+              : undefined
+          }
         >
           {wo.partNumber}
         </span>
       </td>
 
       {/* Part Name */}
-      <td className="px-2 py-1.5 align-middle max-w-[160px]">
+      <td className="px-4 py-1.5 align-middle max-w-[160px]">
         <span className="text-xs truncate block" title={wo.partName}>
           {wo.partName}
         </span>
       </td>
 
       {/* Demand Qty */}
-      <td className="px-2 py-1.5 align-middle text-right">
+      <td className="px-4 py-1.5 align-middle text-right">
         <span
           className={[
             "font-mono text-xs",
@@ -454,7 +443,7 @@ function CandidateRow({
       </td>
 
       {/* Planned Qty */}
-      <td className="px-2 py-1.5 align-middle">
+      <td className="px-4 py-1.5 align-middle text-right">
         {isAssembly ? (
           <span className="text-muted-foreground text-xs">—</span>
         ) : (
@@ -469,7 +458,7 @@ function CandidateRow({
       </td>
 
       {/* Priority */}
-      <td className="px-2 py-1.5 align-middle text-center">
+      <td className="px-4 py-1.5 align-middle text-right">
         <span
           className={[
             "font-mono text-xs",
@@ -481,7 +470,7 @@ function CandidateRow({
       </td>
 
       {/* Due Date */}
-      <td className="px-2 py-1.5 align-middle text-right">
+      <td className="px-4 py-1.5 align-middle text-right">
         <span
           className={[
             "text-xs tabular-nums",
@@ -493,7 +482,7 @@ function CandidateRow({
       </td>
 
       {/* Project(s) */}
-      <td className="px-2 py-1.5 align-middle">
+      <td className="px-4 py-1.5 align-middle">
         {projectNums.length === 1 ? (
           <span className="font-mono text-xs">{projectNums[0]}</span>
         ) : (
@@ -508,12 +497,12 @@ function CandidateRow({
       </td>
 
       {/* Routing */}
-      <td className="px-2 py-1.5 align-middle">
+      <td className="px-4 py-1.5 align-middle">
         <RoutingPills templateId={wo.routingTemplateId} />
       </td>
 
       {/* Lock Toggle */}
-      <td className="px-2 py-1.5 align-middle text-center">
+      <td className="px-4 py-1.5 align-middle text-center">
         <LockToggle
           isLocked={isLocked}
           isDisabled={lockDisabled}
@@ -1364,17 +1353,16 @@ export default function BatchingPage() {
               </div>
             ) : (
               <table className="w-full text-sm border-collapse">
-                {/* col order: checkbox, composition, parent, part#, part name, demand, planned, priority, due date, project(s), routing, lock */}
+                {/* col order: checkbox, composition, part#, part name, demand, planned, priority, due date, project(s), routing, lock */}
                 <colgroup>
                   <col style={{ width: 32 }} />
-                  <col style={{ width: 140 }} />
-                  <col style={{ width: 90 }} />
-                  <col style={{ width: 110 }} />
-                  <col style={{ width: 160 }} />
-                  <col style={{ width: 60 }} />
+                  <col style={{ width: 150 }} />
+                  <col style={{ width: 120 }} />
+                  <col style={{ width: 180 }} />
+                  <col style={{ width: 64 }} />
                   <col style={{ width: 80 }} />
                   <col style={{ width: 64 }} />
-                  <col style={{ width: 92 }} />
+                  <col style={{ width: 96 }} />
                   <col style={{ width: 90 }} />
                   <col style={{ width: 190 }} />
                   <col style={{ width: 48 }} />
@@ -1382,7 +1370,7 @@ export default function BatchingPage() {
                 <thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur-sm">
                   <tr className="border-b border-border">
                     {/* Select-all checkbox */}
-                    <th className="px-2 py-2 text-center w-9">
+                    <th className="px-4 py-2 text-center w-9">
                       <input
                         type="checkbox"
                         checked={allVisibleSelected}
@@ -1395,37 +1383,34 @@ export default function BatchingPage() {
                         className="h-3.5 w-3.5 rounded border-border accent-primary cursor-pointer"
                       />
                     </th>
-                    <th className="px-2 py-2 text-left text-xs font-semibold text-muted-foreground">
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground">
                       Composition
                     </th>
-                    <th className="px-2 py-2 text-left text-xs font-semibold text-muted-foreground">
-                      Parent
-                    </th>
-                    <th className="px-2 py-2 text-left text-xs font-semibold text-muted-foreground">
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground">
                       Part #
                     </th>
-                    <th className="px-2 py-2 text-left text-xs font-semibold text-muted-foreground">
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground">
                       Part Name
                     </th>
-                    <th className="px-2 py-2 text-right text-xs font-semibold text-muted-foreground">
+                    <th className="px-4 py-2 text-right text-xs font-semibold text-muted-foreground">
                       Demand
                     </th>
-                    <th className="px-2 py-2 text-left text-xs font-semibold text-muted-foreground">
+                    <th className="px-4 py-2 text-right text-xs font-semibold text-muted-foreground">
                       Planned
                     </th>
-                    <th className="px-2 py-2 text-center text-xs font-semibold text-muted-foreground">
+                    <th className="px-4 py-2 text-right text-xs font-semibold text-muted-foreground">
                       Priority
                     </th>
-                    <th className="px-2 py-2 text-right text-xs font-semibold text-muted-foreground">
+                    <th className="px-4 py-2 text-right text-xs font-semibold text-muted-foreground">
                       Due Date
                     </th>
-                    <th className="px-2 py-2 text-left text-xs font-semibold text-muted-foreground">
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground">
                       Project(s)
                     </th>
-                    <th className="px-2 py-2 text-left text-xs font-semibold text-muted-foreground">
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground">
                       Routing
                     </th>
-                    <th className="px-2 py-2 text-center text-xs font-semibold text-muted-foreground">
+                    <th className="px-4 py-2 text-center text-xs font-semibold text-muted-foreground">
                       Lock
                     </th>
                   </tr>
@@ -1444,7 +1429,7 @@ export default function BatchingPage() {
                       <>
                         <tr>
                           <td
-                            colSpan={12}
+                            colSpan={11}
                             className="px-4 py-2 text-xs font-semibold text-muted-foreground border-t-4 border-border bg-muted/20 uppercase tracking-wide"
                           >
                             Unbatchable Parts ({visibleSingletonCount})
