@@ -2122,3 +2122,37 @@ values render as a dash and the purpose is operational pull-step support.
 
 Discovered: Stock Fulfillment mockup iteration (Location column + expansion
 row alignment pass).
+
+---
+
+## Session: Batching Lens — Mobility Bug Fix, Visual Refinements (2026-06-17)
+
+### Commits in this session
+
+1. `fix(mockup/batching): separate isRoot (visual) from isAnchoredRoot (drag-disable)` — Root WO mobility bug: all home-state chips were non-draggable, blocking manual batch formation entirely.
+2. `fix(mockup/batching): increase anchor icon stroke weight to 2.5` — Anchor icon was too thin at default Lucide stroke weight.
+3. `fix(mockup/batching): tighten composition cell height, center shell row text` — Shell rows were taller than needed and text was not vertically centered.
+4. `feat(mockup/batching): parent column shows part name with ancestry tooltip` — Parent column displayed part number (opaque); changed to part name with closest-first tooltip.
+5. `fix(mockup/batching): remove project filter from filter bar` — Project filter removed (see decision note below).
+
+### Root WO mobility bug — root cause and fix
+
+**Bug:** In `project-chip.tsx`, `useDraggable` was configured with `disabled: disabled || isRoot`. Since `isRoot` is true for every chip that is the root of its home row, and in the initial state every chip IS the root of its own row, all chips were non-draggable. Manual batch formation was impossible.
+
+**Root cause:** A single prop (`isRoot`) was doing double duty: anchor icon display AND drag-disable control. The two semantics diverged: anchor display should fire whenever `wo.woId === hostWoId`; drag-disable should only fire when the root's row is in HOST state (root + guests present).
+
+**Fix:** Introduced `isAnchoredRoot: boolean` — true when `wo.woId === hostWoId && chips.length >= 2`. Drag-disable keyed off `isAnchoredRoot`; `isRoot` retained for anchor icon display only. Same guard (`rowOccupancy > 1`) applied in `isEligibleTarget` in `_data.ts`.
+
+**Design intent preserved:** Root chips in HOME state (row holds only the root, no guests) are fully draggable — that is the mechanism by which the planner pulls a root WO into another row to start a batch. Root chips in HOST state (row holds root + guests) are anchored and cannot be moved.
+
+### Project filter removal — operational reasoning
+
+The project filter was removed from the Batching Lens filter bar. Rationale: the batching lens is a cross-project composition surface. A planner forming batches needs to see WOs from multiple projects together in order to group them efficiently — e.g., two projects both needing the same machined part at similar priority should be visible in the same view so they can be co-batched. Filtering by project defeats this purpose.
+
+The "All Projects" default was already the operative mode for any planner doing real batch composition; the filter existed as a UI affordance but was never operationally useful in the batching context. Removed to reduce filter bar noise and prevent unintentional narrowing.
+
+If a future need arises to isolate one project's WOs within the batching lens (e.g., "show only P-1042's WOs so I can review what's been assigned"), that is a valid but secondary workflow that should be handled via a dedicated mode or toggle rather than the main filter bar.
+
+### Deferred items
+
+- **Pill shape visual polish:** chip shape and color-contrast refinements remain deferred to a dedicated visual polish iteration. No spec impact.
