@@ -19,7 +19,6 @@ import {
   ALL_BT_WOS,
   INITIAL_SESSION_STATE,
   ROUTING_TEMPLATES,
-  BT_PROJECTS,
   PROJECT_COLOR_MAP,
   type BtWorkOrder,
   type BtSessionState,
@@ -713,7 +712,6 @@ export default function BatchingPage() {
   const [resetModalOpen, setResetModalOpen] = useState(false);
 
   // Filters
-  const [filterProjectId, setFilterProjectId] = useState<number | null>(null);
   const [filterSearch, setFilterSearch] = useState("");
 
   const sensors = useSensors(
@@ -767,7 +765,6 @@ export default function BatchingPage() {
     (woId: number) => {
       const wo = visibleWOs.find((w) => w.woId === woId);
       if (!wo) return false;
-      if (filterProjectId && wo.projectId !== filterProjectId) return false;
       if (filterSearch) {
         const q = filterSearch.toLowerCase();
         if (
@@ -778,7 +775,7 @@ export default function BatchingPage() {
       }
       return true;
     },
-    [visibleWOs, filterProjectId, filterSearch]
+    [visibleWOs, filterSearch]
   );
 
   // View mode filter predicate
@@ -1101,7 +1098,7 @@ export default function BatchingPage() {
     }
 
     // All view
-    if (filterProjectId || filterSearch) {
+    if (filterSearch) {
       return "No candidates match the current filters.";
     }
     return "No candidates yet.";
@@ -1198,24 +1195,6 @@ export default function BatchingPage() {
             </div>
 
             <div className="h-4 w-px bg-border" />
-
-            {/* Project filter */}
-            <select
-              value={filterProjectId ?? ""}
-              onChange={(e) =>
-                setFilterProjectId(
-                  e.target.value ? Number(e.target.value) : null
-                )
-              }
-              className="rounded border border-border bg-background px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
-            >
-              <option value="">All Projects</option>
-              {BT_PROJECTS.map((p) => (
-                <option key={p.projectId} value={p.projectId}>
-                  {p.projectNumber} — {p.projectName}
-                </option>
-              ))}
-            </select>
 
             {/* Search */}
             <input
