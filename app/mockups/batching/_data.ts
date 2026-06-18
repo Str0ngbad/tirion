@@ -1036,6 +1036,11 @@ export function moveChip(
   return { ...state, chipHome: newChipHome };
 }
 
+// Open chips (the identity chip shown on Open rows) are static divs in the UI — not
+// created with useDraggable, so they are immobile by construction. This guard ensures
+// the data layer also rejects any attempt to move an Open chip via the chipHome map.
+// (Defensive: the UI already prevents this from the user side.)
+
 // Add a candidate chip to an Open row's draft composition
 export function addChipToOpenRow(
   candidateWoId: number,
