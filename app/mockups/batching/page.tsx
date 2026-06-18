@@ -1036,7 +1036,13 @@ export default function BatchingPage() {
   // Filters
   const [filterSearch, setFilterSearch] = useState("");
 
-  // Auto-batch dropdown
+  // Three-tier Auto-Batch dropdown:
+  //   Tier 1: "Candidates Only" — groups candidates by PartID (Phase 1 behavior)
+  //   Tier 2: "Include Unstarted WIP" — also places singleton candidates onto
+  //           matching Case 1 Open rows (Phase 2, unstarted = no steps begun)
+  //   Tier 3: "Include Started WIP" — disabled; requires real execution data (Phase 2.5)
+  // Selected tier is persisted in session state (autoBatchTier) so it survives
+  // multiple auto-batch runs without re-selecting.
   const [autoBatchDropdownOpen, setAutoBatchDropdownOpen] = useState(false);
 
   const sensors = useSensors(
