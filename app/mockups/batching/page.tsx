@@ -60,6 +60,12 @@ type ViewMode = "All" | "Batching" | "QuantityPlanning";
 // ─── Precomputed Open row host IDs (stable reference) ────────────────────────
 
 const OPEN_ROW_HOST_IDS = getOpenRowHostIds(OPEN_WOS, OPEN_BATCHES);
+
+// Active in Production indicator: the amber Activity icon on Part Number cells
+// signals that this partId has at least one Open WO or Open Batch already running
+// in production. Planners use this to decide whether to compose candidates with
+// existing work vs. creating new standalone batches. The icon appears on BOTH
+// candidate rows and Open rows for the same partId.
 const PART_IDS_WITH_OPEN_WORK = getPartIdsWithOpenWork(OPEN_WOS, OPEN_BATCHES);
 
 // ─── Composition Cell (droppable) ─────────────────────────────────────────────
