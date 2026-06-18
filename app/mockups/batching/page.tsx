@@ -13,19 +13,27 @@ import {
 } from "@dnd-kit/core";
 import { useDroppable } from "@dnd-kit/core";
 import { toast } from "sonner";
-import { Lock, Unlock } from "lucide-react";
+import { Lock, Unlock, Activity, ChevronDown } from "lucide-react";
 
 import {
   ALL_BT_WOS,
+  OPEN_WOS,
+  OPEN_BATCHES,
   INITIAL_SESSION_STATE,
   ROUTING_TEMPLATES,
   PROJECT_COLOR_MAP,
   type BtWorkOrder,
+  type BtOpenWO,
+  type BtOpenBatch,
   type BtSessionState,
   type BtCandidateGroup,
   getDerivedRowValues,
+  getOpenRowDerivedValues,
   isEligibleTarget,
+  isEligibleOpenTarget,
   getChipsInCell,
+  getOpenRowHostIds,
+  getPartIdsWithOpenWork,
   moveChip,
   toggleLock,
   lockMultiple,
@@ -36,6 +44,8 @@ import {
   updatePlannedQty,
   confirmDraft,
   autoBatchCandidates,
+  addChipToOpenRow,
+  removeChipFromOpenRow,
   resetDraft,
 } from "./_data";
 
@@ -46,6 +56,11 @@ import ProjectChip, {
 // ─── View Mode ────────────────────────────────────────────────────────────────
 
 type ViewMode = "All" | "Batching" | "QuantityPlanning";
+
+// ─── Precomputed Open row host IDs (stable reference) ────────────────────────
+
+const OPEN_ROW_HOST_IDS = getOpenRowHostIds(OPEN_WOS, OPEN_BATCHES);
+const PART_IDS_WITH_OPEN_WORK = getPartIdsWithOpenWork(OPEN_WOS, OPEN_BATCHES);
 
 // ─── Composition Cell (droppable) ─────────────────────────────────────────────
 
@@ -133,6 +148,303 @@ function CompositionCell({
         ))
       )}
     </div>
+  );
+}
+
+// ─── Open Composition Cell (droppable drop zone for Open rows) ────────────────
+
+function OpenCompositionCell({
+  openHostId,
+  openChip,    // the static open identity chip
+  draftChips,  // candidate WOs placed in this Open row's draft
+  isEligible,
+  isDragActive,
+  onRemoveDraftChip,
+}: {
+  openHostId: number;
+  openChip: React.ReactNode;
+  draftChips: BtWorkOrder[];
+  isEligible: boolean;
+  isDragActive: boolean;
+  onRemoveDraftChip: (candidateWoId: number) => void;
+}) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `open-cell-${openHostId}`,
+    disabled: !isEligible && isDragActive,
+    data: { hostWoId: openHostId, isOpenRow: true },
+  });
+
+  const showDropHighlight = isOver && isEligible;
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={[
+        "flex flex-wrap gap-1 p-1 rounded min-h-[1.75rem] min-w-[130px] transition-colors items-center",
+        showDropHighlight ? "bg-emerald-500/15 ring-1 ring-emerald-500/50" : "",
+        isEligible && isDragActive ? "ring-1 ring-border/50" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      {/* Static Open identity chip */}
+      {openChip}
+      {/* Draft candidate chips placed onto this Open row */}
+      {draftChips.map((wo) => (
+        <button
+          key={wo.woId}
+          onClick={() => onRemoveDraftChip(wo.woId)}
+          title={`${wo.topLevelRef} / Qty ${wo.quantity} — click to remove`}
+          className="focus:outline-none rounded-md"
+        >
+          <ProjectChip
+            woId={wo.woId}
+            projectNumber={wo.projectNumber}
+            topLevelRef={wo.topLevelRef}
+            demandQty={wo.quantity}
+            color={wo.projectColor}
+            isAtHome={false}
+            isRoot={false}
+            isAnchoredRoot={false}
+            disabled={false}
+          />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ─── Open WO Chip (static, crescent/left-bar style) ──────────────────────────
+
+function OpenWoChip({
+  openWo,
+}: {
+  openWo: BtOpenWO;
+}) {
+  const meta = openWo.projectColor ? PROJECT_COLOR_MAP[openWo.projectColor] : null;
+  const borderColor = meta ? meta.hex : "#6b7280";
+
+  return (
+    <div
+      style={{ borderLeftColor: borderColor }}
+      className="inline-flex items-center gap-1 border-l-4 bg-muted/50 px-2 py-0.5 text-xs rounded-md whitespace-nowrap select-none"
+      title={`Open WO — ${openWo.topLevelRef} — Qty ${openWo.openQty} (${openWo.mockProductionState})`}
+    >
+      <span className="font-mono font-semibold text-muted-foreground">{openWo.topLevelRef}</span>
+      <span className="text-muted-foreground/60">/</span>
+      <span className="text-muted-foreground/80">Qty: {openWo.openQty}</span>
+    </div>
+  );
+}
+
+function OpenBatchChip({
+  openBatch,
+}: {
+  openBatch: BtOpenBatch;
+}) {
+  return (
+    <div
+      className="inline-flex items-center gap-1 border-l-4 border-border bg-background px-2 py-0.5 text-xs rounded-md whitespace-nowrap select-none"
+      title={`Open Batch — ${openBatch.batchId} — Qty ${openBatch.openQty} (${openBatch.mockProductionState})`}
+    >
+      <span className="font-mono font-semibold text-muted-foreground">{openBatch.batchId}</span>
+      <span className="text-muted-foreground/60">/</span>
+      <span className="text-muted-foreground/80">Qty: {openBatch.openQty}</span>
+    </div>
+  );
+}
+
+// ─── Open Production Row ──────────────────────────────────────────────────────
+
+function OpenProductionRow({
+  openWo,
+  openBatch,
+  openHostId,
+  draftChipWoIds,
+  isDragActive,
+  activeChipWoId,
+  state,
+  wos,
+  onRemoveDraftChip,
+  isFirstInGroup,
+}: {
+  openWo: BtOpenWO | null;
+  openBatch: BtOpenBatch | null;
+  openHostId: number;
+  draftChipWoIds: number[];
+  isDragActive: boolean;
+  activeChipWoId: number | null;
+  state: BtSessionState;
+  wos: BtWorkOrder[];
+  onRemoveDraftChip: (candidateWoId: number, openHostId: number) => void;
+  isFirstInGroup: boolean;
+}) {
+  const partId = openWo?.partId ?? openBatch?.partId ?? 0;
+  const partNumber = openWo?.partNumber ?? openBatch?.partNumber ?? "";
+  const partName = openWo?.partName ?? openBatch?.partName ?? "";
+  const routingTemplateId = openWo?.routingTemplateId ?? openBatch?.routingTemplateId ?? "";
+  const mockProductionState = openWo?.mockProductionState ?? openBatch?.mockProductionState ?? "case1";
+  const projectNumbers = openWo
+    ? [openWo.projectNumber]
+    : (openBatch?.memberProjectNums ?? []);
+
+  const isEligible =
+    isDragActive && activeChipWoId !== null
+      ? isEligibleOpenTarget(openHostId, OPEN_WOS, OPEN_BATCHES) &&
+        (() => {
+          // Also must be same partId as drag chip
+          const dragWo = wos.find((w) => w.woId === activeChipWoId);
+          return dragWo?.partId === partId;
+        })()
+      : false;
+
+  const draftChips = draftChipWoIds
+    .map((id) => wos.find((w) => w.woId === id)!)
+    .filter(Boolean);
+
+  const derived = getOpenRowDerivedValues(
+    openHostId,
+    OPEN_WOS,
+    OPEN_BATCHES,
+    draftChipWoIds,
+    wos
+  );
+
+  const blueVal = (changed: boolean) =>
+    changed ? "text-[#0EA5E9] font-semibold" : "";
+
+  const formatDate = (d: string | null) =>
+    d
+      ? new Date(d).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "2-digit",
+        })
+      : "—";
+
+  // State indicator label
+  const stateLabel: Record<string, string> = {
+    case1: "Open",
+    case2: "In Progress",
+    case3: "Final Step",
+  };
+  const stateLabelColors: Record<string, string> = {
+    case1: "text-emerald-600 dark:text-emerald-400",
+    case2: "text-amber-600 dark:text-amber-400",
+    case3: "text-muted-foreground/50",
+  };
+
+  const openIdentityChip = openWo ? (
+    <OpenWoChip openWo={openWo} />
+  ) : openBatch ? (
+    <OpenBatchChip openBatch={openBatch} />
+  ) : null;
+
+  return (
+    <tr
+      className={[
+        "bg-muted/5 text-muted-foreground/70",
+        isFirstInGroup
+          ? "border-t-2 border-foreground/30"
+          : "border-t border-foreground/10",
+        "transition-opacity",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      {/* Empty checkbox cell — Open rows not selectable */}
+      <td className="px-4 py-1.5 align-middle text-center w-9" />
+
+      {/* Empty lock cell */}
+      <td className="px-4 py-1.5 align-middle text-center" />
+
+      {/* Composition cell */}
+      <td className="px-4 py-1.5 align-top">
+        <OpenCompositionCell
+          openHostId={openHostId}
+          openChip={openIdentityChip}
+          draftChips={draftChips}
+          isEligible={isEligible}
+          isDragActive={isDragActive}
+          onRemoveDraftChip={(candidateWoId) => onRemoveDraftChip(candidateWoId, openHostId)}
+        />
+      </td>
+
+      {/* Part Number — with Active in Production indicator */}
+      <td className="px-4 py-1.5 align-middle">
+        <span className="font-mono text-xs text-muted-foreground/70">
+          {partNumber}
+          {PART_IDS_WITH_OPEN_WORK.has(partId) && (
+            <span title="This part has Work in Progress" className="inline-block ml-1">
+              <Activity
+                className="h-2.5 w-2.5 text-amber-500"
+                aria-label="Has Work in Progress"
+              />
+            </span>
+          )}
+        </span>
+      </td>
+
+      {/* Part Name */}
+      <td className="px-4 py-1.5 align-middle max-w-[160px]">
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs truncate block text-muted-foreground/70" title={partName}>
+            {partName}
+          </span>
+          <span
+            className={["text-[10px] font-medium shrink-0", stateLabelColors[mockProductionState] ?? ""].join(" ")}
+          >
+            {stateLabel[mockProductionState] ?? mockProductionState}
+          </span>
+        </div>
+      </td>
+
+      {/* Demand Qty — openQty + draft additions in blue */}
+      <td className="px-4 py-1.5 align-middle text-right">
+        <span className={["font-mono text-xs", blueVal(derived.demandChanged)].join(" ")}>
+          {derived.demand}
+        </span>
+      </td>
+
+      {/* Planned — dash for Open rows */}
+      <td className="px-4 py-1.5 align-middle text-right">
+        <span className="text-muted-foreground/30 text-xs">—</span>
+      </td>
+
+      {/* Priority */}
+      <td className="px-4 py-1.5 align-middle text-right">
+        <span className={["font-mono text-xs", blueVal(derived.priorityChanged)].join(" ")}>
+          {derived.priority}
+        </span>
+      </td>
+
+      {/* Due Date */}
+      <td className="px-4 py-1.5 align-middle text-right">
+        <span className={["text-xs tabular-nums", blueVal(derived.dueDateChanged)].join(" ")}>
+          {formatDate(derived.dueDate)}
+        </span>
+      </td>
+
+      {/* Project(s) */}
+      <td className="px-4 py-1.5 align-middle">
+        {projectNumbers.length === 1 ? (
+          <span className="font-mono text-xs text-muted-foreground/70">{projectNumbers[0]}</span>
+        ) : (
+          <span
+            className="font-mono text-xs text-muted-foreground/70 cursor-default"
+            title={projectNumbers.join(", ")}
+          >
+            {projectNumbers.slice(0, 2).join(", ")}
+            {projectNumbers.length > 2 ? ` +${projectNumbers.length - 2}` : ""}
+          </span>
+        )}
+      </td>
+
+      {/* Routing */}
+      <td className="px-4 py-1.5 align-middle">
+        <RoutingPills templateId={routingTemplateId} />
+      </td>
+    </tr>
   );
 }
 
@@ -303,7 +615,20 @@ function CandidateRow({
   const chipMovedAway = isSourceRow;
 
   const homeChipHost = chipMovedAway ? state.chipHome[wo.woId] : null;
-  const hostWo = homeChipHost ? wos.find((w) => w.woId === homeChipHost) : null;
+
+  // For placement note: check if it's an Open row or candidate row
+  let placementNoteRef: string | null = null;
+  if (homeChipHost !== null && homeChipHost !== undefined) {
+    if (OPEN_ROW_HOST_IDS.has(homeChipHost)) {
+      // Chip is in an Open row
+      const openWo = OPEN_WOS.find((w) => w.openWoId === homeChipHost);
+      const openBatch = OPEN_BATCHES.find((b) => b.openBatchWoId === homeChipHost);
+      placementNoteRef = openWo?.topLevelRef ?? openBatch?.batchId ?? "open row";
+    } else {
+      const hostWo = wos.find((w) => w.woId === homeChipHost);
+      placementNoteRef = hostWo ? hostWo.topLevelRef : null;
+    }
+  }
 
   const chipsInCell = derived.chipsInCell.map(
     (id) => wos.find((w) => w.woId === id)!
@@ -400,7 +725,7 @@ function CandidateRow({
           isDragActive={isDragActive}
           isCurrentDragHome={activeChipWoId === wo.woId}
           chipMovedAway={chipMovedAway}
-          placementNoteTargetRef={hostWo ? `${hostWo.topLevelRef}` : null}
+          placementNoteTargetRef={placementNoteRef}
           onChipClick={onChipClick}
           onCellClick={onCellClick}
           selectedChipWoId={selectedChipWoId}
@@ -429,6 +754,14 @@ function CandidateRow({
           }
         >
           {wo.partNumber}
+          {PART_IDS_WITH_OPEN_WORK.has(wo.partId) && (
+            <span title="This part has Work in Progress" className="inline-block ml-1">
+              <Activity
+                className="h-2.5 w-2.5 text-amber-500"
+                aria-label="Has Work in Progress"
+              />
+            </span>
+          )}
         </span>
       </td>
 
@@ -662,7 +995,7 @@ function ResetDraftModal({
         <p className="text-xs text-muted-foreground mb-5">
           Reset Draft will return all chips to their home rows, restore default
           lock states (singletons locked, batch candidates unlocked), and clear
-          all Planned Quantity edits. This cannot be undone.
+          all Planned Quantity edits and Open row draft assignments. This cannot be undone.
         </p>
         <div className="flex justify-end gap-2">
           <button
@@ -702,6 +1035,9 @@ export default function BatchingPage() {
 
   // Filters
   const [filterSearch, setFilterSearch] = useState("");
+
+  // Auto-batch dropdown
+  const [autoBatchDropdownOpen, setAutoBatchDropdownOpen] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -747,6 +1083,25 @@ export default function BatchingPage() {
   const singletonGroups = useMemo(
     () => liveGroups.filter((g) => g.isSingleton),
     [liveGroups]
+  );
+
+  // Open rows visible in QP view — only those with draft chip additions
+  const openRowsVisibleInQP = useMemo(() => {
+    return new Set(
+      Object.keys(state.openRowChips)
+        .map(Number)
+        .filter((id) => (state.openRowChips[id]?.length ?? 0) > 0)
+    );
+  }, [state.openRowChips]);
+
+  // Open row visibility function
+  const openRowVisibleInMode = useCallback(
+    (openHostId: number): boolean => {
+      if (viewMode === "All" || viewMode === "Batching") return true;
+      if (viewMode === "QuantityPlanning") return openRowsVisibleInQP.has(openHostId);
+      return false;
+    },
+    [viewMode, openRowsVisibleInQP]
   );
 
   // Filter predicate (applied to both non-singleton and singleton groups)
@@ -801,6 +1156,66 @@ export default function BatchingPage() {
       .filter((g) => g.woIds.length > 0);
   }, [singletonGroups, passesTextFilters, passesViewMode]);
 
+  // Open rows for display: grouped by partId
+  // Each entry: { partId, openWo?: BtOpenWO, openBatch?: BtOpenBatch, openHostId }
+  type OpenRowEntry = {
+    partId: number;
+    openHostId: number;
+    openWo: BtOpenWO | null;
+    openBatch: BtOpenBatch | null;
+  };
+
+  const allOpenRows = useMemo((): OpenRowEntry[] => {
+    const rows: OpenRowEntry[] = [];
+    for (const w of OPEN_WOS) {
+      rows.push({ partId: w.partId, openHostId: w.openWoId, openWo: w, openBatch: null });
+    }
+    for (const b of OPEN_BATCHES) {
+      rows.push({ partId: b.partId, openHostId: b.openBatchWoId, openWo: null, openBatch: b });
+    }
+    return rows;
+  }, []);
+
+  // Open rows filtered by text search
+  const filteredOpenRows = useMemo((): OpenRowEntry[] => {
+    return allOpenRows.filter((row) => {
+      // Text filter: match part number or part name
+      if (filterSearch) {
+        const q = filterSearch.toLowerCase();
+        const pn = (row.openWo?.partNumber ?? row.openBatch?.partNumber ?? "").toLowerCase();
+        const pname = (row.openWo?.partName ?? row.openBatch?.partName ?? "").toLowerCase();
+        if (!pn.includes(q) && !pname.includes(q)) return false;
+      }
+      // View mode filter
+      if (!openRowVisibleInMode(row.openHostId)) return false;
+      // Show Only Actionable filter
+      if (state.showOnlyActionable) {
+        const minCandidateDemand = 1; // simplified: minimum possible demand
+        const isActionable = (() => {
+          const ps = row.openWo?.mockProductionState ?? row.openBatch?.mockProductionState;
+          if (ps === "case1" || ps === "case3") return true;
+          if (ps === "case2") {
+            const headroom = row.openWo?.mockHeadroom ?? row.openBatch?.mockHeadroom ?? 0;
+            return headroom >= minCandidateDemand;
+          }
+          return true;
+        })();
+        if (!isActionable) return false;
+      }
+      return true;
+    });
+  }, [allOpenRows, filterSearch, state.showOnlyActionable, openRowVisibleInMode]);
+
+  // Build a map of partId → open rows for rendering alongside candidate groups
+  const openRowsByPartId = useMemo((): Map<number, OpenRowEntry[]> => {
+    const map = new Map<number, OpenRowEntry[]>();
+    for (const row of filteredOpenRows) {
+      if (!map.has(row.partId)) map.set(row.partId, []);
+      map.get(row.partId)!.push(row);
+    }
+    return map;
+  }, [filteredOpenRows]);
+
   // Counts for display
   const totalVisibleCandidates = filteredNonSingletonGroups.reduce(
     (sum, g) => sum + g.woIds.length,
@@ -846,8 +1261,14 @@ export default function BatchingPage() {
     for (const hostWoId of visibleLockedHostWoIds) {
       count += getChipsInCell(state.chipHome, hostWoId).length;
     }
+    // Add candidate WOs in Open row draft chips that are visible
+    for (const [openHostIdStr, draftWoIds] of Object.entries(state.openRowChips)) {
+      const openHostId = Number(openHostIdStr);
+      if (!openRowVisibleInMode(openHostId)) continue;
+      count += draftWoIds.length;
+    }
     return count;
-  }, [viewMode, visibleLockedHostWoIds, state.chipHome]);
+  }, [viewMode, visibleLockedHostWoIds, state.chipHome, state.openRowChips, openRowVisibleInMode]);
 
   // Auto-batch enabled: only in Batching or All views, and when visible unlocked groups have 2+ members
   const autoBatchEnabled = useMemo(() => {
@@ -856,6 +1277,7 @@ export default function BatchingPage() {
   }, [viewMode, filteredNonSingletonGroups]);
 
   // Reset Draft enabled when any chip is not at home or any planned qty exceeds demand
+  // or any Open row chips exist
   const hasAnyChipNotAtHome = useMemo(
     () =>
       Object.entries(state.chipHome).some(
@@ -874,7 +1296,12 @@ export default function BatchingPage() {
     return false;
   }, [state.plannedQty]);
 
-  const resetDraftEnabled = hasAnyChipNotAtHome || hasAnyPlannedQtyEdited;
+  const hasAnyOpenRowChips = useMemo(
+    () => Object.values(state.openRowChips).some((arr) => arr.length > 0),
+    [state.openRowChips]
+  );
+
+  const resetDraftEnabled = hasAnyChipNotAtHome || hasAnyPlannedQtyEdited || hasAnyOpenRowChips;
 
   // DnD: get the dragged WO for the overlay
   const activeChipWo = activeChipWoId
@@ -891,12 +1318,26 @@ export default function BatchingPage() {
 
   function handleDragEnd(event: DragEndEvent) {
     const woId = event.active.data.current?.woId as number | undefined;
-    const targetHostWoId = event.over?.data.current?.hostWoId as
-      | number
-      | undefined;
+    const targetData = event.over?.data.current;
+    const targetHostWoId = targetData?.hostWoId as number | undefined;
+    const isOpenRowTarget = targetData?.isOpenRow === true;
 
     if (woId !== undefined && targetHostWoId !== undefined) {
-      setState((prev) => moveChip(woId, targetHostWoId, prev, ALL_BT_WOS));
+      if (isOpenRowTarget) {
+        // Dropping onto an Open row
+        if (isEligibleOpenTarget(targetHostWoId, OPEN_WOS, OPEN_BATCHES)) {
+          const dragWo = ALL_BT_WOS.find((w) => w.woId === woId);
+          const openWo = OPEN_WOS.find((w) => w.openWoId === targetHostWoId);
+          const openBatch = OPEN_BATCHES.find((b) => b.openBatchWoId === targetHostWoId);
+          const openPartId = openWo?.partId ?? openBatch?.partId;
+          if (dragWo && dragWo.partId === openPartId) {
+            setState((prev) => addChipToOpenRow(woId, targetHostWoId, prev));
+          }
+        }
+      } else {
+        // Normal candidate-to-candidate move
+        setState((prev) => moveChip(woId, targetHostWoId, prev, ALL_BT_WOS));
+      }
     }
 
     setActiveChipWoId(null);
@@ -934,6 +1375,10 @@ export default function BatchingPage() {
     setState((prev) => updatePlannedQty(hostWoId, qty, prev));
   }
 
+  function handleRemoveDraftChipFromOpenRow(candidateWoId: number, openHostId: number) {
+    setState((prev) => removeChipFromOpenRow(candidateWoId, openHostId, prev));
+  }
+
   function handleConfirmDraft() {
     const { newState, stats } = confirmDraft(state, ALL_BT_WOS, visibleLockedHostWoIds);
     setState(newState);
@@ -945,29 +1390,40 @@ export default function BatchingPage() {
       );
     if (stats.standalone > 0)
       parts.push(`${stats.standalone} standalone`);
-    toast.success(
-      `Confirmed ${stats.totalWOs} WO${stats.totalWOs > 1 ? "s" : ""} (${parts.join(", ")}). Open in execution lenses.`
-    );
+    let msg = `Confirmed ${stats.totalWOs} WO${stats.totalWOs > 1 ? "s" : ""}`;
+    if (parts.length > 0) msg += ` (${parts.join(", ")})`;
+    if (stats.openRowsExtended > 0)
+      msg += `. ${stats.openRowsExtended} Open row${stats.openRowsExtended !== 1 ? "s" : ""} extended.`;
+    else
+      msg += ". Open in execution lenses.";
+    toast.success(msg);
   }
 
   function handleAutoBatch() {
-    // Phase 2: populate openRowHostWoIds from Open Production Rows when they exist.
-    // Phase 1: no Open rows — empty set is correct and Phase-2-ready.
-    const openRowHostWoIds = new Set<number>();
+    const openRowHostWoIds = new Set<number>(OPEN_ROW_HOST_IDS);
     const { newState, stats } = autoBatchCandidates(
       state,
       ALL_BT_WOS,
       allVisibleWoIds,
-      openRowHostWoIds
+      openRowHostWoIds,
+      state.autoBatchTier,
+      OPEN_WOS,
+      OPEN_BATCHES
     );
     setState(newState);
     if (stats.batchesCreated === 0) {
       toast("No batchable candidates found.");
       return;
     }
+    const tierLabel = state.autoBatchTier === "include-unstarted-wip" ? " (incl. unstarted WIP)" : "";
     toast.success(
-      `Auto-batched ${stats.totalBatched} candidate${stats.totalBatched !== 1 ? "s" : ""} into ${stats.batchesCreated} draft batch${stats.batchesCreated !== 1 ? "es" : ""}.`
+      `Auto-batched${tierLabel} ${stats.totalBatched} candidate${stats.totalBatched !== 1 ? "s" : ""} into ${stats.batchesCreated} draft batch${stats.batchesCreated !== 1 ? "es" : ""}.`
     );
+  }
+
+  function handleSetAutoBatchTier(tier: "candidates-only" | "include-unstarted-wip") {
+    setState((prev) => ({ ...prev, autoBatchTier: tier }));
+    setAutoBatchDropdownOpen(false);
   }
 
   function handleResetDraft() {
@@ -1068,7 +1524,8 @@ export default function BatchingPage() {
   function getEmptyStateMessage(): string {
     const hasVisibleRows =
       filteredNonSingletonGroups.length > 0 ||
-      (state.showHiddenSingletons && filteredSingletonGroups.length > 0);
+      (state.showHiddenSingletons && filteredSingletonGroups.length > 0) ||
+      filteredOpenRows.length > 0;
 
     if (hasVisibleRows) return ""; // not empty
 
@@ -1101,11 +1558,12 @@ export default function BatchingPage() {
     emptyMessage !== "" ||
     (allConfirmed &&
       filteredNonSingletonGroups.length === 0 &&
-      (!state.showHiddenSingletons || filteredSingletonGroups.length === 0));
+      (!state.showHiddenSingletons || filteredSingletonGroups.length === 0) &&
+      filteredOpenRows.length === 0);
 
-  // Render a group of rows
-  function renderRows(woIds: number[]) {
-    return woIds.map((woId, idx) => {
+  // Render a group of candidate rows (with Open rows appended for each partId)
+  function renderCandidateGroupWithOpenRows(woIds: number[], partId: number) {
+    const candidateRows = woIds.map((woId, idx) => {
       const wo = visibleWOs.find((w) => w.woId === woId);
       if (!wo) return null;
 
@@ -1120,6 +1578,7 @@ export default function BatchingPage() {
           state.confirmedWoIds,
           state.lockedWoIds
         ) &&
+        // Not greyed if this IS the active chip's own row
         wo.woId !== activeChipWoId;
 
       return (
@@ -1142,9 +1601,82 @@ export default function BatchingPage() {
         />
       );
     });
+
+    // Append Open rows for this partId
+    const openRowsForPartId = openRowsByPartId.get(partId) ?? [];
+    const openRows = openRowsForPartId.map((row, idx) => {
+      const draftChipWoIds = state.openRowChips[row.openHostId] ?? [];
+
+      // Grey out Open rows during drag if:
+      // - they are not eligible (case2/case3 or wrong partId)
+      const isOpenGreyedOut =
+        isDragActive && activeChipWoId !== null
+          ? (() => {
+              const dragWo = ALL_BT_WOS.find((w) => w.woId === activeChipWoId);
+              const isPartIdMatch = dragWo?.partId === row.partId;
+              const isEligibleCase = isEligibleOpenTarget(row.openHostId, OPEN_WOS, OPEN_BATCHES);
+              return !(isPartIdMatch && isEligibleCase);
+            })()
+          : false;
+
+      return (
+        <tr
+          key={row.openHostId}
+          className={isOpenGreyedOut ? "opacity-30 pointer-events-none" : ""}
+          style={{ display: "contents" }}
+        >
+          <OpenProductionRow
+            key={row.openHostId}
+            openWo={row.openWo}
+            openBatch={row.openBatch}
+            openHostId={row.openHostId}
+            draftChipWoIds={draftChipWoIds}
+            isDragActive={isDragActive}
+            activeChipWoId={activeChipWoId}
+            state={state}
+            wos={ALL_BT_WOS}
+            onRemoveDraftChip={handleRemoveDraftChipFromOpenRow}
+            isFirstInGroup={false}
+          />
+        </tr>
+      );
+    });
+
+    return [...candidateRows, ...openRows];
   }
 
+  // For rendering Open rows that belong to partIds NOT in any candidate group
+  // (i.e. partIds that only have Open rows, no visible candidates in current view)
+  const candidatePartIds = useMemo(() => {
+    const ids = new Set<number>();
+    for (const g of filteredNonSingletonGroups) ids.add(g.partId);
+    if (state.showHiddenSingletons) {
+      for (const g of filteredSingletonGroups) ids.add(g.partId);
+    }
+    return ids;
+  }, [filteredNonSingletonGroups, filteredSingletonGroups, state.showHiddenSingletons]);
+
+  const orphanOpenRows = useMemo(() => {
+    return filteredOpenRows.filter((row) => !candidatePartIds.has(row.partId));
+  }, [filteredOpenRows, candidatePartIds]);
+
   const hasSelection = selectedRowIds.size > 0;
+
+  // Tooltip for Confirm Draft
+  const confirmDraftTooltip = useMemo(() => {
+    if (viewMode === "Batching") {
+      return "Confirm Draft commits locked rows. Switch to Quantity Planning view to commit.";
+    }
+    if (confirmableCount > 0) {
+      const openRowCount = Object.values(state.openRowChips).reduce(
+        (sum, arr) => sum + (arr.length > 0 ? 1 : 0), 0
+      );
+      let tip = `Commit ${confirmableCount} WO${confirmableCount !== 1 ? "s" : ""} to Open`;
+      if (openRowCount > 0) tip += `. ${openRowCount} Open row${openRowCount !== 1 ? "s" : ""} receive new members.`;
+      return tip;
+    }
+    return "No locked rows visible";
+  }, [viewMode, confirmableCount, state.openRowChips]);
 
   return (
     <>
@@ -1225,28 +1757,118 @@ export default function BatchingPage() {
               Show Unbatchable Parts
             </button>
 
+            {/* Show Only Actionable Production Rows filter */}
+            <button
+              role="switch"
+              aria-checked={state.showOnlyActionable}
+              aria-label="Show Only Actionable Production Rows"
+              onClick={() =>
+                setState((prev) => ({
+                  ...prev,
+                  showOnlyActionable: !prev.showOnlyActionable,
+                }))
+              }
+              className="flex items-center gap-1.5 text-xs cursor-pointer select-none focus:outline-none"
+              title="When ON, hides Open rows where the batch has insufficient headroom (Case 2 with 0 headroom)"
+            >
+              <span
+                className={[
+                  "relative inline-flex h-4 w-8 items-center rounded-full transition-colors shrink-0",
+                  state.showOnlyActionable ? "bg-primary" : "bg-muted",
+                ].join(" ")}
+              >
+                <span
+                  className={[
+                    "inline-block h-3 w-3 transform rounded-full bg-white shadow transition-transform",
+                    state.showOnlyActionable
+                      ? "translate-x-4"
+                      : "translate-x-0.5",
+                  ].join(" ")}
+                />
+              </span>
+              Only Actionable Open Rows
+            </button>
+
             <div className="flex-1" />
 
-            {/* Auto-Batch Candidates button */}
-            <button
-              disabled={!autoBatchEnabled}
-              title={
-                viewMode === "QuantityPlanning"
-                  ? "Auto-Batch operates on unlocked rows. Switch to Batching or All view."
-                  : autoBatchEnabled
-                  ? "Combines all eligible unlocked candidates into draft batches by PartID."
-                  : "No batchable candidates available"
-              }
-              onClick={handleAutoBatch}
-              className={[
-                "rounded px-3 py-1.5 text-sm font-medium transition-colors",
-                autoBatchEnabled
-                  ? "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                  : "bg-muted text-muted-foreground cursor-not-allowed",
-              ].join(" ")}
-            >
-              Auto-Batch Candidates
-            </button>
+            {/* Auto-Batch Candidates button with dropdown */}
+            <div className="relative flex shrink-0">
+              <button
+                disabled={!autoBatchEnabled}
+                title={
+                  viewMode === "QuantityPlanning"
+                    ? "Auto-Batch operates on unlocked rows. Switch to Batching or All view."
+                    : autoBatchEnabled
+                    ? `Combines eligible unlocked candidates into draft batches. Tier: ${
+                        state.autoBatchTier === "include-unstarted-wip"
+                          ? "Include Unstarted WIP"
+                          : "Candidates Only"
+                      }`
+                    : "No batchable candidates available"
+                }
+                onClick={handleAutoBatch}
+                className={[
+                  "rounded-l px-3 py-1.5 text-sm font-medium transition-colors border-r border-border/30",
+                  autoBatchEnabled
+                    ? "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                    : "bg-muted text-muted-foreground cursor-not-allowed",
+                ].join(" ")}
+              >
+                Auto-Batch
+              </button>
+              <button
+                onClick={() => setAutoBatchDropdownOpen((o) => !o)}
+                className={[
+                  "rounded-r px-2 py-1.5 text-sm font-medium transition-colors",
+                  autoBatchEnabled
+                    ? "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                    : "bg-muted text-muted-foreground cursor-not-allowed",
+                ].join(" ")}
+                title="Select auto-batch tier"
+              >
+                <ChevronDown className="h-3.5 w-3.5" />
+              </button>
+
+              {/* Dropdown */}
+              {autoBatchDropdownOpen && (
+                <div className="absolute right-0 top-full mt-1 z-20 rounded border border-border bg-background shadow-lg min-w-[220px] py-1">
+                  <button
+                    onClick={() => handleSetAutoBatchTier("candidates-only")}
+                    className={[
+                      "w-full text-left px-3 py-1.5 text-xs hover:bg-muted transition-colors",
+                      state.autoBatchTier === "candidates-only"
+                        ? "text-foreground font-medium"
+                        : "text-muted-foreground",
+                    ].join(" ")}
+                  >
+                    <div className="font-medium">Auto-Batch: Only Candidates</div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">
+                      Groups candidates by PartID only
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => handleSetAutoBatchTier("include-unstarted-wip")}
+                    className={[
+                      "w-full text-left px-3 py-1.5 text-xs hover:bg-muted transition-colors",
+                      state.autoBatchTier === "include-unstarted-wip"
+                        ? "text-foreground font-medium"
+                        : "text-muted-foreground",
+                    ].join(" ")}
+                  >
+                    <div className="font-medium">Auto-Batch: Include Unstarted WIP</div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">
+                      Also assigns singletons to matching Case 1 Open rows
+                    </div>
+                  </button>
+                  <div className="px-3 py-1.5 text-xs text-muted-foreground/50 cursor-not-allowed border-t border-border mt-1 pt-1">
+                    <div className="font-medium line-through">Auto-Batch: Include Started WIP</div>
+                    <div className="text-[10px] mt-0.5">
+                      Available when execution data exists (Phase 2.5)
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Reset Draft button */}
             <button
@@ -1270,13 +1892,7 @@ export default function BatchingPage() {
             {/* Confirm Draft button */}
             <button
               disabled={confirmableCount === 0}
-              title={
-                viewMode === "Batching"
-                  ? "Confirm Draft commits locked rows. Switch to Quantity Planning view to commit."
-                  : confirmableCount > 0
-                  ? `Commit ${confirmableCount} WO${confirmableCount !== 1 ? "s" : ""} to Open`
-                  : "No locked rows visible"
-              }
+              title={confirmDraftTooltip}
               onClick={handleConfirmDraft}
               className={[
                 "rounded px-3 py-1.5 text-sm font-medium transition-colors",
@@ -1291,7 +1907,7 @@ export default function BatchingPage() {
 
           {/* ── Count bar ── */}
           <div className="px-4 py-1.5 border-b border-border text-xs text-muted-foreground shrink-0">
-            {totalVisibleCandidates > 0 || (state.showHiddenSingletons && visibleSingletonCount > 0) ? (
+            {totalVisibleCandidates > 0 || (state.showHiddenSingletons && visibleSingletonCount > 0) || filteredOpenRows.length > 0 ? (
               <>
                 {totalVisibleCandidates > 0 && (
                   <>
@@ -1323,6 +1939,15 @@ export default function BatchingPage() {
                     </span>
                   </span>
                 )}
+                {filteredOpenRows.length > 0 && (
+                  <span>
+                    {totalVisibleCandidates > 0 || visibleSingletonCount > 0 ? " · " : ""}
+                    <span className="text-muted-foreground">
+                      {filteredOpenRows.length} open production row
+                      {filteredOpenRows.length !== 1 ? "s" : ""}
+                    </span>
+                  </span>
+                )}
               </>
             ) : allConfirmed ? (
               <span>All candidates confirmed.</span>
@@ -1339,6 +1964,13 @@ export default function BatchingPage() {
           </div>
 
           {/* ── Candidate Table ── */}
+          {/* Close dropdown on outside click */}
+          {autoBatchDropdownOpen && (
+            <div
+              className="fixed inset-0 z-10"
+              onClick={() => setAutoBatchDropdownOpen(false)}
+            />
+          )}
           <div className="flex-1 overflow-auto">
             {showEmptyState && !allConfirmed ? (
               <div className="flex items-center justify-center h-40 text-muted-foreground text-sm text-center px-8">
@@ -1347,7 +1979,8 @@ export default function BatchingPage() {
             ) : allConfirmed &&
               filteredNonSingletonGroups.length === 0 &&
               (!state.showHiddenSingletons ||
-                filteredSingletonGroups.length === 0) ? (
+                filteredSingletonGroups.length === 0) &&
+              filteredOpenRows.length === 0 ? (
               <div className="flex items-center justify-center h-40 text-muted-foreground text-sm">
                 All candidates confirmed.
               </div>
@@ -1416,10 +2049,10 @@ export default function BatchingPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {/* PartID groups (non-singletons) */}
+                  {/* PartID groups (non-singletons) — with Open rows appended per group */}
                   {filteredNonSingletonGroups.map((group) => (
                     <React.Fragment key={group.partId}>
-                      {renderRows(group.woIds)}
+                      {renderCandidateGroupWithOpenRows(group.woIds, group.partId)}
                     </React.Fragment>
                   ))}
 
@@ -1437,11 +2070,43 @@ export default function BatchingPage() {
                         </tr>
                         {filteredSingletonGroups.map((group) => (
                           <React.Fragment key={group.partId}>
-                            {renderRows(group.woIds)}
+                            {renderCandidateGroupWithOpenRows(group.woIds, group.partId)}
                           </React.Fragment>
                         ))}
                       </>
                     )}
+
+                  {/* Orphan Open rows — Open rows for partIds with no visible candidate rows */}
+                  {orphanOpenRows.length > 0 && (
+                    <>
+                      <tr>
+                        <td
+                          colSpan={11}
+                          className="px-4 py-2 text-xs font-semibold text-muted-foreground border-t-4 border-border bg-muted/10 uppercase tracking-wide"
+                        >
+                          Open Production Only ({orphanOpenRows.length})
+                        </td>
+                      </tr>
+                      {orphanOpenRows.map((row) => {
+                        const draftChipWoIds = state.openRowChips[row.openHostId] ?? [];
+                        return (
+                          <OpenProductionRow
+                            key={row.openHostId}
+                            openWo={row.openWo}
+                            openBatch={row.openBatch}
+                            openHostId={row.openHostId}
+                            draftChipWoIds={draftChipWoIds}
+                            isDragActive={isDragActive}
+                            activeChipWoId={activeChipWoId}
+                            state={state}
+                            wos={ALL_BT_WOS}
+                            onRemoveDraftChip={handleRemoveDraftChipFromOpenRow}
+                            isFirstInGroup={true}
+                          />
+                        );
+                      })}
+                    </>
+                  )}
                 </tbody>
               </table>
             )}
