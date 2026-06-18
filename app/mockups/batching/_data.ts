@@ -1,6 +1,6 @@
 // Batching Lens mockup — synthetic data
 // Phase 1: candidate-only workspace. All WOs are Unreleased + stockFulfillmentReviewedAt set.
-// No Active Production Rows (Open WOs/batches) exist in Phase 1 data.
+// Phase 2: Open Production Rows (Open WOs and Open Batches) as drop targets.
 // No API calls. No persistence.
 
 import { MOCK_PARTS } from "@/app/mockups/parts/_data";
@@ -64,6 +64,51 @@ export type BtWorkOrder = {
   parentPartName: string | null;
   // Ancestry from the top-level item down to the immediate parent (for hover tooltip)
   ancestryPath: Array<{ partNumber: string; partName: string }>;
+};
+
+// ─── Phase 2: Open Production Row types ──────────────────────────────────────
+
+// mockProductionState:
+//   case1 = no current batch; adding candidates opens new headroom
+//   case2 = existing batch with some headroom (mockHeadroom >= 0)
+//   case3 = batch in terminal/final step; no new members accepted
+export type MockProductionState = "case1" | "case2" | "case3";
+
+export type BtOpenWO = {
+  openWoId: number;         // unique ID in 50000–59999 range
+  projectId: number;
+  projectNumber: string;
+  projectColor: ProjectColor | null;
+  topLevelRef: string;
+  partId: number;
+  partNumber: string;
+  partName: string;
+  partType: "Part" | "Assembly";
+  openQty: number;          // existing committed quantity
+  priority: number;
+  dueDate: string | null;
+  routingTemplateId: string;
+  // mockup-only: derived from real step-state in implementation
+  mockProductionState: MockProductionState;
+  mockHeadroom: number | null; // only set for case2 rows; null for case1/case3
+};
+
+export type BtOpenBatch = {
+  batchId: string;          // e.g. "OPEN-BATCH-001"
+  openBatchWoId: number;    // unique ID in 60000–69999 range (acts as host ID)
+  partId: number;
+  partNumber: string;
+  partName: string;
+  partType: "Part" | "Assembly";
+  openQty: number;
+  priority: number;
+  dueDate: string | null;
+  routingTemplateId: string;
+  memberWoIds: number[];    // IDs of existing Open WOs in this batch (60100+ range)
+  memberProjectNums: string[]; // for display
+  // mockup-only
+  mockProductionState: MockProductionState;
+  mockHeadroom: number | null;
 };
 
 // ─── WO Generation (BOM walk) ─────────────────────────────────────────────────
@@ -324,10 +369,396 @@ export function computeDefaultLockState(
   return { lockedWoIds, plannedQty };
 }
 
+// ─── Phase 2: Open Production Rows data ──────────────────────────────────────
+
+// Helper: derive partNumber, partName, partType from MOCK_PARTS by partId
+function getPartInfo(partId: number): { partNumber: string; partName: string; partType: "Part" | "Assembly" } {
+  const part = MOCK_PARTS.find((p) => p.partId === partId);
+  return {
+    partNumber: part?.partNumber ?? `PN-${partId}`,
+    partName: part?.partName ?? `Part ${partId}`,
+    partType: (part?.partType as "Part" | "Assembly") ?? "Part",
+  };
+}
+
+export const OPEN_WOS: BtOpenWO[] = [
+  // partId 1942 — Upper Housing — from project 10030 (blue)
+  {
+    openWoId: 50001,
+    projectId: 1,
+    projectNumber: "10030",
+    projectColor: P10030.color,
+    topLevelRef: "10030.04",
+    partId: 1942,
+    ...getPartInfo(1942),
+    openQty: 2,
+    priority: 3,
+    dueDate: "2026-07-15",
+    routingTemplateId: defaultTemplateId(getPartInfo(1942).partType, 1942),
+    mockProductionState: "case1",
+    mockHeadroom: null,
+  },
+  // partId 1948 — Drive Shaft — from project 10489 (orange) — case2, tight headroom
+  {
+    openWoId: 50002,
+    projectId: 2,
+    projectNumber: "10489",
+    projectColor: P10489.color,
+    topLevelRef: "10489.01",
+    partId: 1948,
+    ...getPartInfo(1948),
+    openQty: 4,
+    priority: 4,
+    dueDate: "2026-07-20",
+    routingTemplateId: defaultTemplateId(getPartInfo(1948).partType, 1948),
+    mockProductionState: "case2",
+    mockHeadroom: 1,
+  },
+  // partId 1908 — Base Plate — from project 10121 (green) — case1
+  {
+    openWoId: 50003,
+    projectId: 3,
+    projectNumber: "10121",
+    projectColor: P10121.color,
+    topLevelRef: "10121.01",
+    partId: 1908,
+    ...getPartInfo(1908),
+    openQty: 3,
+    priority: 5,
+    dueDate: "2026-06-30",
+    routingTemplateId: defaultTemplateId(getPartInfo(1908).partType, 1908),
+    mockProductionState: "case1",
+    mockHeadroom: null,
+  },
+  // partId 1951 — End Cap Left — from project 10030 (blue) — case1
+  {
+    openWoId: 50004,
+    projectId: 4,
+    projectNumber: "10030",
+    projectColor: P10030.color,
+    topLevelRef: "10030.01",
+    partId: 1951,
+    ...getPartInfo(1951),
+    openQty: 6,
+    priority: 2,
+    dueDate: "2026-08-01",
+    routingTemplateId: defaultTemplateId(getPartInfo(1951).partType, 1951),
+    mockProductionState: "case1",
+    mockHeadroom: null,
+  },
+  // partId 2035 — Cover Panel — from project 10412 (red) — case3
+  {
+    openWoId: 50005,
+    projectId: 5,
+    projectNumber: "10412",
+    projectColor: P10412.color,
+    topLevelRef: "10412.02",
+    partId: 2035,
+    ...getPartInfo(2035),
+    openQty: 1,
+    priority: 1,
+    dueDate: "2026-07-10",
+    routingTemplateId: defaultTemplateId(getPartInfo(2035).partType, 2035),
+    mockProductionState: "case3",
+    mockHeadroom: null,
+  },
+  // partId 1967 — Bushing Retainer — from project 10121 (green) — case1
+  {
+    openWoId: 50006,
+    projectId: 6,
+    projectNumber: "10121",
+    projectColor: P10121.color,
+    topLevelRef: "10121.06",
+    partId: 1967,
+    ...getPartInfo(1967),
+    openQty: 8,
+    priority: 3,
+    dueDate: "2026-07-25",
+    routingTemplateId: defaultTemplateId(getPartInfo(1967).partType, 1967),
+    mockProductionState: "case1",
+    mockHeadroom: null,
+  },
+  // partId 1954 — End Cap Right — from project 10030 (blue) — case2 with headroom
+  {
+    openWoId: 50007,
+    projectId: 7,
+    projectNumber: "10030",
+    projectColor: P10030.color,
+    topLevelRef: "10030.02",
+    partId: 1954,
+    ...getPartInfo(1954),
+    openQty: 5,
+    priority: 2,
+    dueDate: "2026-08-05",
+    routingTemplateId: defaultTemplateId(getPartInfo(1954).partType, 1954),
+    mockProductionState: "case2",
+    mockHeadroom: 3,
+  },
+  // partId 2066 — Gear Assembly — from project 10489 (orange) — case1
+  {
+    openWoId: 50008,
+    projectId: 8,
+    projectNumber: "10489",
+    projectColor: P10489.color,
+    topLevelRef: "10489.02",
+    partId: 2066,
+    ...getPartInfo(2066),
+    openQty: 2,
+    priority: 4,
+    dueDate: "2026-07-18",
+    routingTemplateId: defaultTemplateId(getPartInfo(2066).partType, 2066),
+    mockProductionState: "case1",
+    mockHeadroom: null,
+  },
+  // partId 2219 — Spindle Housing — from project 10030 (blue) — case2, zero headroom
+  {
+    openWoId: 50009,
+    projectId: 9,
+    projectNumber: "10030",
+    projectColor: P10030.color,
+    topLevelRef: "10030.03",
+    partId: 2219,
+    ...getPartInfo(2219),
+    openQty: 1,
+    priority: 5,
+    dueDate: "2026-06-28",
+    routingTemplateId: defaultTemplateId(getPartInfo(2219).partType, 2219),
+    mockProductionState: "case2",
+    mockHeadroom: 0,
+  },
+  // partId 1922 — Side Bracket — from project 10121 (green) — case1
+  {
+    openWoId: 50010,
+    projectId: 10,
+    projectNumber: "10121",
+    projectColor: P10121.color,
+    topLevelRef: "10121.02",
+    partId: 1922,
+    ...getPartInfo(1922),
+    openQty: 3,
+    priority: 3,
+    dueDate: "2026-07-30",
+    routingTemplateId: defaultTemplateId(getPartInfo(1922).partType, 1922),
+    mockProductionState: "case1",
+    mockHeadroom: null,
+  },
+  // partId 1948 — Drive Shaft — from project 10030 (blue) — case1 (second open WO for same part)
+  {
+    openWoId: 50011,
+    projectId: 11,
+    projectNumber: "10030",
+    projectColor: P10030.color,
+    topLevelRef: "10030.08",
+    partId: 1948,
+    ...getPartInfo(1948),
+    openQty: 4,
+    priority: 4,
+    dueDate: "2026-08-10",
+    routingTemplateId: defaultTemplateId(getPartInfo(1948).partType, 1948),
+    mockProductionState: "case1",
+    mockHeadroom: null,
+  },
+  // partId 2035 — Cover Panel — from project 10121 (green) — case1
+  {
+    openWoId: 50012,
+    projectId: 12,
+    projectNumber: "10121",
+    projectColor: P10121.color,
+    topLevelRef: "10121.03",
+    partId: 2035,
+    ...getPartInfo(2035),
+    openQty: 1,
+    priority: 2,
+    dueDate: "2026-07-22",
+    routingTemplateId: defaultTemplateId(getPartInfo(2035).partType, 2035),
+    mockProductionState: "case1",
+    mockHeadroom: null,
+  },
+  // partId 1942 — Upper Housing — from project 10412 (red) — case3
+  {
+    openWoId: 50013,
+    projectId: 13,
+    projectNumber: "10412",
+    projectColor: P10412.color,
+    topLevelRef: "10412.01",
+    partId: 1942,
+    ...getPartInfo(1942),
+    openQty: 2,
+    priority: 3,
+    dueDate: "2026-08-15",
+    routingTemplateId: defaultTemplateId(getPartInfo(1942).partType, 1942),
+    mockProductionState: "case3",
+    mockHeadroom: null,
+  },
+  // partId 1929 — Pivot Pin — from project 10121 (green) — case1
+  {
+    openWoId: 50014,
+    projectId: 14,
+    projectNumber: "10121",
+    projectColor: P10121.color,
+    topLevelRef: "10121.05",
+    partId: 1929,
+    ...getPartInfo(1929),
+    openQty: 10,
+    priority: 1,
+    dueDate: "2026-07-05",
+    routingTemplateId: defaultTemplateId(getPartInfo(1929).partType, 1929),
+    mockProductionState: "case1",
+    mockHeadroom: null,
+  },
+  // partId 2063 — Seal Ring — from project 10030 (blue) — case1
+  {
+    openWoId: 50015,
+    projectId: 15,
+    projectNumber: "10030",
+    projectColor: P10030.color,
+    topLevelRef: "10030.06",
+    partId: 2063,
+    ...getPartInfo(2063),
+    openQty: 12,
+    priority: 2,
+    dueDate: "2026-08-20",
+    routingTemplateId: defaultTemplateId(getPartInfo(2063).partType, 2063),
+    mockProductionState: "case1",
+    mockHeadroom: null,
+  },
+];
+
+export const OPEN_BATCHES: BtOpenBatch[] = [
+  // Multi-project batch for partId 1942 (Upper Housing) — case1
+  {
+    batchId: "OPEN-BATCH-001",
+    openBatchWoId: 60001,
+    partId: 1942,
+    ...getPartInfo(1942),
+    openQty: 5,
+    priority: 3,
+    dueDate: "2026-07-12",
+    routingTemplateId: defaultTemplateId(getPartInfo(1942).partType, 1942),
+    memberWoIds: [60101, 60102],
+    memberProjectNums: ["10030", "10489"],
+    mockProductionState: "case1",
+    mockHeadroom: null,
+  },
+  // partId 1948 (Drive Shaft) — case2 with insufficient headroom
+  {
+    batchId: "OPEN-BATCH-002",
+    openBatchWoId: 60002,
+    partId: 1948,
+    ...getPartInfo(1948),
+    openQty: 8,
+    priority: 4,
+    dueDate: "2026-07-08",
+    routingTemplateId: defaultTemplateId(getPartInfo(1948).partType, 1948),
+    memberWoIds: [60103, 60104],
+    memberProjectNums: ["10121", "10030"],
+    mockProductionState: "case2",
+    mockHeadroom: 0,
+  },
+  // partId 2066 (Gear Assembly) — case1
+  {
+    batchId: "OPEN-BATCH-003",
+    openBatchWoId: 60003,
+    partId: 2066,
+    ...getPartInfo(2066),
+    openQty: 3,
+    priority: 4,
+    dueDate: "2026-07-25",
+    routingTemplateId: defaultTemplateId(getPartInfo(2066).partType, 2066),
+    memberWoIds: [60105, 60106, 60107],
+    memberProjectNums: ["10121", "10412", "10489"],
+    mockProductionState: "case1",
+    mockHeadroom: null,
+  },
+  // partId 1951 (End Cap Left) — case3
+  {
+    batchId: "OPEN-BATCH-004",
+    openBatchWoId: 60004,
+    partId: 1951,
+    ...getPartInfo(1951),
+    openQty: 4,
+    priority: 2,
+    dueDate: "2026-07-30",
+    routingTemplateId: defaultTemplateId(getPartInfo(1951).partType, 1951),
+    memberWoIds: [60108, 60109],
+    memberProjectNums: ["10030", "10121"],
+    mockProductionState: "case3",
+    mockHeadroom: null,
+  },
+  // partId 1954 (End Cap Right) — case2 with sufficient headroom
+  {
+    batchId: "OPEN-BATCH-005",
+    openBatchWoId: 60005,
+    partId: 1954,
+    ...getPartInfo(1954),
+    openQty: 6,
+    priority: 2,
+    dueDate: "2026-08-02",
+    routingTemplateId: defaultTemplateId(getPartInfo(1954).partType, 1954),
+    memberWoIds: [60110, 60111],
+    memberProjectNums: ["10030", "10412"],
+    mockProductionState: "case2",
+    mockHeadroom: 4,
+  },
+  // partId 2063 (Seal Ring) — case1
+  {
+    batchId: "OPEN-BATCH-006",
+    openBatchWoId: 60006,
+    partId: 2063,
+    ...getPartInfo(2063),
+    openQty: 8,
+    priority: 2,
+    dueDate: "2026-08-10",
+    routingTemplateId: defaultTemplateId(getPartInfo(2063).partType, 2063),
+    memberWoIds: [60112, 60113, 60114],
+    memberProjectNums: ["10030", "10489"],
+    mockProductionState: "case1",
+    mockHeadroom: null,
+  },
+];
+
+// ─── Phase 2: Open row helper functions ──────────────────────────────────────
+
+// Returns the set of partIds that have at least one Open Production Row (WO or batch)
+export function getPartIdsWithOpenWork(
+  openWos: BtOpenWO[],
+  openBatches: BtOpenBatch[]
+): Set<number> {
+  const result = new Set<number>();
+  for (const wo of openWos) result.add(wo.partId);
+  for (const batch of openBatches) result.add(batch.partId);
+  return result;
+}
+
+// Returns combined set of openWoId and openBatchWoId — used to identify "Open row host IDs"
+export function getOpenRowHostIds(
+  openWos: BtOpenWO[],
+  openBatches: BtOpenBatch[]
+): Set<number> {
+  const result = new Set<number>();
+  for (const wo of openWos) result.add(wo.openWoId);
+  for (const batch of openBatches) result.add(batch.openBatchWoId);
+  return result;
+}
+
+// Whether an Open row accepts drops: Case 1 only
+export function isEligibleOpenTarget(
+  openHostId: number,
+  openWos: BtOpenWO[],
+  openBatches: BtOpenBatch[]
+): boolean {
+  const openWo = openWos.find((w) => w.openWoId === openHostId);
+  if (openWo) return openWo.mockProductionState === "case1";
+  const openBatch = openBatches.find((b) => b.openBatchWoId === openHostId);
+  if (openBatch) return openBatch.mockProductionState === "case1";
+  return false;
+}
+
 // ─── Session state ─────────────────────────────────────────────────────────────
 
 export type BtSessionState = {
   // chipHome[woId] = hostWoId where the chip currently lives (initially woId itself)
+  // For chips placed on Open rows, hostWoId is the openWoId or openBatchWoId.
   chipHome: Record<number, number>;
   // lockedWoIds: WO IDs of rows that are locked (composition settled, quantity planning active).
   // Singletons default to Locked. Multi-WO candidates default to Unlocked.
@@ -344,6 +775,13 @@ export type BtSessionState = {
   }>;
   // showHiddenSingletons: whether the singleton queue is visible
   showHiddenSingletons: boolean;
+  // Phase 2: draft chip additions to Open rows.
+  // openRowChips[openHostId] = array of candidate woIds dragged onto this Open row in current draft
+  openRowChips: Record<number, number[]>;
+  // Show Only Actionable Production Rows filter (default OFF)
+  showOnlyActionable: boolean;
+  // Auto-batch tier selection (persisted across uses in session)
+  autoBatchTier: "candidates-only" | "include-unstarted-wip";
 };
 
 export function buildInitialSessionState(wos: BtWorkOrder[]): BtSessionState {
@@ -361,6 +799,9 @@ export function buildInitialSessionState(wos: BtWorkOrder[]): BtSessionState {
     confirmedWoIds: new Set(),
     committedBatches: [],
     showHiddenSingletons: false,
+    openRowChips: {},
+    showOnlyActionable: false,
+    autoBatchTier: "candidates-only",
   };
 }
 
@@ -436,6 +877,68 @@ export function getDerivedRowValues(
     dueDateChanged: dueDate !== homeWo.dueDate,
     chipsInCell,
     hasChips: true,
+  };
+}
+
+// Derived values for an Open row with draft chips added
+export type OpenRowDerivedValues = {
+  demand: number;         // openQty + sum of draft candidate demands
+  priority: number;       // max(openRow.priority, ...draftChip.priorities)
+  dueDate: string | null; // min(openRow.dueDate, ...draftChip.dueDates)
+  demandChanged: boolean;
+  priorityChanged: boolean;
+  dueDateChanged: boolean;
+};
+
+export function getOpenRowDerivedValues(
+  openHostId: number,
+  openWos: BtOpenWO[],
+  openBatches: BtOpenBatch[],
+  draftChipWoIds: number[],
+  candidateWos: BtWorkOrder[]
+): OpenRowDerivedValues {
+  const openWo = openWos.find((w) => w.openWoId === openHostId);
+  const openBatch = openBatches.find((b) => b.openBatchWoId === openHostId);
+
+  const baseQty = openWo?.openQty ?? openBatch?.openQty ?? 0;
+  const basePriority = openWo?.priority ?? openBatch?.priority ?? 1;
+  const baseDueDate = openWo?.dueDate ?? openBatch?.dueDate ?? null;
+
+  if (draftChipWoIds.length === 0) {
+    return {
+      demand: baseQty,
+      priority: basePriority,
+      dueDate: baseDueDate,
+      demandChanged: false,
+      priorityChanged: false,
+      dueDateChanged: false,
+    };
+  }
+
+  const chipWOs = draftChipWoIds
+    .map((id) => candidateWos.find((w) => w.woId === id)!)
+    .filter(Boolean);
+
+  const addedDemand = chipWOs.reduce((sum, w) => sum + w.quantity, 0);
+  const demand = baseQty + addedDemand;
+  const priority = Math.max(basePriority, ...chipWOs.map((w) => w.priority));
+
+  const draftDates = chipWOs
+    .map((w) => w.dueDate)
+    .filter((d): d is string => d !== null);
+  const allDates = [
+    ...(baseDueDate ? [baseDueDate] : []),
+    ...draftDates,
+  ].sort();
+  const dueDate: string | null = allDates.length > 0 ? (allDates[0] ?? null) : null;
+
+  return {
+    demand,
+    priority,
+    dueDate,
+    demandChanged: demand !== baseQty,
+    priorityChanged: priority !== basePriority,
+    dueDateChanged: dueDate !== baseDueDate,
   };
 }
 
@@ -531,6 +1034,47 @@ export function moveChip(
   );
 
   return { ...state, chipHome: newChipHome };
+}
+
+// Add a candidate chip to an Open row's draft composition
+export function addChipToOpenRow(
+  candidateWoId: number,
+  openHostId: number,
+  state: BtSessionState
+): BtSessionState {
+  const existing = state.openRowChips[openHostId] ?? [];
+  if (existing.includes(candidateWoId)) return state;
+  const newOpenRowChips = {
+    ...state.openRowChips,
+    [openHostId]: [...existing, candidateWoId],
+  };
+  // Also record where the candidate chip is "homed" — it's now at the open row
+  const newChipHome = { ...state.chipHome, [candidateWoId]: openHostId };
+  console.log(
+    `[AuditLog] Chip WO-${candidateWoId} assigned to Open row ${openHostId}`
+  );
+  return { ...state, openRowChips: newOpenRowChips, chipHome: newChipHome };
+}
+
+// Remove a candidate chip from an Open row (return it home)
+export function removeChipFromOpenRow(
+  candidateWoId: number,
+  openHostId: number,
+  state: BtSessionState
+): BtSessionState {
+  const existing = state.openRowChips[openHostId] ?? [];
+  const newList = existing.filter((id) => id !== candidateWoId);
+  const newOpenRowChips = { ...state.openRowChips };
+  if (newList.length === 0) {
+    delete newOpenRowChips[openHostId];
+  } else {
+    newOpenRowChips[openHostId] = newList;
+  }
+  const newChipHome = { ...state.chipHome, [candidateWoId]: candidateWoId };
+  console.log(
+    `[AuditLog] Chip WO-${candidateWoId} removed from Open row ${openHostId}, returned home`
+  );
+  return { ...state, openRowChips: newOpenRowChips, chipHome: newChipHome };
 }
 
 // Lock/unlock a single row. Disabled for source rows (chip moved away).
@@ -685,12 +1229,13 @@ export function updatePlannedQty(
 
 export type ConfirmDraftResult = {
   newState: BtSessionState;
-  stats: { totalWOs: number; draftBatches: number; standalone: number };
+  stats: { totalWOs: number; draftBatches: number; standalone: number; openRowsExtended: number };
 };
 
 // Confirm Draft scoped to visibleLockedHostWoIds — the set of WO IDs
 // that are both (a) locked and (b) visible in the current view + filters.
 // The UI computes this set and passes it in.
+// Phase 2: also commits Open rows that received draft chip additions in openRowChips.
 export function confirmDraft(
   state: BtSessionState,
   wos: BtWorkOrder[],
@@ -701,55 +1246,80 @@ export function confirmDraft(
   let draftBatches = 0;
   let standalone = 0;
   let totalWOs = 0;
+  let openRowsExtended = 0;
 
+  // Commit candidate-to-candidate batches (original Phase 1 logic)
   for (const hostWoId of visibleLockedHostWoIds) {
     if (state.confirmedWoIds.has(hostWoId)) continue;
 
     const chipsInCell = getChipsInCell(state.chipHome, hostWoId);
     if (chipsInCell.length === 0) continue;
 
+    // Exclude chips that are in Open rows (already handled below)
+    const openRowHostIds = getOpenRowHostIds(OPEN_WOS, OPEN_BATCHES);
+    const nonOpenChips = chipsInCell.filter((id) => !openRowHostIds.has(state.chipHome[id] ?? id) || id === hostWoId);
+
     const plannedQtyAtCommit =
       state.plannedQty[hostWoId] ??
-      chipsInCell.reduce((sum, id) => {
+      nonOpenChips.reduce((sum, id) => {
         const wo = wos.find((w) => w.woId === id);
         return sum + (wo?.quantity ?? 0);
       }, 0);
 
-    totalWOs += chipsInCell.length;
+    totalWOs += nonOpenChips.length;
 
-    if (chipsInCell.length >= 2) {
+    if (nonOpenChips.length >= 2) {
       draftBatches++;
       const batchId = `BATCH-${_batchIdCounter++}`;
       newCommittedBatches.push({
         batchId,
-        memberWoIds: chipsInCell,
+        memberWoIds: nonOpenChips,
         isStandalone: false,
       });
       console.log(
-        `[AuditLog] Batch ${batchId} created — members: ${chipsInCell.join(", ")}, plannedQty: ${plannedQtyAtCommit}`
+        `[AuditLog] Batch ${batchId} created — members: ${nonOpenChips.join(", ")}, plannedQty: ${plannedQtyAtCommit}`
       );
-    } else {
+    } else if (nonOpenChips.length === 1) {
       standalone++;
       const batchId = `STANDALONE-${_batchIdCounter++}`;
       newCommittedBatches.push({
         batchId,
-        memberWoIds: chipsInCell,
+        memberWoIds: nonOpenChips,
         isStandalone: true,
       });
       console.log(
-        `[AuditLog] WO ${chipsInCell[0]} confirmed as standalone Open, plannedQty: ${plannedQtyAtCommit}`
+        `[AuditLog] WO ${nonOpenChips[0]} confirmed as standalone Open, plannedQty: ${plannedQtyAtCommit}`
       );
     }
 
-    for (const woId of chipsInCell) {
+    for (const woId of nonOpenChips) {
       newConfirmedWoIds.add(woId);
     }
+  }
+
+  // Phase 2: also commit Open rows that received candidate chips
+  for (const [openHostIdStr, draftWoIds] of Object.entries(state.openRowChips)) {
+    const openHostId = Number(openHostIdStr);
+    if (draftWoIds.length === 0) continue;
+
+    for (const candidateWoId of draftWoIds) {
+      if (!newConfirmedWoIds.has(candidateWoId)) {
+        newConfirmedWoIds.add(candidateWoId);
+        totalWOs += 1;
+      }
+    }
+    openRowsExtended++;
+
+    console.log(
+      `[AuditLog] Open row ${openHostId} extended with candidates: ${draftWoIds.join(", ")}`
+    );
   }
 
   // Remove confirmed WOs from mutable state
   const newChipHome = { ...state.chipHome };
   const newLockedWoIds = new Set(state.lockedWoIds);
   const newPlannedQty = { ...state.plannedQty };
+  const newOpenRowChips = { ...state.openRowChips };
 
   for (const woId of newConfirmedWoIds) {
     if (!state.confirmedWoIds.has(woId)) {
@@ -767,6 +1337,17 @@ export function confirmDraft(
     }
   }
 
+  // Clear open row chips for confirmed WOs
+  for (const [openHostIdStr, draftWoIds] of Object.entries(newOpenRowChips)) {
+    const openHostId = Number(openHostIdStr);
+    const remaining = draftWoIds.filter((id) => !newConfirmedWoIds.has(id));
+    if (remaining.length === 0) {
+      delete newOpenRowChips[openHostId];
+    } else {
+      newOpenRowChips[openHostId] = remaining;
+    }
+  }
+
   return {
     newState: {
       ...state,
@@ -775,8 +1356,9 @@ export function confirmDraft(
       plannedQty: newPlannedQty,
       confirmedWoIds: newConfirmedWoIds,
       committedBatches: newCommittedBatches,
+      openRowChips: newOpenRowChips,
     },
-    stats: { totalWOs, draftBatches, standalone },
+    stats: { totalWOs, draftBatches, standalone, openRowsExtended },
   };
 }
 
@@ -791,11 +1373,13 @@ export function autoBatchCandidates(
   state: BtSessionState,
   wos: BtWorkOrder[],
   visibleWoIds: number[],
-  // Phase 2: pass the set of hostWoIds that are Open Production Rows.
+  // The set of hostWoIds that are Open Production Rows.
   // The auto-batcher excludes any chip whose current host is in this set —
   // those represent explicit planner decisions to join existing Open work.
-  // Phase 1: no Open rows exist, so this is always an empty set.
-  openRowHostWoIds: Set<number>
+  openRowHostWoIds: Set<number>,
+  tier: "candidates-only" | "include-unstarted-wip" = "candidates-only",
+  openWos: BtOpenWO[] = OPEN_WOS,
+  openBatches: BtOpenBatch[] = OPEN_BATCHES
 ): AutoBatchResult {
   // Step 1: classify each visible chip as eligible or excluded.
   const eligibleWoIds: number[] = [];
@@ -818,6 +1402,17 @@ export function autoBatchCandidates(
     newChipHome[woId] = woId;
   }
 
+  // Also reset openRowChips for eligible candidates (they're being re-batched)
+  const newOpenRowChips = { ...state.openRowChips };
+  for (const [openHostIdStr, draftWoIds] of Object.entries(newOpenRowChips)) {
+    const remaining = draftWoIds.filter((id) => !eligibleWoIds.includes(id));
+    if (remaining.length === 0) {
+      delete newOpenRowChips[Number(openHostIdStr)];
+    } else {
+      newOpenRowChips[Number(openHostIdStr)] = remaining;
+    }
+  }
+
   // Step 3: group eligible candidates by partId.
   const byPartId = new Map<number, number[]>();
   for (const woId of eligibleWoIds) {
@@ -832,8 +1427,50 @@ export function autoBatchCandidates(
   let totalBatched = 0;
   let batchesCreated = 0;
 
-  for (const [, woIds] of byPartId) {
-    if (woIds.length < 2) continue; // singleton-eligible stays home — no batch formed
+  for (const [partIdStr, woIds] of byPartId) {
+    const partId = Number(partIdStr);
+    if (woIds.length < 2) {
+      // "include-unstarted-wip" tier: try to match singleton to Case 1 Open row
+      if (tier === "include-unstarted-wip" && woIds.length === 1) {
+        const candidateWoId = woIds[0]!;
+        // Find Case 1 Open rows for this partId
+        const case1OpenWos = openWos.filter(
+          (w) => w.partId === partId && w.mockProductionState === "case1"
+        );
+        const case1OpenBatches = openBatches.filter(
+          (b) => b.partId === partId && b.mockProductionState === "case1"
+        );
+
+        // Combine and pick best host: prefer latest dueDate, then lowest openHostId
+        type OpenHost = { openHostId: number; dueDate: string | null };
+        const candidates: OpenHost[] = [
+          ...case1OpenWos.map((w) => ({ openHostId: w.openWoId, dueDate: w.dueDate })),
+          ...case1OpenBatches.map((b) => ({ openHostId: b.openBatchWoId, dueDate: b.dueDate })),
+        ];
+
+        if (candidates.length > 0) {
+          // Sort: latest dueDate first (nulls last), then lowest openHostId
+          candidates.sort((a, b) => {
+            if (a.dueDate && b.dueDate) return b.dueDate.localeCompare(a.dueDate);
+            if (a.dueDate && !b.dueDate) return -1;
+            if (!a.dueDate && b.dueDate) return 1;
+            return a.openHostId - b.openHostId;
+          });
+
+          const bestHost = candidates[0]!;
+          // Assign chip to this Open row
+          newChipHome[candidateWoId] = bestHost.openHostId;
+          const existingDraft = newOpenRowChips[bestHost.openHostId] ?? [];
+          newOpenRowChips[bestHost.openHostId] = [...existingDraft, candidateWoId];
+          totalBatched += 1;
+          batchesCreated += 1; // count as a "batch" for stats
+          console.log(
+            `[AuditLog] Auto-batch (unstarted-wip) WO-${candidateWoId} → Open row ${bestHost.openHostId}`
+          );
+        }
+      }
+      continue;
+    }
 
     const sorted = [...woIds].sort((a, b) => a - b);
     const hostWoId = sorted[0]!;
@@ -849,10 +1486,14 @@ export function autoBatchCandidates(
     console.log(
       `[AuditLog] Auto-batch group partId=${wos.find((w) => w.woId === hostWoId)?.partId}: host WO-${hostWoId}, members: ${sorted.join(", ")}`
     );
+
+    // "include-unstarted-wip" tier: also check if Open rows exist for this partId
+    // Note: with 2+ candidates already batched together, we don't add them to Open rows
+    // (they'll form their own new batch). This tier only helps singletons find a home.
   }
 
   return {
-    newState: { ...state, chipHome: newChipHome },
+    newState: { ...state, chipHome: newChipHome, openRowChips: newOpenRowChips },
     stats: { totalBatched, batchesCreated },
   };
 }
@@ -860,7 +1501,7 @@ export function autoBatchCandidates(
 // ─── Reset Draft ──────────────────────────────────────────────────────────────
 
 // Return ALL chips home, restore default lock states (singletons locked, batch candidates
-// unlocked), clear all Planned Qty edits.
+// unlocked), clear all Planned Qty edits, and clear Open row draft assignments.
 export function resetDraft(
   state: BtSessionState,
   wos: BtWorkOrder[]
@@ -874,12 +1515,13 @@ export function resetDraft(
 
   const { lockedWoIds, plannedQty } = computeDefaultLockState(visibleWos);
 
-  console.log("[AuditLog] Draft reset — all chips returned home, lock states restored to defaults");
+  console.log("[AuditLog] Draft reset — all chips returned home, lock states restored to defaults, Open row assignments cleared");
 
   return {
     ...state,
     chipHome: newChipHome,
     lockedWoIds,
     plannedQty,
+    openRowChips: {}, // Phase 2: also clear Open row draft assignments
   };
 }
