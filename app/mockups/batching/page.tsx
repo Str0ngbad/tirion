@@ -1085,7 +1085,12 @@ export default function BatchingPage() {
     [liveGroups]
   );
 
-  // Open rows visible in QP view — only those with draft chip additions
+  // View mode behavior for Open rows:
+  //   Batching view: always show (they're drop targets regardless of draft state)
+  //   All view: always show
+  //   QP view: show ONLY if the Open row has at least one draft chip addition
+  //     (the open row "participates" in the QP workflow only when a planner
+  //      has added candidates to it, so it appears dynamically as chips are added)
   const openRowsVisibleInQP = useMemo(() => {
     return new Set(
       Object.keys(state.openRowChips)
