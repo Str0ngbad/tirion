@@ -18,6 +18,50 @@ Entries are ordered most recent first.
 
 ---
 
+## Session: Batching Lens — Phase 2 Complete (2026-06-18)
+
+### Commits in this session
+
+1. `feat(mockup): synthesize Open Production Rows and Cases 2/3 flag data`
+2. `feat(mockup): render Open rows with chips and de-emphasized styling`
+3. `feat(mockup): generalize chip immobility for Open chips and extend root WO rule`
+4. `feat(mockup): wire Quantity Rules Case 1 — drag candidate onto Open row`
+5. `feat(mockup): refine view-mode behavior for Open rows (QP visibility derived)`
+6. `feat(mockup): extend Confirm Draft scope to Open rows with draft additions`
+7. `feat(mockup): replace Auto-Batch with three-tier dropdown`
+8. `feat(mockup): add Show Only Actionable Production Rows filter`
+9. `feat(mockup): add Active in Production indicator on Part Number cells`
+10. `docs(mockup): MOCKUP_TRACK entry for Phase 2 completion`
+
+### Phase 2 scope
+
+Phase 2 introduced Active Production Rows (Open WOs and Open batches) as visible context and drop targets. Key behaviors:
+
+- **Open row rendering:** De-emphasized rows (`bg-muted/5 text-muted-foreground/70`) with crescent-style Open chips (border-l-4 left-bar styling, project color for standalone WOs, neutral border for batches). Static — not draggable.
+- **Quantity Rules Case 1:** Drag candidate onto Open row → chip joins cell, Demand + Priority + Due Date auto-update in bright blue. Case 2/3 drops blocked (row greyed during drag, `isEligibleOpenTarget` returns false).
+- **View mode — QP:** Open rows visible in QP only if they received draft chip additions. Dynamic — appears/disappears as chips are added/removed via `openRowsVisibleInQP` derived set.
+- **Confirm Draft:** Extended to atomically include candidate WOs targeted at Open rows. Toast surfaces "M Open rows extended." and tooltip details scope.
+- **Three-tier Auto-Batch:** "Only Candidates" (Phase 1 behavior), "Include Unstarted WIP" (Phase 2, places singleton candidates onto matching Case 1 Open rows by partId), "Include Started WIP" (disabled, Phase 2.5).
+- **Show Only Actionable filter:** Toggle on filter bar. Hides Case 2 Open rows with insufficient `mockHeadroom` (≤ 0). Case 1 always actionable; Case 3 always shown for context.
+- **Active in Production indicator:** Amber `Activity` icon on Part Number cells for PartIDs with any Open work (Open WO or Open Batch). Appears on candidate rows AND Open rows for the same partId.
+- **Orphan Open rows section:** Open rows for partIds with no visible candidate rows in the current view/filter render in a separate "Open Production Only" section below candidates.
+
+### Data synthesized
+
+- `OPEN_WOS`: 15 standalone Open WOs (IDs 50001–50015) across partIds 1908, 1922, 1929, 1942, 1948, 1951, 1954, 1967, 2035, 2063, 2066, 2219. Mix of case1 (10), case2 (3, headroom 0–3), case3 (2).
+- `OPEN_BATCHES`: 6 Open batches (IDs 60001–60006) for partIds 1942, 1948, 1951, 1954, 2063, 2066. Mix of case1 (3), case2 (2), case3 (1).
+- `openRowChips` added to `BtSessionState` — tracks draft candidate additions to Open rows.
+- `showOnlyActionable` and `autoBatchTier` added to `BtSessionState`.
+
+### Deferred items
+
+- **Cases 2 and 3 full UX:** Inline coverage messages, Case 3 confirmation prompt. Deferred pending execution lens mockups when real step-state data exists.
+- **Auto-Batch: Include Started WIP:** Disabled. Requires Case 2/3 selection logic and execution data (Phase 2.5).
+- **Definition Change Flags:** Not in Phase 2 scope.
+- **`mockProductionState` and `mockHeadroom`:** Mockup-only flags; derived from real step-state in Rev 1 implementation.
+
+---
+
 ## Session: Batching Lens — Visual Polish Pass (Phase 1 complete)
 **Date:** 2026-06-18
 **Surface:** `/app/mockups/batching/`, `/app/mockups/_shared/project-chip.tsx`, `/app/mockups/project-creation/_components/project-list.tsx`, `/app/mockups/vendors/_components/vendor-grid.tsx`, `/components/ui/badge.tsx`
