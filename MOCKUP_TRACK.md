@@ -18,6 +18,51 @@ Entries are ordered most recent first.
 
 ---
 
+## Session: Batching Lens — Alignment, Anchor Escalation, Parent Column Removal
+**Date:** 2026-06-18
+**Surface:** `/app/mockups/batching/`, `/app/mockups/_shared/project-chip.tsx`
+**Status:** Phase 1 active (mid-phase)
+
+### Chip wrap fix
+The anchored root chip was wrapping "Qty: N" onto a second line when the anchor
+icon was present. Fixed by adding `whitespace-nowrap` to the chip's outer div.
+The icon was also moved from the right side to the left side of the text, which
+reads more naturally (icon → identifier → quantity).
+
+### Anchor icon escalation
+Previous iteration landed at `strokeWidth={2.5}`. At chip size (≈24px tall) that
+still read as thin. Escalated to `strokeWidth={3}` with size `h-3 w-3` (12px) and
+`opacity-70`. At zoomed view the anchor icon is clearly bold and readable. Stopping
+the escalation here — Pin or custom SVG not needed.
+
+### Parent column → Part Number hover
+Removed the Parent column entirely. Ancestry data (closest ancestor first, top-level
+last, format `Part Number — Part Name` per line) moves to a native `title` tooltip on
+the Part Number cell. For top-level WOs (no parent), no tooltip — the cell renders as
+plain text. This frees one full column of horizontal real estate.
+
+The `parentPartName` and `ancestryPath` fields remain on `BtWorkOrder` — the tooltip
+still consumes them.
+
+### Column alignment
+Applied conventional table alignment across all columns:
+- **Right-aligned:** Demand, Planned, Priority, Due Date (numeric/temporal)
+- **Left-aligned:** Part #, Part Name, Project(s) (text)
+- **Centered:** Select checkbox, Lock toggle (narrow indicator/action)
+- Headers match their respective cell alignment
+
+### Column spacing
+Uniform `px-4` horizontal padding applied to all columns (was `px-2`). Colgroup
+widths redistributed: Part# 120px (up from 110), Part Name 180px (up from 160) to
+absorb the freed space from the removed Parent column. Table reads as evenly
+composed at desktop scale.
+
+### Spec gaps / deferred items
+None arising from this session. Pill shape (rounded vs oval) and dividing line
+contrast remain deferred per prior session.
+
+---
+
 ## Session: Batching Lens — Root WO Rule, Eligibility Fix, Visual Polish
 **Date:** 2026-06-17
 **Surface:** `/app/mockups/batching/`
