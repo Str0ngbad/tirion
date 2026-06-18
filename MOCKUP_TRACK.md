@@ -18,6 +18,41 @@ Entries are ordered most recent first.
 
 ---
 
+## Session: Batching Lens — Visual Polish Pass (Phase 1 complete)
+**Date:** 2026-06-18
+**Surface:** `/app/mockups/batching/`, `/app/mockups/_shared/project-chip.tsx`, `/app/mockups/project-creation/_components/project-list.tsx`, `/app/mockups/vendors/_components/vendor-grid.tsx`, `/components/ui/badge.tsx`
+**Status:** Phase 1 complete
+
+### Pill shape — cross-surface rounded rectangle
+Changed all pill-shaped text labels from oval (`rounded-full` / `rounded-4xl`) to rounded-rectangle (`rounded-md`). Scope:
+
+- `ProjectChip` (batching composition chips) and its `DragOverlay` clone
+- shadcn `Badge` component (`rounded-4xl` → `rounded-md`), propagating to all status badges (Draft/Active/Pass/issues) across the tool
+- Project Creation status filter chips and customer filter chips
+- Vendors open-supply-order count badge
+
+**Not changed** (intentionally circular): active indicator dots (`h-2 w-2`), toggle thumb/track, color swatches, step-number circles, progress bars, column-filter radio controls. `ProjectIdPill` was already `rounded` — no change needed. Routing step pills were already `rounded` — no change needed.
+
+Verified at 3× zoom: filter chips in Project Creation read as clearly rectangular, not oval.
+
+### Dividing line contrast
+Two-tier hierarchy established in the Batching candidate table:
+- PartID group boundary: `border-t-2 border-border` (was `border-t-2 border-muted-foreground/20` — far too faint)
+- WO-to-WO within group: `border-t border-border/50` (was `border-t border-border/40`)
+
+Planners can now clearly distinguish group boundaries from intra-group row separators.
+
+### Routing column width
+Step pill container changed from `flex-wrap` to `flex-nowrap`. Routing column width widened from 190px to 260px. Typical 3–5 step routings now render inline on one row at normal compact height.
+
+### Lock toggle position
+Lock toggle moved from rightmost column to immediately after the select checkbox (column 2). Both user-action affordances now group on the left; all data columns are to the right. Column count stays at 11.
+
+### Phase 1 visual polish status
+Phase 1 mockup visual polish is now complete. The deferred items (pill shape, dividing lines) from the prior session have been addressed.
+
+---
+
 ## Session: Batching Lens — Alignment, Anchor Escalation, Parent Column Removal
 **Date:** 2026-06-18
 **Surface:** `/app/mockups/batching/`, `/app/mockups/_shared/project-chip.tsx`
