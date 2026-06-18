@@ -404,16 +404,19 @@ function CandidateRow({
 
       {/* Parent */}
       <td className="px-2 py-1.5 align-middle">
-        {wo.parentPartNumber ? (
+        {wo.parentPartName ? (
           <span
-            className="font-mono text-xs text-muted-foreground cursor-default"
+            className="text-xs text-muted-foreground cursor-default truncate max-w-[120px] inline-block"
             title={
               wo.ancestryPath.length > 0
-                ? wo.ancestryPath.join(" › ")
-                : wo.parentPartNumber
+                ? [...wo.ancestryPath]
+                    .reverse()
+                    .map((a) => `${a.partNumber} — ${a.partName}`)
+                    .join("\n")
+                : wo.parentPartName
             }
           >
-            {wo.parentPartNumber}
+            {wo.parentPartName}
           </span>
         ) : (
           <span className="text-xs text-muted-foreground/40">—</span>
