@@ -110,7 +110,7 @@ function CompositionCell({
             key={wo.woId}
             onClick={() => onChipClick(wo.woId)}
             className={[
-              "focus:outline-none rounded-full",
+              "focus:outline-none rounded-md",
               selectedChipWoId === wo.woId
                 ? "ring-2 ring-ring ring-offset-1 ring-offset-background"
                 : "",
@@ -142,7 +142,7 @@ function RoutingPills({ templateId }: { templateId: string }) {
   const tmpl = ROUTING_TEMPLATES[templateId];
   if (!tmpl) return <span className="text-muted-foreground text-xs">—</span>;
   return (
-    <div className="flex flex-wrap gap-1">
+    <div className="flex flex-nowrap gap-1">
       {tmpl.steps.map((step) => (
         <span
           key={step}
@@ -363,8 +363,8 @@ function CandidateRow({
       className={[
         rowBg,
         isFirstInGroup
-          ? "border-t-2 border-muted-foreground/20"
-          : "border-t border-border/40",
+          ? "border-t-2 border-border"
+          : "border-t border-border/50",
         isGreyedOut ? "opacity-30 pointer-events-none" : "",
         isSelected ? "bg-sky-500/5" : "",
         "transition-opacity",
@@ -379,6 +379,15 @@ function CandidateRow({
           checked={isSelected}
           onChange={() => onToggleSelect(wo.woId)}
           className="h-3.5 w-3.5 rounded border-border accent-primary cursor-pointer"
+        />
+      </td>
+
+      {/* Lock Toggle */}
+      <td className="px-4 py-1.5 align-middle text-center">
+        <LockToggle
+          isLocked={isLocked}
+          isDisabled={lockDisabled}
+          onToggle={() => onToggleLock(wo.woId)}
         />
       </td>
 
@@ -499,15 +508,6 @@ function CandidateRow({
       {/* Routing */}
       <td className="px-4 py-1.5 align-middle">
         <RoutingPills templateId={wo.routingTemplateId} />
-      </td>
-
-      {/* Lock Toggle */}
-      <td className="px-4 py-1.5 align-middle text-center">
-        <LockToggle
-          isLocked={isLocked}
-          isDisabled={lockDisabled}
-          onToggle={() => onToggleLock(wo.woId)}
-        />
       </td>
     </tr>
   );
@@ -1353,9 +1353,10 @@ export default function BatchingPage() {
               </div>
             ) : (
               <table className="w-full text-sm border-collapse">
-                {/* col order: checkbox, composition, part#, part name, demand, planned, priority, due date, project(s), routing, lock */}
+                {/* col order: checkbox, lock, composition, part#, part name, demand, planned, priority, due date, project(s), routing */}
                 <colgroup>
                   <col style={{ width: 32 }} />
+                  <col style={{ width: 48 }} />
                   <col style={{ width: 150 }} />
                   <col style={{ width: 120 }} />
                   <col style={{ width: 180 }} />
@@ -1364,8 +1365,7 @@ export default function BatchingPage() {
                   <col style={{ width: 64 }} />
                   <col style={{ width: 96 }} />
                   <col style={{ width: 90 }} />
-                  <col style={{ width: 190 }} />
-                  <col style={{ width: 48 }} />
+                  <col style={{ width: 260 }} />
                 </colgroup>
                 <thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur-sm">
                   <tr className="border-b border-border">
@@ -1382,6 +1382,9 @@ export default function BatchingPage() {
                         onChange={handleSelectAllVisible}
                         className="h-3.5 w-3.5 rounded border-border accent-primary cursor-pointer"
                       />
+                    </th>
+                    <th className="px-4 py-2 text-center text-xs font-semibold text-muted-foreground">
+                      Lock
                     </th>
                     <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground">
                       Composition
@@ -1409,9 +1412,6 @@ export default function BatchingPage() {
                     </th>
                     <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground">
                       Routing
-                    </th>
-                    <th className="px-4 py-2 text-center text-xs font-semibold text-muted-foreground">
-                      Lock
                     </th>
                   </tr>
                 </thead>
