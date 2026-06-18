@@ -262,7 +262,7 @@ export default function ProjectList({ projects, setProjects }: Props) {
             <button
               key={s}
               onClick={() => toggleStatus(s)}
-              className={`rounded-full border px-2.5 py-0.5 text-xs transition-colors ${
+              className={`rounded-md border px-2.5 py-0.5 text-xs transition-colors ${
                 statusFilter.has(s)
                   ? "border-primary bg-primary text-primary-foreground"
                   : "border-border text-muted-foreground hover:border-foreground/30"
@@ -281,7 +281,7 @@ export default function ProjectList({ projects, setProjects }: Props) {
               <button
                 key={c}
                 onClick={() => toggleCustomer(c)}
-                className={`rounded-full border px-2 py-0.5 text-xs transition-colors ${
+                className={`rounded-md border px-2 py-0.5 text-xs transition-colors ${
                   customerFilter.has(c)
                     ? "border-primary bg-primary text-primary-foreground"
                     : "border-border text-muted-foreground hover:border-foreground/30"

@@ -112,7 +112,7 @@ export default function VendorGrid({ vendors, sortKey, sortAsc, onSort, onRowCli
               </TableCell>
               <TableCell className="px-3 py-2.5 text-right">
                 {v.openSupplyOrderCount > 0 ? (
-                  <span className="inline-flex items-center justify-center rounded-full bg-blue-950 px-2 py-0.5 text-xs font-medium text-blue-300">
+                  <span className="inline-flex items-center justify-center rounded-md bg-blue-950 px-2 py-0.5 text-xs font-medium text-blue-300">
                     {v.openSupplyOrderCount}
                   </span>
                 ) : (

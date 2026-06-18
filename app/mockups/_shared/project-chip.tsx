@@ -60,7 +60,7 @@ export default function ProjectChip({
       {...listeners}
       {...attributes}
       className={[
-        "relative inline-flex flex-row items-center gap-1 rounded-full px-2.5 py-0.5 text-xs select-none whitespace-nowrap",
+        "relative inline-flex flex-row items-center gap-1 rounded-md px-2.5 py-0.5 text-xs select-none whitespace-nowrap",
         "shadow-sm transition-shadow",
         isDragging ? "opacity-0" : "",
         !isAtHome ? "opacity-90" : "",
@@ -107,7 +107,7 @@ export function ProjectChipOverlay({
   return (
     <div
       style={{ backgroundColor: bg, color: textColor }}
-      className="inline-flex flex-row items-center gap-1 rounded-full px-2.5 py-0.5 text-xs shadow-lg cursor-grabbing rotate-2"
+      className="inline-flex flex-row items-center gap-1 rounded-md px-2.5 py-0.5 text-xs shadow-lg cursor-grabbing rotate-2"
     >
       <span className="font-mono font-semibold">{topLevelRef}</span>
       <span className="opacity-60">/</span>
