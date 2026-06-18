@@ -1316,6 +1316,10 @@ export default function BatchingPage() {
     }
   }
 
+  // Quantity Rules Case 1: dropping a candidate chip onto a Case 1 Open row
+  // adds the chip to that row's draft composition. Case 2 and Case 3 rows are
+  // greyed-out during drag (isEligibleOpenTarget returns false) so drops on
+  // those rows never reach the addChipToOpenRow path.
   function handleDragEnd(event: DragEndEvent) {
     const woId = event.active.data.current?.woId as number | undefined;
     const targetData = event.over?.data.current;
