@@ -1097,11 +1097,30 @@ export function moveChip(
 
   const newChipHome = { ...state.chipHome, [woId]: targetHostWoId };
 
+  // If this chip was tracked in an Open row's draft composition, remove it.
+  // This occurs when a draft chip is dragged out of an Open row via the
+  // candidate-to-candidate drop path — moveChip updates chipHome but without
+  // this cleanup, openRowChips would still reference the chip, producing
+  // simultaneous renders in both the candidate row and the Open row.
+  let newOpenRowChips = state.openRowChips;
+  if (currentHost !== undefined) {
+    const prevDraft = state.openRowChips[currentHost];
+    if (prevDraft !== undefined) {
+      const remaining = prevDraft.filter((id) => id !== woId);
+      newOpenRowChips = { ...state.openRowChips };
+      if (remaining.length === 0) {
+        delete newOpenRowChips[currentHost];
+      } else {
+        newOpenRowChips[currentHost] = remaining;
+      }
+    }
+  }
+
   console.log(
     `[AuditLog] Chip WO-${woId} moved: cell ${currentHost} → cell ${targetHostWoId}`
   );
 
-  return { ...state, chipHome: newChipHome };
+  return { ...state, chipHome: newChipHome, openRowChips: newOpenRowChips };
 }
 
 // Open chips (the identity chip shown on Open rows) are static divs in the UI — not

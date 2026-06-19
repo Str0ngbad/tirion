@@ -211,7 +211,7 @@ function OpenCompositionCell({
             color={wo.projectColor}
             isAtHome={false}
             isRoot={false}
-            isAnchoredRoot={false}
+            isAnchoredRoot={true}
             disabled={false}
           />
         </button>
