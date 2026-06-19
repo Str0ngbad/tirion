@@ -320,6 +320,11 @@ function OpenProductionRow({
     wos
   );
 
+  const baseHeadroom = openWo?.mockHeadroom ?? openBatch?.mockHeadroom ?? 0;
+  const draftQtyTotal = draftChips.reduce((sum, w) => sum + (w?.quantity ?? 0), 0);
+  const headroom = baseHeadroom - draftQtyTotal;
+  const headroomChanged = draftQtyTotal > 0;
+
   const blueVal = (changed: boolean) =>
     changed ? "text-[#0EA5E9] font-semibold" : "";
 
@@ -401,6 +406,17 @@ function OpenProductionRow({
       {/* Planned — dash for Open rows */}
       <td className="px-4 py-1.5 align-middle text-right">
         <span className="text-muted-foreground/30 text-xs">—</span>
+      </td>
+
+      {/* Headroom */}
+      <td className="px-4 py-1.5 align-middle text-right">
+        {mockProductionState === "case3" ? (
+          <span className="font-mono text-xs text-red-500 font-semibold">{headroom}</span>
+        ) : (
+          <span className={["font-mono text-xs", headroomChanged ? "text-[#0EA5E9] font-semibold" : "text-muted-foreground/70"].join(" ")}>
+            {headroom}
+          </span>
+        )}
       </td>
 
       {/* Priority */}
@@ -813,6 +829,9 @@ function CandidateRow({
           />
         )}
       </td>
+
+      {/* Headroom — blank for candidates */}
+      <td className="px-4 py-1.5 align-middle" />
 
       {/* Priority */}
       <td className="px-4 py-1.5 align-middle text-right">
@@ -2072,6 +2091,9 @@ export default function BatchingPage() {
                       Planned
                     </th>
                     <th className="px-4 py-2 text-right text-xs font-semibold text-muted-foreground">
+                      Headroom
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-semibold text-muted-foreground">
                       Priority
                     </th>
                     <th className="px-4 py-2 text-right text-xs font-semibold text-muted-foreground">
@@ -2102,7 +2124,7 @@ export default function BatchingPage() {
                       <>
                         <tr>
                           <td
-                            colSpan={12}
+                            colSpan={13}
                             className="px-4 py-2 text-xs font-semibold text-muted-foreground border-t-4 border-border bg-muted/20 uppercase tracking-wide"
                           >
                             Unbatchable Parts ({visibleSingletonCount})
@@ -2121,7 +2143,7 @@ export default function BatchingPage() {
                     <>
                       <tr>
                         <td
-                          colSpan={12}
+                          colSpan={13}
                           className="px-4 py-2 text-xs font-semibold text-muted-foreground border-t-4 border-border bg-muted/10 uppercase tracking-wide"
                         >
                           Open Production Only ({orphanOpenRows.length})
