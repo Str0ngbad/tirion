@@ -1723,7 +1723,7 @@ export default function BatchingPage() {
         <div
           className={[
             "flex flex-col bg-background text-foreground",
-            hasSelection ? "h-screen pb-14" : "h-screen",
+            hasSelection ? "h-full pb-14" : "h-full",
           ].join(" ")}
         >
           {/* ── View Mode + Filter Bar ── */}
