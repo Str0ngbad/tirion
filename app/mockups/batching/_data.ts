@@ -686,7 +686,7 @@ export const OPEN_BATCHES: BtOpenBatch[] = [
   // partId 1942 (Upper Housing, Assembly → tmpl_assembly) — case1, another Case 1 host for heuristic test
   // dueDate Jul 12 — earlier than 50001 (Jul 15) and 50013 (Aug 15) → heuristic picks 50013 (latest)
   {
-    batchId: "OPEN-BATCH-001",
+    batchId: "B001",
     openBatchWoId: 60001,
     partId: 1942,
     ...getPartInfo(1942),
@@ -703,7 +703,7 @@ export const OPEN_BATCHES: BtOpenBatch[] = [
   },
   // partId 1948 (Drive Shaft, even → tmpl_mill) — case2 with insufficient headroom (non-actionable)
   {
-    batchId: "OPEN-BATCH-002",
+    batchId: "B002",
     openBatchWoId: 60002,
     partId: 1948,
     ...getPartInfo(1948),
@@ -720,7 +720,7 @@ export const OPEN_BATCHES: BtOpenBatch[] = [
   },
   // partId 2066 (Gear Assembly → tmpl_assembly) — case1
   {
-    batchId: "OPEN-BATCH-003",
+    batchId: "B003",
     openBatchWoId: 60003,
     partId: 2066,
     ...getPartInfo(2066),
@@ -737,7 +737,7 @@ export const OPEN_BATCHES: BtOpenBatch[] = [
   },
   // partId 1951 (End Cap Left, odd → tmpl_lathe) — case3: active at Inspect (index 3, final)
   {
-    batchId: "OPEN-BATCH-004",
+    batchId: "B004",
     openBatchWoId: 60004,
     partId: 1951,
     ...getPartInfo(1951),
@@ -754,7 +754,7 @@ export const OPEN_BATCHES: BtOpenBatch[] = [
   },
   // partId 1954 (End Cap Right, even → tmpl_mill) — case2 with sufficient headroom (actionable)
   {
-    batchId: "OPEN-BATCH-005",
+    batchId: "B005",
     openBatchWoId: 60005,
     partId: 1954,
     ...getPartInfo(1954),
@@ -771,7 +771,7 @@ export const OPEN_BATCHES: BtOpenBatch[] = [
   },
   // partId 2063 (Seal Ring, odd → tmpl_lathe) — case1
   {
-    batchId: "OPEN-BATCH-006",
+    batchId: "B006",
     openBatchWoId: 60006,
     partId: 2063,
     ...getPartInfo(2063),

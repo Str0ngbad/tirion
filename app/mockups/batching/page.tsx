@@ -27,6 +27,7 @@ import {
   type BtOpenBatch,
   type BtSessionState,
   type BtCandidateGroup,
+  type MockProductionState,
   getDerivedRowValues,
   getOpenRowDerivedValues,
   isEligibleTarget,
@@ -224,38 +225,74 @@ function OpenCompositionCell({
 
 function OpenWoChip({
   openWo,
+  headroom,
+  headroomChanged,
+  mockProductionState,
 }: {
   openWo: BtOpenWO;
+  headroom: number;
+  headroomChanged: boolean;
+  mockProductionState: MockProductionState;
 }) {
   const meta = openWo.projectColor ? PROJECT_COLOR_MAP[openWo.projectColor] : null;
   const borderColor = meta ? meta.hex : "#6b7280";
 
+  const headroomClass =
+    mockProductionState === "case3"
+      ? "text-red-500 font-semibold"
+      : headroomChanged
+      ? "text-[#0EA5E9] font-semibold"
+      : "text-muted-foreground/70";
+
   return (
     <div
       style={{ borderLeftColor: borderColor }}
-      className="inline-flex items-center gap-1 border-l-4 bg-muted/50 px-2 py-0.5 text-xs rounded-md whitespace-nowrap select-none"
-      title={`Open WO — ${openWo.topLevelRef} — Qty ${openWo.openQty} (${openWo.mockProductionState})`}
+      className="inline-flex flex-col border-l-4 bg-muted/50 px-2 py-0.5 text-xs rounded-md select-none"
+      title={`Open WO — ${openWo.topLevelRef} — Qty ${openWo.openQty} (${mockProductionState})`}
     >
-      <span className="font-mono font-semibold text-muted-foreground">{openWo.topLevelRef}</span>
-      <span className="text-muted-foreground/60">/</span>
-      <span className="text-muted-foreground/80">Qty: {openWo.openQty}</span>
+      <div className="flex items-center gap-1 whitespace-nowrap">
+        <span className="font-mono font-semibold text-muted-foreground">{openWo.projectNumber}</span>
+        <span className="text-muted-foreground/40">·</span>
+        <span className="font-mono text-muted-foreground/80">{openWo.topLevelRef}</span>
+      </div>
+      <div className="flex items-center gap-2 whitespace-nowrap">
+        <span className="text-muted-foreground/70">Qty: {openWo.openQty}</span>
+        <span className={headroomClass}>Hdrm: {headroom}</span>
+      </div>
     </div>
   );
 }
 
 function OpenBatchChip({
   openBatch,
+  headroom,
+  headroomChanged,
+  mockProductionState,
 }: {
   openBatch: BtOpenBatch;
+  headroom: number;
+  headroomChanged: boolean;
+  mockProductionState: MockProductionState;
 }) {
+  const headroomClass =
+    mockProductionState === "case3"
+      ? "text-red-500 font-semibold"
+      : headroomChanged
+      ? "text-[#0EA5E9] font-semibold"
+      : "text-muted-foreground/70";
+
   return (
     <div
-      className="inline-flex items-center gap-1 border-l-4 border-border bg-background px-2 py-0.5 text-xs rounded-md whitespace-nowrap select-none"
-      title={`Open Batch — ${openBatch.batchId} — Qty ${openBatch.openQty} (${openBatch.mockProductionState})`}
+      className="inline-flex flex-col border-l-4 border-border bg-background px-2 py-0.5 text-xs rounded-md select-none"
+      title={`Open Batch — ${openBatch.batchId} — Qty ${openBatch.openQty} (${mockProductionState})`}
     >
-      <span className="font-mono font-semibold text-muted-foreground">{openBatch.batchId}</span>
-      <span className="text-muted-foreground/60">/</span>
-      <span className="text-muted-foreground/80">Qty: {openBatch.openQty}</span>
+      <div className="whitespace-nowrap">
+        <span className="font-mono font-semibold text-muted-foreground">{openBatch.batchId}</span>
+      </div>
+      <div className="flex items-center gap-2 whitespace-nowrap">
+        <span className="text-muted-foreground/70">Qty: {openBatch.openQty}</span>
+        <span className={headroomClass}>Hdrm: {headroom}</span>
+      </div>
     </div>
   );
 }
@@ -334,9 +371,19 @@ function OpenProductionRow({
       : "—";
 
   const openIdentityChip = openWo ? (
-    <OpenWoChip openWo={openWo} />
+    <OpenWoChip
+      openWo={openWo}
+      headroom={headroom}
+      headroomChanged={headroomChanged}
+      mockProductionState={mockProductionState}
+    />
   ) : openBatch ? (
-    <OpenBatchChip openBatch={openBatch} />
+    <OpenBatchChip
+      openBatch={openBatch}
+      headroom={headroom}
+      headroomChanged={headroomChanged}
+      mockProductionState={mockProductionState}
+    />
   ) : null;
 
   return (
@@ -396,16 +443,8 @@ function OpenProductionRow({
         <span className="text-muted-foreground/30 text-xs">—</span>
       </td>
 
-      {/* Headroom */}
-      <td className="px-4 py-1.5 align-middle text-right">
-        {mockProductionState === "case3" ? (
-          <span className="font-mono text-xs text-red-500 font-semibold">{headroom}</span>
-        ) : (
-          <span className={["font-mono text-xs", headroomChanged ? "text-[#0EA5E9] font-semibold" : "text-muted-foreground/70"].join(" ")}>
-            {headroom}
-          </span>
-        )}
-      </td>
+      {/* Headroom — shown on chip; blank in column */}
+      <td className="px-4 py-1.5 align-middle" />
 
       {/* Priority */}
       <td className="px-4 py-1.5 align-middle text-right">
