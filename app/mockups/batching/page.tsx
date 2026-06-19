@@ -292,6 +292,7 @@ function OpenProductionRow({
   const partName = openWo?.partName ?? openBatch?.partName ?? "";
   const routingTemplateId = openWo?.routingTemplateId ?? openBatch?.routingTemplateId ?? "";
   const mockProductionState = openWo?.mockProductionState ?? openBatch?.mockProductionState ?? "case1";
+  const mockActiveStepIndex = openWo?.mockActiveStepIndex ?? openBatch?.mockActiveStepIndex ?? null;
   const projectNumbers = openWo
     ? [openWo.projectNumber]
     : (openBatch?.memberProjectNums ?? []);
@@ -329,18 +330,6 @@ function OpenProductionRow({
           year: "2-digit",
         })
       : "—";
-
-  // State indicator label
-  const stateLabel: Record<string, string> = {
-    case1: "Open",
-    case2: "In Progress",
-    case3: "Final Step",
-  };
-  const stateLabelColors: Record<string, string> = {
-    case1: "text-emerald-600 dark:text-emerald-400",
-    case2: "text-amber-600 dark:text-amber-400",
-    case3: "text-muted-foreground/50",
-  };
 
   const openIdentityChip = openWo ? (
     <OpenWoChip openWo={openWo} />
@@ -396,16 +385,9 @@ function OpenProductionRow({
 
       {/* Part Name */}
       <td className="px-4 py-1.5 align-middle max-w-[160px]">
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs truncate block text-muted-foreground/70" title={partName}>
-            {partName}
-          </span>
-          <span
-            className={["text-[10px] font-medium shrink-0", stateLabelColors[mockProductionState] ?? ""].join(" ")}
-          >
-            {stateLabel[mockProductionState] ?? mockProductionState}
-          </span>
-        </div>
+        <span className="text-xs truncate block text-muted-foreground/70" title={partName}>
+          {partName}
+        </span>
       </td>
 
       {/* Demand Qty — openQty + draft additions in blue */}
@@ -451,7 +433,7 @@ function OpenProductionRow({
 
       {/* Routing */}
       <td className="px-4 py-1.5 align-middle">
-        <RoutingPills templateId={routingTemplateId} />
+        <RoutingPills templateId={routingTemplateId} activeStepIndex={mockActiveStepIndex} />
       </td>
     </tr>
   );
@@ -459,19 +441,33 @@ function OpenProductionRow({
 
 // ─── Routing pills ─────────────────────────────────────────────────────────────
 
-function RoutingPills({ templateId }: { templateId: string }) {
+function RoutingPills({
+  templateId,
+  activeStepIndex,
+}: {
+  templateId: string;
+  activeStepIndex?: number | null;
+}) {
   const tmpl = ROUTING_TEMPLATES[templateId];
   if (!tmpl) return <span className="text-muted-foreground text-xs">—</span>;
   return (
     <div className="flex flex-nowrap gap-1">
-      {tmpl.steps.map((step) => (
-        <span
-          key={step}
-          className="inline-block rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
-        >
-          {step}
-        </span>
-      ))}
+      {tmpl.steps.map((step, idx) => {
+        const isActive = activeStepIndex !== null && activeStepIndex !== undefined && idx === activeStepIndex;
+        return (
+          <span
+            key={step}
+            className={[
+              "inline-block rounded border px-1.5 py-0.5 text-[10px] font-medium",
+              isActive
+                ? "border-foreground/40 bg-white text-black"
+                : "border-border bg-muted text-muted-foreground",
+            ].join(" ")}
+          >
+            {step}
+          </span>
+        );
+      })}
     </div>
   );
 }

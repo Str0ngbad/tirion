@@ -90,7 +90,9 @@ export type BtOpenWO = {
   routingTemplateId: string;
   // mockup-only: derived from real step-state in implementation
   mockProductionState: MockProductionState;
-  mockHeadroom: number | null; // only set for case2 rows; null for case1/case3
+  mockHeadroom: number;     // capacity remaining (all cases); 0 = no room; use large value for case1
+  mockActiveStepIndex: number | null; // null = case1 (no active step); index of current step for case2/case3
+  mockCompletedQty: number; // units already completed; 0 for case1/case3
 };
 
 export type BtOpenBatch = {
@@ -108,7 +110,9 @@ export type BtOpenBatch = {
   memberProjectNums: string[]; // for display
   // mockup-only
   mockProductionState: MockProductionState;
-  mockHeadroom: number | null;
+  mockHeadroom: number;     // capacity remaining (all cases); 0 = no room
+  mockActiveStepIndex: number | null; // null = case1; index of current step for case2/case3
+  mockCompletedQty: number; // 0 for case1/case3; actual value for case2
 };
 
 // ─── WO Generation (BOM walk) ─────────────────────────────────────────────────
@@ -404,7 +408,8 @@ function getPartInfo(partId: number): { partNumber: string; partName: string; pa
 }
 
 export const OPEN_WOS: BtOpenWO[] = [
-  // partId 1942 — Upper Housing — from project 10030 (blue)
+  // partId 1942 — Upper Housing (Assembly → tmpl_assembly, steps: Prep/Assembly/QC)
+  // case1: two Case 1 hosts for same partId → heuristic test (50001 dueDate Jul 15, 50011→50012 below)
   {
     openWoId: 50001,
     projectId: 1,
@@ -418,9 +423,12 @@ export const OPEN_WOS: BtOpenWO[] = [
     dueDate: "2026-07-15",
     routingTemplateId: defaultTemplateId(getPartInfo(1942).partType, 1942),
     mockProductionState: "case1",
-    mockHeadroom: null,
+    mockHeadroom: 8,       // plenty of room
+    mockActiveStepIndex: null,
+    mockCompletedQty: 0,
   },
-  // partId 1948 — Drive Shaft — from project 10489 (orange) — case2, tight headroom
+  // partId 1948 — Drive Shaft (even partId → tmpl_mill, steps: Mill/Drill/Deburr/Inspect)
+  // case2, tight headroom: only 1 unit of room remaining
   {
     openWoId: 50002,
     projectId: 2,
@@ -434,9 +442,11 @@ export const OPEN_WOS: BtOpenWO[] = [
     dueDate: "2026-07-20",
     routingTemplateId: defaultTemplateId(getPartInfo(1948).partType, 1948),
     mockProductionState: "case2",
-    mockHeadroom: 1,
+    mockHeadroom: 1,       // tight: only 1 more unit fits
+    mockActiveStepIndex: 2, // active at Deburr (step index 2)
+    mockCompletedQty: 3,   // 3 of 4 completed
   },
-  // partId 1908 — Base Plate — from project 10121 (green) — case1
+  // partId 1908 — Base Plate (even → tmpl_mill)
   {
     openWoId: 50003,
     projectId: 3,
@@ -450,9 +460,11 @@ export const OPEN_WOS: BtOpenWO[] = [
     dueDate: "2026-06-30",
     routingTemplateId: defaultTemplateId(getPartInfo(1908).partType, 1908),
     mockProductionState: "case1",
-    mockHeadroom: null,
+    mockHeadroom: 9,
+    mockActiveStepIndex: null,
+    mockCompletedQty: 0,
   },
-  // partId 1951 — End Cap Left — from project 10030 (blue) — case1
+  // partId 1951 — End Cap Left (odd → tmpl_lathe, steps: Lathe/Turn/Deburr/Inspect)
   {
     openWoId: 50004,
     projectId: 4,
@@ -466,9 +478,11 @@ export const OPEN_WOS: BtOpenWO[] = [
     dueDate: "2026-08-01",
     routingTemplateId: defaultTemplateId(getPartInfo(1951).partType, 1951),
     mockProductionState: "case1",
-    mockHeadroom: null,
+    mockHeadroom: 10,
+    mockActiveStepIndex: null,
+    mockCompletedQty: 0,
   },
-  // partId 2035 — Cover Panel — from project 10412 (red) — case3
+  // partId 2035 — Cover Panel (odd → tmpl_lathe) — case3: active at Inspect (index 3, last)
   {
     openWoId: 50005,
     projectId: 5,
@@ -482,9 +496,11 @@ export const OPEN_WOS: BtOpenWO[] = [
     dueDate: "2026-07-10",
     routingTemplateId: defaultTemplateId(getPartInfo(2035).partType, 2035),
     mockProductionState: "case3",
-    mockHeadroom: null,
+    mockHeadroom: 3,       // planner-verified capacity, shown in red
+    mockActiveStepIndex: 3, // active at Inspect (final step, index 3)
+    mockCompletedQty: 0,
   },
-  // partId 1967 — Bushing Retainer — from project 10121 (green) — case1
+  // partId 1967 — Bushing Retainer (odd → tmpl_lathe)
   {
     openWoId: 50006,
     projectId: 6,
@@ -498,9 +514,11 @@ export const OPEN_WOS: BtOpenWO[] = [
     dueDate: "2026-07-25",
     routingTemplateId: defaultTemplateId(getPartInfo(1967).partType, 1967),
     mockProductionState: "case1",
-    mockHeadroom: null,
+    mockHeadroom: 12,
+    mockActiveStepIndex: null,
+    mockCompletedQty: 0,
   },
-  // partId 1954 — End Cap Right — from project 10030 (blue) — case2 with headroom
+  // partId 1954 — End Cap Right (even → tmpl_mill) — case2 with good headroom
   {
     openWoId: 50007,
     projectId: 7,
@@ -514,9 +532,11 @@ export const OPEN_WOS: BtOpenWO[] = [
     dueDate: "2026-08-05",
     routingTemplateId: defaultTemplateId(getPartInfo(1954).partType, 1954),
     mockProductionState: "case2",
-    mockHeadroom: 3,
+    mockHeadroom: 3,       // 3 more units fit
+    mockActiveStepIndex: 1, // active at Drill (index 1)
+    mockCompletedQty: 2,   // 2 of 5 completed
   },
-  // partId 2066 — Gear Assembly — from project 10489 (orange) — case1
+  // partId 2066 — Gear Assembly (Assembly → tmpl_assembly)
   {
     openWoId: 50008,
     projectId: 8,
@@ -530,9 +550,11 @@ export const OPEN_WOS: BtOpenWO[] = [
     dueDate: "2026-07-18",
     routingTemplateId: defaultTemplateId(getPartInfo(2066).partType, 2066),
     mockProductionState: "case1",
-    mockHeadroom: null,
+    mockHeadroom: 8,
+    mockActiveStepIndex: null,
+    mockCompletedQty: 0,
   },
-  // partId 2219 — Spindle Housing — from project 10030 (blue) — case2, zero headroom
+  // partId 2219 — Spindle Housing (odd → tmpl_lathe) — case2, zero headroom (non-actionable)
   {
     openWoId: 50009,
     projectId: 9,
@@ -546,9 +568,11 @@ export const OPEN_WOS: BtOpenWO[] = [
     dueDate: "2026-06-28",
     routingTemplateId: defaultTemplateId(getPartInfo(2219).partType, 2219),
     mockProductionState: "case2",
-    mockHeadroom: 0,
+    mockHeadroom: 0,       // full; non-actionable → hidden by implicit filter
+    mockActiveStepIndex: 2, // active at Deburr
+    mockCompletedQty: 1,
   },
-  // partId 1922 — Side Bracket — from project 10121 (green) — case1
+  // partId 1922 — Side Bracket (even → tmpl_mill)
   {
     openWoId: 50010,
     projectId: 10,
@@ -562,9 +586,11 @@ export const OPEN_WOS: BtOpenWO[] = [
     dueDate: "2026-07-30",
     routingTemplateId: defaultTemplateId(getPartInfo(1922).partType, 1922),
     mockProductionState: "case1",
-    mockHeadroom: null,
+    mockHeadroom: 7,
+    mockActiveStepIndex: null,
+    mockCompletedQty: 0,
   },
-  // partId 1948 — Drive Shaft — from project 10030 (blue) — case1 (second open WO for same part)
+  // partId 1948 — Drive Shaft — case1, later due date (heuristic: pick this over 50002)
   {
     openWoId: 50011,
     projectId: 11,
@@ -575,12 +601,14 @@ export const OPEN_WOS: BtOpenWO[] = [
     ...getPartInfo(1948),
     openQty: 4,
     priority: 4,
-    dueDate: "2026-08-10",
+    dueDate: "2026-08-10",   // later than 50002 (Jul 20) → heuristic picks this one
     routingTemplateId: defaultTemplateId(getPartInfo(1948).partType, 1948),
     mockProductionState: "case1",
-    mockHeadroom: null,
+    mockHeadroom: 6,
+    mockActiveStepIndex: null,
+    mockCompletedQty: 0,
   },
-  // partId 2035 — Cover Panel — from project 10121 (green) — case1
+  // partId 2035 — Cover Panel — case1 (second Case 1 host for same partId)
   {
     openWoId: 50012,
     projectId: 12,
@@ -594,9 +622,11 @@ export const OPEN_WOS: BtOpenWO[] = [
     dueDate: "2026-07-22",
     routingTemplateId: defaultTemplateId(getPartInfo(2035).partType, 2035),
     mockProductionState: "case1",
-    mockHeadroom: null,
+    mockHeadroom: 5,
+    mockActiveStepIndex: null,
+    mockCompletedQty: 0,
   },
-  // partId 1942 — Upper Housing — from project 10412 (red) — case3
+  // partId 1942 — Upper Housing — case3 (Assembly → tmpl_assembly, steps: Prep/Assembly/QC)
   {
     openWoId: 50013,
     projectId: 13,
@@ -610,9 +640,11 @@ export const OPEN_WOS: BtOpenWO[] = [
     dueDate: "2026-08-15",
     routingTemplateId: defaultTemplateId(getPartInfo(1942).partType, 1942),
     mockProductionState: "case3",
-    mockHeadroom: null,
+    mockHeadroom: 4,       // planner-verified, shown in red
+    mockActiveStepIndex: 2, // active at QC (final step for tmpl_assembly, index 2)
+    mockCompletedQty: 0,
   },
-  // partId 1929 — Pivot Pin — from project 10121 (green) — case1
+  // partId 1929 — Pivot Pin (odd → tmpl_lathe)
   {
     openWoId: 50014,
     projectId: 14,
@@ -626,9 +658,11 @@ export const OPEN_WOS: BtOpenWO[] = [
     dueDate: "2026-07-05",
     routingTemplateId: defaultTemplateId(getPartInfo(1929).partType, 1929),
     mockProductionState: "case1",
-    mockHeadroom: null,
+    mockHeadroom: 15,
+    mockActiveStepIndex: null,
+    mockCompletedQty: 0,
   },
-  // partId 2063 — Seal Ring — from project 10030 (blue) — case1
+  // partId 2063 — Seal Ring (odd → tmpl_lathe)
   {
     openWoId: 50015,
     projectId: 15,
@@ -642,12 +676,15 @@ export const OPEN_WOS: BtOpenWO[] = [
     dueDate: "2026-08-20",
     routingTemplateId: defaultTemplateId(getPartInfo(2063).partType, 2063),
     mockProductionState: "case1",
-    mockHeadroom: null,
+    mockHeadroom: 18,
+    mockActiveStepIndex: null,
+    mockCompletedQty: 0,
   },
 ];
 
 export const OPEN_BATCHES: BtOpenBatch[] = [
-  // Multi-project batch for partId 1942 (Upper Housing) — case1
+  // partId 1942 (Upper Housing, Assembly → tmpl_assembly) — case1, another Case 1 host for heuristic test
+  // dueDate Jul 12 — earlier than 50001 (Jul 15) and 50013 (Aug 15) → heuristic picks 50013 (latest)
   {
     batchId: "OPEN-BATCH-001",
     openBatchWoId: 60001,
@@ -660,9 +697,11 @@ export const OPEN_BATCHES: BtOpenBatch[] = [
     memberWoIds: [60101, 60102],
     memberProjectNums: ["10030", "10489"],
     mockProductionState: "case1",
-    mockHeadroom: null,
+    mockHeadroom: 6,
+    mockActiveStepIndex: null,
+    mockCompletedQty: 0,
   },
-  // partId 1948 (Drive Shaft) — case2 with insufficient headroom
+  // partId 1948 (Drive Shaft, even → tmpl_mill) — case2 with insufficient headroom (non-actionable)
   {
     batchId: "OPEN-BATCH-002",
     openBatchWoId: 60002,
@@ -675,9 +714,11 @@ export const OPEN_BATCHES: BtOpenBatch[] = [
     memberWoIds: [60103, 60104],
     memberProjectNums: ["10121", "10030"],
     mockProductionState: "case2",
-    mockHeadroom: 0,
+    mockHeadroom: 0,       // full; non-actionable → hidden by implicit filter
+    mockActiveStepIndex: 1, // active at Drill
+    mockCompletedQty: 7,
   },
-  // partId 2066 (Gear Assembly) — case1
+  // partId 2066 (Gear Assembly → tmpl_assembly) — case1
   {
     batchId: "OPEN-BATCH-003",
     openBatchWoId: 60003,
@@ -690,9 +731,11 @@ export const OPEN_BATCHES: BtOpenBatch[] = [
     memberWoIds: [60105, 60106, 60107],
     memberProjectNums: ["10121", "10412", "10489"],
     mockProductionState: "case1",
-    mockHeadroom: null,
+    mockHeadroom: 7,
+    mockActiveStepIndex: null,
+    mockCompletedQty: 0,
   },
-  // partId 1951 (End Cap Left) — case3
+  // partId 1951 (End Cap Left, odd → tmpl_lathe) — case3: active at Inspect (index 3, final)
   {
     batchId: "OPEN-BATCH-004",
     openBatchWoId: 60004,
@@ -705,9 +748,11 @@ export const OPEN_BATCHES: BtOpenBatch[] = [
     memberWoIds: [60108, 60109],
     memberProjectNums: ["10030", "10121"],
     mockProductionState: "case3",
-    mockHeadroom: null,
+    mockHeadroom: 3,       // planner-verified, shown in red
+    mockActiveStepIndex: 3, // active at Inspect (final step, index 3)
+    mockCompletedQty: 0,
   },
-  // partId 1954 (End Cap Right) — case2 with sufficient headroom
+  // partId 1954 (End Cap Right, even → tmpl_mill) — case2 with sufficient headroom (actionable)
   {
     batchId: "OPEN-BATCH-005",
     openBatchWoId: 60005,
@@ -720,9 +765,11 @@ export const OPEN_BATCHES: BtOpenBatch[] = [
     memberWoIds: [60110, 60111],
     memberProjectNums: ["10030", "10412"],
     mockProductionState: "case2",
-    mockHeadroom: 4,
+    mockHeadroom: 4,       // 4 units still fit
+    mockActiveStepIndex: 1, // active at Drill
+    mockCompletedQty: 3,
   },
-  // partId 2063 (Seal Ring) — case1
+  // partId 2063 (Seal Ring, odd → tmpl_lathe) — case1
   {
     batchId: "OPEN-BATCH-006",
     openBatchWoId: 60006,
@@ -735,7 +782,9 @@ export const OPEN_BATCHES: BtOpenBatch[] = [
     memberWoIds: [60112, 60113, 60114],
     memberProjectNums: ["10030", "10489"],
     mockProductionState: "case1",
-    mockHeadroom: null,
+    mockHeadroom: 12,
+    mockActiveStepIndex: null,
+    mockCompletedQty: 0,
   },
 ];
 
