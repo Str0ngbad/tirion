@@ -374,18 +374,10 @@ function OpenProductionRow({
         />
       </td>
 
-      {/* Part Number — with Active in Production indicator */}
+      {/* Part Number */}
       <td className="px-4 py-1.5 align-middle">
         <span className="font-mono text-xs text-muted-foreground/70">
           {partNumber}
-          {PART_IDS_WITH_OPEN_WORK.has(partId) && (
-            <span title="This part has Work in Progress" className="inline-block ml-1">
-              <Activity
-                className="h-2.5 w-2.5 text-amber-500"
-                aria-label="Has Work in Progress"
-              />
-            </span>
-          )}
         </span>
       </td>
 
