@@ -849,8 +849,6 @@ export type BtSessionState = {
   // Phase 2: draft chip additions to Open rows.
   // openRowChips[openHostId] = array of candidate woIds dragged onto this Open row in current draft
   openRowChips: Record<number, number[]>;
-  // Show Only Actionable Production Rows filter (default OFF)
-  showOnlyActionable: boolean;
   // Auto-batch tier selection (persisted across uses in session)
   autoBatchTier: "candidates-only" | "include-unstarted-wip";
 };
@@ -871,7 +869,6 @@ export function buildInitialSessionState(wos: BtWorkOrder[]): BtSessionState {
     committedBatches: [],
     showHiddenSingletons: false,
     openRowChips: {},
-    showOnlyActionable: false,
     autoBatchTier: "candidates-only",
   };
 }

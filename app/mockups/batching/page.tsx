@@ -1239,29 +1239,16 @@ export default function BatchingPage() {
       }
       // View mode filter
       if (!openRowVisibleInMode(row.openHostId)) return false;
-      // Show Only Actionable Production Rows filter:
-      //   Case 1: always actionable (open to new members)
-      //   Case 3: always shown (terminal state, no drops accepted but visible for context)
-      //   Case 2: actionable only when mockHeadroom >= minCandidateDemand (some room exists)
-      //   When ON and a Case 2 row has 0 or null headroom → hidden from view.
-      // minCandidateDemand is simplified to 1 for the mockup; real implementation
-      // would derive the minimum demand across actual candidate WOs for this partId.
-      if (state.showOnlyActionable) {
-        const minCandidateDemand = 1; // simplified: minimum possible demand
-        const isActionable = (() => {
-          const ps = row.openWo?.mockProductionState ?? row.openBatch?.mockProductionState;
-          if (ps === "case1" || ps === "case3") return true;
-          if (ps === "case2") {
-            const headroom = row.openWo?.mockHeadroom ?? row.openBatch?.mockHeadroom ?? 0;
-            return headroom >= minCandidateDemand;
-          }
-          return true;
-        })();
-        if (!isActionable) return false;
+      // Non-actionable Case 2 rows (headroom <= 0) are hidden implicitly.
+      // Case 1 and Case 3 are always visible.
+      const ps = row.openWo?.mockProductionState ?? row.openBatch?.mockProductionState;
+      if (ps === "case2") {
+        const headroom = row.openWo?.mockHeadroom ?? row.openBatch?.mockHeadroom ?? 0;
+        if (headroom <= 0) return false;
       }
       return true;
     });
-  }, [allOpenRows, filterSearch, state.showOnlyActionable, openRowVisibleInMode]);
+  }, [allOpenRows, filterSearch, openRowVisibleInMode]);
 
   // Build a map of partId → open rows for rendering alongside candidate groups
   const openRowsByPartId = useMemo((): Map<number, OpenRowEntry[]> => {
@@ -1811,38 +1798,6 @@ export default function BatchingPage() {
                 />
               </span>
               Show Unbatchable Parts
-            </button>
-
-            {/* Show Only Actionable Production Rows filter */}
-            <button
-              role="switch"
-              aria-checked={state.showOnlyActionable}
-              aria-label="Show Only Actionable Production Rows"
-              onClick={() =>
-                setState((prev) => ({
-                  ...prev,
-                  showOnlyActionable: !prev.showOnlyActionable,
-                }))
-              }
-              className="flex items-center gap-1.5 text-xs cursor-pointer select-none focus:outline-none"
-              title="When ON, hides Open rows where the batch has insufficient headroom (Case 2 with 0 headroom)"
-            >
-              <span
-                className={[
-                  "relative inline-flex h-4 w-8 items-center rounded-full transition-colors shrink-0",
-                  state.showOnlyActionable ? "bg-primary" : "bg-muted",
-                ].join(" ")}
-              >
-                <span
-                  className={[
-                    "inline-block h-3 w-3 transform rounded-full bg-white shadow transition-transform",
-                    state.showOnlyActionable
-                      ? "translate-x-4"
-                      : "translate-x-0.5",
-                  ].join(" ")}
-                />
-              </span>
-              Only Actionable Open Rows
             </button>
 
             <div className="flex-1" />
