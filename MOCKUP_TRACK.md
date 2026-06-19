@@ -29,6 +29,8 @@ Entries are ordered most recent first.
 5. `feat(mockup): add Headroom column between Planned and Priority`
 6. `refactor(mockup): drop 'Show Only Actionable' toggle, hide non-actionable Case 2 rows implicitly`
 7. `refactor(mockup): remove Active in Production indicator from Open rows`
+8. `fix(mockup): allow scroll to reach bottom of candidate table`
+9. `docs(mockup): regenerate Manual Test Guide with Part Numbers and verified heuristic data`
 
 ### Bugs fixed
 
@@ -60,86 +62,145 @@ New rule: a partId group is a true singleton (unbatchable) only if:
 
 If either condition fails, the group is a non-singleton and appears unlocked in the Batching view.
 
-### Data coverage — 4 demo drag scenarios
+### Data coverage — 5 demo scenarios
 
-The seeded data supports these specific scenarios for manual testing:
+The seeded data supports these specific scenarios for manual testing. Part Numbers and Part Names are as rendered in the UI (sourced from MOCK_PARTS via real data).
 
-| Scenario | Part | Candidate WOs | Open rows visible |
-|----------|------|---------------|-------------------|
-| Case 1 drop | Drive Shaft (1948) | WO from 10030 + WO from 10489 | Open WO 50011 (case1, Aug 10, headroom 6) · Open WO 50002 (case2, Jul 20, headroom 1) |
-| Case 2 actionable | End Cap Right (1954) | WO from 10030 | Open WO 50007 (case2, headroom 3) · Open Batch 60005 (case2, headroom 4) |
-| Case 3 drop | Cover Panel (2035) | WO from 10121 + WO from 10412 | Open WO 50005 (case3) · Open WO 50012 (case1, headroom 5) |
-| Heuristic (multi-host) | Upper Housing (1942) | WO from 10121 + WO from 10412 | Open WO 50001 (case1, Jul 15) · Open WO 50013 (case3, Aug 15) · Open Batch 60001 (case1, Jul 12) |
+| Scenario | Part Number | Part Name | Candidate WOs | Key Open rows |
+|----------|-------------|-----------|---------------|---------------|
+| 1 — Case 1 drop | 58-17-0-00 | Photo Eye Kit | 10030.08 (qty 1) · 10489.01 (qty 1) | WO 50011 (case1, headroom 6) · WO 50002 (case2, headroom 1, blocked) |
+| 2 — Case 2 blocked | 55-10-0-00 | PB-M Wrap Around Drive Assembly | 10030.02 (qty 1) | WO 50007 (case2, headroom 3) · Batch 60005 (case2, headroom 4) |
+| 3 — Case 3 blocked | 18-01-3-00 | CW 10.5in Cutter Plate Assembly | 10121.03 (qty 1) · 10412.02 (qty 1) | WO 50005 (case3, headroom 3 red) · WO 50012 (case1, headroom 5) |
+| 4 — Multi-host heuristic | Tailstock Brake Assembly | Tailstock Brake Assembly | 10121.04 (qty 1) · 10412.01 (qty 1) | WO 50001 (case1, Jul 15) · Batch 60001 (case1, Jul 12) · WO 50013 (case3, Aug 15) |
+| 5 — Headroom live update | 18-01-3-00 | CW 10.5in Cutter Plate Assembly | 10121.03 (qty 1) | WO 50012 (case1, headroom 5) |
 
-Non-actionable hidden demo: Spindle Housing (2219) — Open WO 50009 (case2, headroom 0) is hidden by the implicit filter. Only the candidate WO is visible, with the amber Activity icon indicating open work exists.
+Non-actionable hidden demo: Part Number 52-31-0-00 (PB-M Lower Column 2.0) — Open WO 50009 (case2, headroom 0) is hidden by the implicit filter. Only the candidate WO is visible, with the amber Activity icon on the Part # cell.
+
+### Heuristic rule — locked definition
+
+The "Include Unstarted WIP" Auto-Batch tier follows this rule when multiple Open rows exist for the same partId:
+
+1. **Case 1 only** — Case 2 and Case 3 Open rows are never auto-batch targets (`isEligibleOpenTarget` returns false for case2/3). Only case1 rows enter the candidate pool.
+2. **Latest dueDate among case1** — the row with the most recent dueDate is preferred.
+3. **Tiebreak: lowest openHostId** — deterministic when two case1 rows share a dueDate.
+
+**Scenario 4 verification:** For Tailstock Brake Assembly, the candidate pool after rule 1 is: WO 50001 (case1, Jul 15) and Batch 60001 (case1, Jul 12). WO 50013 (case3, Aug 15) is excluded — it has the latest date but is case3. Among the two case1 options, WO 50001 (Jul 15) beats Batch 60001 (Jul 12). **Expected pick: Open WO 50001.**
 
 ### Manual Test Guide
 
-Navigate to `http://localhost:3000/mockups/batching` (with dev server running).
+Navigate to `http://localhost:3000/mockups/batching` (dev server on port 3000).
 
-**Prerequisite:** Reset Draft to ensure clean initial state.
-
----
-
-**Scenario 1 — Case 1 drop (Drive Shaft 1948)**
-
-WOs: project 10030 WO (qty 1) and project 10489 WO (qty 1) appear as a 2-WO group.
-
-Open rows visible for 1948: Open WO 50011 (case1, headroom 6, all pills muted) and Open WO 50002 (case2, tight, headroom 1, Deburr pill highlighted).
-
-1. Click "Auto-Batch Candidates" → Drive Shaft WOs batch together.
-2. Drag the guest chip from one Drive Shaft WO onto Open WO 50011 (case1 row). Row should turn green highlight. Drop.
-3. Verify: Demand on 50011 increments by the chip's quantity. Headroom column decreases to 5 (bright blue). Completed still shows "—" (case1).
-4. Remove the chip. Headroom returns to 6.
+**Prerequisite:** Click "Reset Draft" if any chips have been moved. All chips should be at home (Composition cells showing one anchor chip each).
 
 ---
 
-**Scenario 2 — Case 2 actionable drop (End Cap Right 1954)**
+**Scenario 1 — Case 1 drop**
 
-Open rows: WO 50007 (headroom 3, Drill pill highlighted, Completed 2) and Batch 60005 (headroom 4, Drill pill highlighted, Completed 3).
+- **Part Number:** 58-17-0-00
+- **Part Name:** Photo Eye Kit
+- **Candidate WOs:** two rows — chip `10030.08 / Qty: 1` (project 10030) and `10489.01 / Qty: 1` (project 10489)
+- **Open rows visible:** Open WO 50001 label `10489.01 / Qty: 4` (case2, headroom 1, QC pill highlighted) and Open WO 50011 label `10030.08 / Qty: 4` (case1, headroom 6, all pills muted)
+- **Expected outcome:** Drag either Photo Eye Kit candidate chip onto the Open WO 50011 row (case1). Row highlights green during drag. On drop: Demand on 50011 increments, Headroom decreases to 5 (bright blue `#0EA5E9`). Open WO 50002 (case2) should stay greyed during drag — drop blocked.
 
-1. Drag the End Cap Right candidate chip onto Open WO 50007. Headroom column updates to 2 (bright blue). Completed stays 2.
-2. Remove chip. Drag onto Open Batch 60005. Headroom updates to 3. Completed stays 3.
-3. Verify Case 3 context: Cover Panel's Open WO 50005 appears with red Headroom (3, red) and Inspect pill highlighted. Dragging a Cover Panel chip onto it should be blocked (row stays grey during drag).
-
----
-
-**Scenario 3 — Case 3 drop rejected (Cover Panel 2035)**
-
-Cover Panel group: two candidate WOs. Open WO 50005 (case3, Inspect highlighted, red headroom 3) and Open WO 50012 (case1, headroom 5).
-
-1. Begin dragging a Cover Panel chip. Verify WO 50005 (case3) is greyed out (drop blocked). Verify WO 50012 (case1) is highlighted green (eligible).
-2. Drop onto 50012 (case1). Demand increments. Headroom decreases to 4 (blue).
-3. Drop onto 50005 is blocked — chip should snap back.
+Steps:
+1. Click "Auto-Batch Candidates" (Candidates Only tier) → Photo Eye Kit WOs batch together, a guest chip appears.
+2. Drag the guest chip onto the de-emphasized Open WO 50011 row.
+3. Verify: Demand increments; Headroom column shows 5 in bright blue; Completed shows "—" (case1).
+4. Drag the chip back home to reset.
 
 ---
 
-**Scenario 4 — Multi-host heuristic (Upper Housing 1942)**
+**Scenario 2 — Case 2 blocked drop**
 
-Three Open rows for 1942: WO 50001 (case1, Jul 15, headroom 8), WO 50013 (case3, Aug 15, headroom 4 red), Batch 60001 (case1, Jul 12, headroom 6).
+- **Part Number:** 55-10-0-00
+- **Part Name:** PB-M Wrap Around Drive Assembly (standard height columns)
+- **Candidate WO:** one row — chip `10030.02 / Qty: 1` (project 10030)
+- **Open rows visible:** Open WO 50007 label `10030.02 / Qty: 5` (case2, headroom 3, **Assembly** pill highlighted — index 1 of tmpl_assembly) and Open Batch 60005 label `OPEN-BATCH-005 / Qty: 6` (case2, headroom 4, **Assembly** pill highlighted)
+- **Expected outcome:** Both case2 Open rows are visible with their routing pill highlighted. During drag of the candidate chip, both case2 rows stay greyed (30% opacity, `pointer-events-none`). Drop is blocked — chip snaps back home. This confirms the locked rule: case2 rows are visible for context but accept no new drops.
 
-1. Verify routing pill highlights: 50013 has QC pill (index 2 for tmpl_assembly) highlighted white. 50001 and 60001 have all pills muted.
-2. Drag an Upper Housing chip onto WO 50001 (case1). Headroom: 7.
-3. Remove. Drag onto 60001 (case1 batch). Headroom: 5. Completed: "—".
-4. Verify WO 50013 stays greyed during drag (case3 = ineligible).
+Steps:
+1. Begin dragging the `10030.02 / Qty: 1` chip from the PB-M Wrap Around Drive Assembly row.
+2. Observe: both Open rows for this part (50007 and 60005) are greyed — NOT highlighted green.
+3. Attempt to drop on either Open row → chip returns home.
 
 ---
 
-**Scenario 5 — Non-actionable hidden (Spindle Housing 2219)**
+**Scenario 3 — Case 3 blocked drop**
 
-Spindle Housing should appear in the candidate area (amber Activity icon on its Part # cell — it has Open work). Its sole Open row (50009, case2, headroom 0) should NOT appear in the Open rows table.
+- **Part Number:** 18-01-3-00
+- **Part Name:** CW 10.5in Cutter Plate Assembly
+- **Candidate WOs:** two rows — chip `10121.03 / Qty: 1` (project 10121) and `10412.02 / Qty: 1` (project 10412)
+- **Open rows visible:** Open WO 50005 label `10412.02 / Qty: 1` (case3, Headroom 3 in **red**, no pill highlighted†) and Open WO 50012 label `10121.03 / Qty: 1` (case1, Headroom 5, all pills muted)
+- **Expected outcome:** During drag, WO 50005 (case3) stays greyed — drop blocked. WO 50012 (case1) highlights green — eligible. Drop on 50012 succeeds; drop on 50005 snaps back.
 
-1. Confirm Spindle Housing WO is visible in the candidate table with amber Activity icon.
-2. Confirm no Open row for 2219 appears in the table.
-3. The candidate is draggable but has no eligible Open row to land on.
+†Known data issue: 50005 has `mockActiveStepIndex: 3` but `tmpl_assembly` has only 3 steps (indices 0–2). No pill will be highlighted for this row. Fix deferred to next data pass.
+
+Steps:
+1. Begin dragging a CW 10.5in Cutter Plate Assembly chip.
+2. Verify: 50005 (case3) is greyed out; 50012 (case1) is highlighted green.
+3. Drop on 50012 → Demand increments; Headroom 5→4 (blue); Completed "—".
+4. Attempt drop on 50005 → chip snaps back.
+
+---
+
+**Scenario 4 — Multi-host heuristic (Auto-Batch WIP tier)**
+
+- **Part Number:** Tailstock Brake Assembly
+- **Part Name:** Tailstock Brake Assembly
+- **Candidate WOs:** two rows — chip `10121.04 / Qty: 1` (project 10121) and `10412.01 / Qty: 1` (project 10412)
+- **Open rows visible:** Open WO 50001 label `10030.04 / Qty: 2` (case1, Headroom 8, Jul 15 due, all pills muted) · Open WO 50013 label `10412.01 / Qty: 2` (case3, Headroom 4 **red**, Aug 15 due, QC pill highlighted) · Open Batch 60001 label `OPEN-BATCH-001 / Qty: 5` (case1, Headroom 6, Jul 12 due, all pills muted)
+- **Expected outcome:** Switch Auto-Batch to "Include Unstarted WIP" tier and run. Heuristic candidate pool = case1 rows only: WO 50001 (Jul 15) and Batch 60001 (Jul 12). WO 50013 (case3, Aug 15) excluded despite having the latest date. Among case1: WO 50001 (Jul 15 > Jul 12) wins. **Both candidate chips should land on Open WO 50001.**
+
+Steps:
+1. Click the chevron on the Auto-Batch button → select "Include Unstarted WIP."
+2. Click "Auto-Batch."
+3. Verify: both Tailstock Brake Assembly candidate chips appear in Open WO 50001's Composition cell. Headroom on 50001 updates: 8 − 2 = 6 (blue).
+4. Open WO 50013 stays empty (case3 excluded from heuristic).
+5. Open Batch 60001 stays empty (case1 but earlier date than 50001).
+
+---
+
+**Scenario 5 — Headroom live update**
+
+- **Part Number:** 18-01-3-00
+- **Part Name:** CW 10.5in Cutter Plate Assembly
+- **Candidate WO:** chip `10121.03 / Qty: 1` (project 10121)
+- **Open row:** Open WO 50012 label `10121.03 / Qty: 1` (case1, Headroom **5**, all pills muted)
+- **Expected outcome:** Drag candidate chip onto 50012. Headroom column updates from 5 to 4 in bright blue `#0EA5E9` instantly. Remove chip → Headroom returns to 5 (no blue, value reverts).
+
+Steps:
+1. Drag a CW 10.5in Cutter Plate Assembly chip onto the Open WO 50012 row (case1).
+2. Observe Headroom column on 50012: value changes to 4, rendered in bright blue.
+3. Click the × on the draft chip to remove it.
+4. Observe: Headroom column returns to 5, blue coloring disappears.
+
+---
+
+**Bonus — Non-actionable hidden (PB-M Lower Column 2.0)**
+
+- **Part Number:** 52-31-0-00
+- **Part Name:** PB-M Lower Column 2.0
+- Scroll to the bottom of the Batching view. The PB-M Lower Column 2.0 row should appear with an amber Activity icon (⚡) on the Part # cell, indicating it has Open work.
+- Its sole Open row (WO 50009, case2, headroom 0) is hidden by the implicit filter — no de-emphasized row appears beneath it.
+- The candidate chip is draggable (it is a non-singleton because of the Open work), but no eligible case1 Open row exists to receive it.
 
 ---
 
 ### Deferred items
 
 - **Case 2/3 full UX:** Inline coverage messages, Case 3 confirmation prompt when a planner does try to drop.
-- **Headroom negative state:** If a planner drags more chips than headroom allows (headroom goes negative), the current mockup shows a negative number in blue. No blocking or warning UX — deferred.
-- **Auto-Batch WIP tier — heuristic for multi-host:** When "Include Unstarted WIP" fires and a partId has multiple Case 1 Open rows, the heuristic currently picks the Open row returned first by the data array (deterministic but not spec-defined). Real implementation should define the selection rule (latest dueDate, highest priority, etc.).
+- **Headroom negative state:** If a planner drags more chips than headroom allows (headroom goes negative), the mockup shows a negative number in blue. No blocking or warning UX — deferred.
+- **Auto-Batch WIP tier — heuristic documented but not enforced in UI:** The heuristic rule (case1 only, latest dueDate, lowest ID tiebreak) is implemented in `autoBatchCandidates`. No UI hint tells the planner which Open row was selected or why. A "WIP assigned to: [row]" confirmation would help — deferred.
+
+### Known issues for next iteration
+
+- **Part # hyphenated numbers wrap mid-number.** Part numbers like "18-01-3-00" render as "18-01-3-\n00" because the Part # column (`colgroup` width) is too narrow to fit the full string without wrapping. Fix: increase Part # column width, or add `whitespace-nowrap` to the Part # cell span.
+
+- **Due Date 3-line wrap.** Dates render as three separate lines ("Aug\n29,\n26") because the Due Date column is too narrow for the `toLocaleDateString` format. Fix: widen the column or switch to a compact format like "Aug 29" (no year).
+
+- **Completed column off right edge.** The Completed column (added right of Routing) is not visible without horizontal scroll — the table is wider than the viewport at default zoom. Fix: either condense colgroup widths across all columns, or move Completed to a position that fits (e.g., replace or absorb into Routing cell).
+
+- **`mockActiveStepIndex` out of bounds for Assembly case3 rows.** Open WO 50005 (CW 10.5in Cutter Plate Assembly, case3) and Open Batch 60004 (PB-M Base Assembly, case3) have `mockActiveStepIndex: 3`, but both parts are Assemblies using `tmpl_assembly` (Prep/Assembly/QC — max valid index is 2). No routing pill is highlighted on these rows. Fix: change `mockActiveStepIndex` to `2` (QC, the final step of tmpl_assembly) for both entries in `_data.ts`.
 
 ---
 
