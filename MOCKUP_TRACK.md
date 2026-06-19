@@ -18,6 +18,131 @@ Entries are ordered most recent first.
 
 ---
 
+## Session: Batching Lens — Phase 2 Verification Fixes + Data Display (2026-06-19)
+
+### Commits in this session
+
+1. `fix(mockup): remove nested <tr> wrapper from OpenProductionRow`
+2. `refactor(mockup): redefine singleton to include Open work for PartID`
+3. `feat(mockup): add Routing pill active-step highlight for Case 2/3 Open rows`
+4. `feat(mockup): add Completed column to right of Routing`
+5. `feat(mockup): add Headroom column between Planned and Priority`
+6. `refactor(mockup): drop 'Show Only Actionable' toggle, hide non-actionable Case 2 rows implicitly`
+7. `refactor(mockup): remove Active in Production indicator from Open rows`
+
+### Bugs fixed
+
+**BUG-1 — Nested `<tr>` hydration error.** `OpenProductionRow` was wrapped in a `<tr style={{display:"contents"}}>` inside `renderCandidateGroupWithOpenRows`, producing a `<tr>` directly nested inside a `<tr>`. This violates the HTML table model, causes React hydration errors, and may corrupt dnd-kit collision detection. Fix: removed the outer wrapper entirely; `isGreyedOut` prop passed directly to the inner `OpenProductionRow` which applies `opacity-30 pointer-events-none` on its own `<tr>`.
+
+**BUG-2 — "Include Unstarted WIP" Auto-Batch tier unreachable.** The prior singleton definition (`partWOs.length === 1`) treated any single-candidate partId as a true singleton, auto-locking it. Partids with exactly one candidate WO but existing Open work were locked and invisible to the "Include Unstarted WIP" tier (which places candidate singletons onto matching Case 1 Open rows). Fix: new singleton definition: `partWOs.length === 1 && !partIdsWithOpenWork.has(partId)`. Candidates with Open hosts are now non-singletons → unlocked by default → visible in Batching view → reachable by the WIP tier. `PART_IDS_WITH_OPEN_WORK` (module-level constant, avoids TDZ on `INITIAL_CANDIDATE_GROUPS`) drives both `liveGroups` and `computeDefaultLockState`.
+
+**BUG-3 — Production state label bleeding into Part Name cell.** The `stateLabel` span ("Open", "In Progress", "Final Step") injected colored text into the Part Name cell, creating ambiguous proximity to the part name. Fix: removed the state label entirely. Replaced by routing pill active-step highlight (see below).
+
+### New features
+
+**Routing pill active-step highlight (Case 2/3).** `RoutingPills` now accepts `activeStepIndex?: number | null`. When non-null, the pill at that index renders `border-foreground/40 bg-white text-black`; all other pills stay muted. Open WOs and Open Batches supply `mockActiveStepIndex`. Case 1 passes `null` (no active step → all pills muted). This encodes production state visually without needing a text label.
+
+**Completed column.** Added to the right of Routing in the Open row table. Case 2: shows `mockCompletedQty`. Case 1 / Case 3: dash. Candidate rows: blank. Tells the planner how many units are already done in the current production run.
+
+**Headroom column.** Added between Planned and Priority. For Open rows: `mockHeadroom - sum(draft chip quantities)`. Updates live in bright-blue `#0EA5E9` when chips are dragged onto the row. Case 3 always shown in red (signals: terminal step, no new members accepted regardless of numeric headroom). Candidate rows: blank. Informs drop decisions without requiring the planner to do mental subtraction.
+
+**Non-actionable Case 2 rows hidden implicitly.** Case 2 Open rows with `mockHeadroom <= 0` are hidden from the Open row table automatically. Case 1 and Case 3 always visible. The "Show Only Actionable" toggle is removed — the behavior is now always-on. This simplifies the filter bar and removes a decision the planner should never need to reverse.
+
+**Active in Production indicator removed from Open rows.** The amber Activity icon on Open row Part # cells was redundant — every Open row is by definition "Active in Production." Removed from `OpenProductionRow`. Icon remains on candidate rows (where it signals "this partId has open work elsewhere").
+
+### Singleton redefinition — design rationale
+
+The old singleton definition treated any partId with one candidate WO as unbatchable. This was correct when "batchable" meant "can be combined with another WO of the same part," but became wrong when Open rows entered the model. A candidate WO with a matching Open host isn't truly unbatchable — it should be visible so the planner can decide to add it to the existing production run.
+
+New rule: a partId group is a true singleton (unbatchable) only if:
+1. Exactly one candidate WO exists for the partId, AND
+2. No Open work (WO or batch) exists for the partId in the lens.
+
+If either condition fails, the group is a non-singleton and appears unlocked in the Batching view.
+
+### Data coverage — 4 demo drag scenarios
+
+The seeded data supports these specific scenarios for manual testing:
+
+| Scenario | Part | Candidate WOs | Open rows visible |
+|----------|------|---------------|-------------------|
+| Case 1 drop | Drive Shaft (1948) | WO from 10030 + WO from 10489 | Open WO 50011 (case1, Aug 10, headroom 6) · Open WO 50002 (case2, Jul 20, headroom 1) |
+| Case 2 actionable | End Cap Right (1954) | WO from 10030 | Open WO 50007 (case2, headroom 3) · Open Batch 60005 (case2, headroom 4) |
+| Case 3 drop | Cover Panel (2035) | WO from 10121 + WO from 10412 | Open WO 50005 (case3) · Open WO 50012 (case1, headroom 5) |
+| Heuristic (multi-host) | Upper Housing (1942) | WO from 10121 + WO from 10412 | Open WO 50001 (case1, Jul 15) · Open WO 50013 (case3, Aug 15) · Open Batch 60001 (case1, Jul 12) |
+
+Non-actionable hidden demo: Spindle Housing (2219) — Open WO 50009 (case2, headroom 0) is hidden by the implicit filter. Only the candidate WO is visible, with the amber Activity icon indicating open work exists.
+
+### Manual Test Guide
+
+Navigate to `http://localhost:3000/mockups/batching` (with dev server running).
+
+**Prerequisite:** Reset Draft to ensure clean initial state.
+
+---
+
+**Scenario 1 — Case 1 drop (Drive Shaft 1948)**
+
+WOs: project 10030 WO (qty 1) and project 10489 WO (qty 1) appear as a 2-WO group.
+
+Open rows visible for 1948: Open WO 50011 (case1, headroom 6, all pills muted) and Open WO 50002 (case2, tight, headroom 1, Deburr pill highlighted).
+
+1. Click "Auto-Batch Candidates" → Drive Shaft WOs batch together.
+2. Drag the guest chip from one Drive Shaft WO onto Open WO 50011 (case1 row). Row should turn green highlight. Drop.
+3. Verify: Demand on 50011 increments by the chip's quantity. Headroom column decreases to 5 (bright blue). Completed still shows "—" (case1).
+4. Remove the chip. Headroom returns to 6.
+
+---
+
+**Scenario 2 — Case 2 actionable drop (End Cap Right 1954)**
+
+Open rows: WO 50007 (headroom 3, Drill pill highlighted, Completed 2) and Batch 60005 (headroom 4, Drill pill highlighted, Completed 3).
+
+1. Drag the End Cap Right candidate chip onto Open WO 50007. Headroom column updates to 2 (bright blue). Completed stays 2.
+2. Remove chip. Drag onto Open Batch 60005. Headroom updates to 3. Completed stays 3.
+3. Verify Case 3 context: Cover Panel's Open WO 50005 appears with red Headroom (3, red) and Inspect pill highlighted. Dragging a Cover Panel chip onto it should be blocked (row stays grey during drag).
+
+---
+
+**Scenario 3 — Case 3 drop rejected (Cover Panel 2035)**
+
+Cover Panel group: two candidate WOs. Open WO 50005 (case3, Inspect highlighted, red headroom 3) and Open WO 50012 (case1, headroom 5).
+
+1. Begin dragging a Cover Panel chip. Verify WO 50005 (case3) is greyed out (drop blocked). Verify WO 50012 (case1) is highlighted green (eligible).
+2. Drop onto 50012 (case1). Demand increments. Headroom decreases to 4 (blue).
+3. Drop onto 50005 is blocked — chip should snap back.
+
+---
+
+**Scenario 4 — Multi-host heuristic (Upper Housing 1942)**
+
+Three Open rows for 1942: WO 50001 (case1, Jul 15, headroom 8), WO 50013 (case3, Aug 15, headroom 4 red), Batch 60001 (case1, Jul 12, headroom 6).
+
+1. Verify routing pill highlights: 50013 has QC pill (index 2 for tmpl_assembly) highlighted white. 50001 and 60001 have all pills muted.
+2. Drag an Upper Housing chip onto WO 50001 (case1). Headroom: 7.
+3. Remove. Drag onto 60001 (case1 batch). Headroom: 5. Completed: "—".
+4. Verify WO 50013 stays greyed during drag (case3 = ineligible).
+
+---
+
+**Scenario 5 — Non-actionable hidden (Spindle Housing 2219)**
+
+Spindle Housing should appear in the candidate area (amber Activity icon on its Part # cell — it has Open work). Its sole Open row (50009, case2, headroom 0) should NOT appear in the Open rows table.
+
+1. Confirm Spindle Housing WO is visible in the candidate table with amber Activity icon.
+2. Confirm no Open row for 2219 appears in the table.
+3. The candidate is draggable but has no eligible Open row to land on.
+
+---
+
+### Deferred items
+
+- **Case 2/3 full UX:** Inline coverage messages, Case 3 confirmation prompt when a planner does try to drop.
+- **Headroom negative state:** If a planner drags more chips than headroom allows (headroom goes negative), the current mockup shows a negative number in blue. No blocking or warning UX — deferred.
+- **Auto-Batch WIP tier — heuristic for multi-host:** When "Include Unstarted WIP" fires and a partId has multiple Case 1 Open rows, the heuristic currently picks the Open row returned first by the data array (deterministic but not spec-defined). Real implementation should define the selection rule (latest dueDate, highest priority, etc.).
+
+---
+
 ## Session: Batching Lens — Phase 2 Complete (2026-06-18)
 
 ### Commits in this session
