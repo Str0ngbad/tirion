@@ -309,7 +309,18 @@ export type BtCandidateGroup = {
   isSingleton: boolean;
 };
 
-export function computeCandidateGroups(wos: BtWorkOrder[]): BtCandidateGroup[] {
+// A candidate is a TRUE singleton only if no other WO of its PartID exists anywhere in the
+// lens — including other candidates, Open standalone WOs, or Open batches of the same PartID.
+// Candidates with an Open host of matching PartID have a composition decision to make and
+// must NOT be treated as singletons (they become unlocked by default and visible in Batching).
+export function computeCandidateGroups(
+  wos: BtWorkOrder[],
+  openWos: BtOpenWO[] = [],
+  openBatches: BtOpenBatch[] = []
+): BtCandidateGroup[] {
+  // Build a set of partIds that have Open work in the lens
+  const partIdsWithOpenWork = getPartIdsWithOpenWork(openWos, openBatches);
+
   const byPartId = new Map<number, BtWorkOrder[]>();
   for (const wo of wos) {
     if (!byPartId.has(wo.partId)) byPartId.set(wo.partId, []);
@@ -320,13 +331,15 @@ export function computeCandidateGroups(wos: BtWorkOrder[]): BtCandidateGroup[] {
   for (const [partId, partWOs] of byPartId) {
     const first = partWOs[0];
     if (!first) continue;
+    // Singleton only when exactly 1 candidate AND no Open work for this PartID
+    const isSingleton = partWOs.length === 1 && !partIdsWithOpenWork.has(partId);
     groups.push({
       partId,
       partNumber: first.partNumber,
       partName: first.partName,
       partType: first.partType,
       woIds: partWOs.map((w) => w.woId),
-      isSingleton: partWOs.length === 1,
+      isSingleton,
     });
   }
 
@@ -337,16 +350,24 @@ export function computeCandidateGroups(wos: BtWorkOrder[]): BtCandidateGroup[] {
   });
 }
 
+// Note: computed before Open data is available in module init order.
+// page.tsx recomputes live groups via useMemo with Open data after page load.
 export const INITIAL_CANDIDATE_GROUPS: BtCandidateGroup[] =
   computeCandidateGroups(ALL_BT_WOS);
 
 // ─── Default lock state computation ──────────────────────────────────────────
 
-// Singletons default to Locked; multi-WO candidates default to Unlocked.
+// True singletons default to Locked; all other candidates default to Unlocked.
+// "True singleton" = exactly 1 candidate for this PartID AND no Open work in the lens.
+// Candidates with Open work to compose with default to Unlocked (composition decision available).
 // Called at initial load and on Reset Draft.
 export function computeDefaultLockState(
-  wos: BtWorkOrder[]
+  wos: BtWorkOrder[],
+  openWos: BtOpenWO[] = [],
+  openBatches: BtOpenBatch[] = []
 ): { lockedWoIds: Set<number>; plannedQty: Record<number, number | null> } {
+  const partIdsWithOpenWork = getPartIdsWithOpenWork(openWos, openBatches);
+
   const byPartId = new Map<number, BtWorkOrder[]>();
   for (const wo of wos) {
     if (!byPartId.has(wo.partId)) byPartId.set(wo.partId, []);
@@ -356,14 +377,15 @@ export function computeDefaultLockState(
   const lockedWoIds = new Set<number>();
   const plannedQty: Record<number, number | null> = {};
 
-  for (const [, partWOs] of byPartId) {
-    if (partWOs.length === 1) {
+  for (const [partId, partWOs] of byPartId) {
+    const isTrueSingleton = partWOs.length === 1 && !partIdsWithOpenWork.has(partId);
+    if (isTrueSingleton) {
       const wo = partWOs[0]!;
       lockedWoIds.add(wo.woId);
-      // Singletons' planned qty defaults to their own demand (chips at home = just themselves)
+      // True singletons' planned qty defaults to their own demand
       plannedQty[wo.woId] = wo.quantity;
     }
-    // Multi-WO candidates: unlocked, no planned qty set
+    // Multi-WO candidates and candidates with Open hosts: unlocked, no planned qty set
   }
 
   return { lockedWoIds, plannedQty };
@@ -790,7 +812,7 @@ export function buildInitialSessionState(wos: BtWorkOrder[]): BtSessionState {
     chipHome[wo.woId] = wo.woId;
   }
 
-  const { lockedWoIds, plannedQty } = computeDefaultLockState(wos);
+  const { lockedWoIds, plannedQty } = computeDefaultLockState(wos, OPEN_WOS, OPEN_BATCHES);
 
   return {
     chipHome,
@@ -1521,7 +1543,7 @@ export function resetDraft(
     newChipHome[wo.woId] = wo.woId;
   }
 
-  const { lockedWoIds, plannedQty } = computeDefaultLockState(visibleWos);
+  const { lockedWoIds, plannedQty } = computeDefaultLockState(visibleWos, OPEN_WOS, OPEN_BATCHES);
 
   console.log("[AuditLog] Draft reset — all chips returned home, lock states restored to defaults, Open row assignments cleared");
 

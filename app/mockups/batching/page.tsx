@@ -1066,6 +1066,8 @@ export default function BatchingPage() {
   );
 
   // Recompute candidate groups from visible WOs (grouped by partId for singleton classification)
+  // Singleton = exactly 1 candidate WO AND no Open work in the lens for this PartID.
+  // Candidates with an Open host are NOT singletons — they have composition decisions to make.
   const liveGroups = useMemo(() => {
     const byPartId = new Map<number, BtWorkOrder[]>();
     for (const wo of visibleWOs) {
@@ -1076,13 +1078,14 @@ export default function BatchingPage() {
     for (const [partId, partWOs] of byPartId) {
       const first = partWOs[0];
       if (!first) continue;
+      const isSingleton = partWOs.length === 1 && !PART_IDS_WITH_OPEN_WORK.has(partId);
       groups.push({
         partId,
         partNumber: first.partNumber,
         partName: first.partName,
         partType: first.partType,
         woIds: partWOs.map((w) => w.woId),
-        isSingleton: partWOs.length === 1,
+        isSingleton,
       });
     }
     return groups.sort((a, b) => {
