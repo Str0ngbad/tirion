@@ -482,7 +482,8 @@ export const OPEN_WOS: BtOpenWO[] = [
     mockActiveStepIndex: null,
     mockCompletedQty: 0,
   },
-  // partId 2035 — Cover Panel (odd → tmpl_lathe) — case3: active at Inspect (index 3, last)
+  // partId 2035 — Cover Panel (Assembly → tmpl_assembly, steps: Prep/Assembly/QC)
+  // case3: active at QC (index 2, last step for tmpl_assembly)
   {
     openWoId: 50005,
     projectId: 5,
@@ -497,7 +498,7 @@ export const OPEN_WOS: BtOpenWO[] = [
     routingTemplateId: defaultTemplateId(getPartInfo(2035).partType, 2035),
     mockProductionState: "case3",
     mockHeadroom: 3,       // planner-verified capacity, shown in red
-    mockActiveStepIndex: 3, // active at Inspect (final step, index 3)
+    mockActiveStepIndex: 2, // active at QC (final step for tmpl_assembly, index 2)
     mockCompletedQty: 0,
   },
   // partId 1967 — Bushing Retainer (odd → tmpl_lathe)
