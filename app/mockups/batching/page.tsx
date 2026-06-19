@@ -273,6 +273,7 @@ function OpenProductionRow({
   wos,
   onRemoveDraftChip,
   isFirstInGroup,
+  isGreyedOut,
 }: {
   openWo: BtOpenWO | null;
   openBatch: BtOpenBatch | null;
@@ -284,6 +285,7 @@ function OpenProductionRow({
   wos: BtWorkOrder[];
   onRemoveDraftChip: (candidateWoId: number, openHostId: number) => void;
   isFirstInGroup: boolean;
+  isGreyedOut?: boolean;
 }) {
   const partId = openWo?.partId ?? openBatch?.partId ?? 0;
   const partNumber = openWo?.partNumber ?? openBatch?.partNumber ?? "";
@@ -354,6 +356,7 @@ function OpenProductionRow({
           ? "border-t-2 border-foreground/30"
           : "border-t border-foreground/10",
         "transition-opacity",
+        isGreyedOut ? "opacity-30 pointer-events-none" : "",
       ]
         .filter(Boolean)
         .join(" ")}
@@ -1647,25 +1650,20 @@ export default function BatchingPage() {
           : false;
 
       return (
-        <tr
+        <OpenProductionRow
           key={row.openHostId}
-          className={isOpenGreyedOut ? "opacity-30 pointer-events-none" : ""}
-          style={{ display: "contents" }}
-        >
-          <OpenProductionRow
-            key={row.openHostId}
-            openWo={row.openWo}
-            openBatch={row.openBatch}
-            openHostId={row.openHostId}
-            draftChipWoIds={draftChipWoIds}
-            isDragActive={isDragActive}
-            activeChipWoId={activeChipWoId}
-            state={state}
-            wos={ALL_BT_WOS}
-            onRemoveDraftChip={handleRemoveDraftChipFromOpenRow}
-            isFirstInGroup={false}
-          />
-        </tr>
+          openWo={row.openWo}
+          openBatch={row.openBatch}
+          openHostId={row.openHostId}
+          draftChipWoIds={draftChipWoIds}
+          isDragActive={isDragActive}
+          activeChipWoId={activeChipWoId}
+          state={state}
+          wos={ALL_BT_WOS}
+          onRemoveDraftChip={handleRemoveDraftChipFromOpenRow}
+          isFirstInGroup={false}
+          isGreyedOut={isOpenGreyedOut}
+        />
       );
     });
 
