@@ -293,6 +293,7 @@ function OpenProductionRow({
   const routingTemplateId = openWo?.routingTemplateId ?? openBatch?.routingTemplateId ?? "";
   const mockProductionState = openWo?.mockProductionState ?? openBatch?.mockProductionState ?? "case1";
   const mockActiveStepIndex = openWo?.mockActiveStepIndex ?? openBatch?.mockActiveStepIndex ?? null;
+  const mockCompletedQty = openWo?.mockCompletedQty ?? openBatch?.mockCompletedQty ?? 0;
   const projectNumbers = openWo
     ? [openWo.projectNumber]
     : (openBatch?.memberProjectNums ?? []);
@@ -434,6 +435,15 @@ function OpenProductionRow({
       {/* Routing */}
       <td className="px-4 py-1.5 align-middle">
         <RoutingPills templateId={routingTemplateId} activeStepIndex={mockActiveStepIndex} />
+      </td>
+
+      {/* Completed */}
+      <td className="px-4 py-1.5 align-middle text-right">
+        {mockProductionState === "case2" ? (
+          <span className="font-mono text-xs text-muted-foreground/70">{mockCompletedQty}</span>
+        ) : (
+          <span className="text-muted-foreground/30 text-xs">—</span>
+        )}
       </td>
     </tr>
   );
@@ -847,6 +857,9 @@ function CandidateRow({
       <td className="px-4 py-1.5 align-middle">
         <RoutingPills templateId={wo.routingTemplateId} />
       </td>
+
+      {/* Completed — blank for candidates */}
+      <td className="px-4 py-1.5 align-middle" />
     </tr>
   );
 }
@@ -2070,6 +2083,9 @@ export default function BatchingPage() {
                     <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground">
                       Routing
                     </th>
+                    <th className="px-4 py-2 text-right text-xs font-semibold text-muted-foreground">
+                      Completed
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2086,7 +2102,7 @@ export default function BatchingPage() {
                       <>
                         <tr>
                           <td
-                            colSpan={11}
+                            colSpan={12}
                             className="px-4 py-2 text-xs font-semibold text-muted-foreground border-t-4 border-border bg-muted/20 uppercase tracking-wide"
                           >
                             Unbatchable Parts ({visibleSingletonCount})
@@ -2105,7 +2121,7 @@ export default function BatchingPage() {
                     <>
                       <tr>
                         <td
-                          colSpan={11}
+                          colSpan={12}
                           className="px-4 py-2 text-xs font-semibold text-muted-foreground border-t-4 border-border bg-muted/10 uppercase tracking-wide"
                         >
                           Open Production Only ({orphanOpenRows.length})
