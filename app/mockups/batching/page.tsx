@@ -294,9 +294,6 @@ function OpenProductionRow({
   const mockProductionState = openWo?.mockProductionState ?? openBatch?.mockProductionState ?? "case1";
   const mockActiveStepIndex = openWo?.mockActiveStepIndex ?? openBatch?.mockActiveStepIndex ?? null;
   const mockCompletedQty = openWo?.mockCompletedQty ?? openBatch?.mockCompletedQty ?? 0;
-  const projectNumbers = openWo
-    ? [openWo.projectNumber]
-    : (openBatch?.memberProjectNums ?? []);
 
   const isEligible =
     isDragActive && activeChipWoId !== null
@@ -423,21 +420,6 @@ function OpenProductionRow({
         <span className={["text-xs tabular-nums", blueVal(derived.dueDateChanged)].join(" ")}>
           {formatDate(derived.dueDate)}
         </span>
-      </td>
-
-      {/* Project(s) */}
-      <td className="px-4 py-1.5 align-middle">
-        {projectNumbers.length === 1 ? (
-          <span className="font-mono text-xs text-muted-foreground/70">{projectNumbers[0]}</span>
-        ) : (
-          <span
-            className="font-mono text-xs text-muted-foreground/70 cursor-default"
-            title={projectNumbers.join(", ")}
-          >
-            {projectNumbers.slice(0, 2).join(", ")}
-            {projectNumbers.length > 2 ? ` +${projectNumbers.length - 2}` : ""}
-          </span>
-        )}
       </td>
 
       {/* Routing */}
@@ -687,16 +669,6 @@ function CandidateRow({
   const blueVal = (changed: boolean) =>
     changed ? "text-[#0EA5E9] font-semibold" : "";
 
-  const projectWoIds = derived.chipsInCell;
-  const projectNums = [
-    ...new Set(
-      projectWoIds
-        .map((id) => wos.find((w) => w.woId === id)?.projectNumber)
-        .filter(Boolean)
-    ),
-  ] as string[];
-  if (projectNums.length === 0) projectNums.push(wo.projectNumber);
-
   const formatDate = (d: string | null) =>
     d
       ? new Date(d).toLocaleDateString("en-US", {
@@ -847,21 +819,6 @@ function CandidateRow({
         >
           {formatDate(derived.dueDate)}
         </span>
-      </td>
-
-      {/* Project(s) */}
-      <td className="px-4 py-1.5 align-middle">
-        {projectNums.length === 1 ? (
-          <span className="font-mono text-xs">{projectNums[0]}</span>
-        ) : (
-          <span
-            className="font-mono text-xs cursor-default"
-            title={projectNums.join(", ")}
-          >
-            {projectNums.slice(0, 2).join(", ")}
-            {projectNums.length > 2 ? ` +${projectNums.length - 2}` : ""}
-          </span>
-        )}
       </td>
 
       {/* Routing */}
@@ -2047,9 +2004,6 @@ export default function BatchingPage() {
                       Due Date
                     </th>
                     <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground">
-                      Project(s)
-                    </th>
-                    <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground">
                       Routing
                     </th>
                     <th className="px-4 py-2 text-right text-xs font-semibold text-muted-foreground">
@@ -2071,7 +2025,7 @@ export default function BatchingPage() {
                       <>
                         <tr>
                           <td
-                            colSpan={13}
+                            colSpan={12}
                             className="px-4 py-2 text-xs font-semibold text-muted-foreground border-t-4 border-border bg-muted/20 uppercase tracking-wide"
                           >
                             Unbatchable Parts ({visibleSingletonCount})
@@ -2090,7 +2044,7 @@ export default function BatchingPage() {
                     <>
                       <tr>
                         <td
-                          colSpan={13}
+                          colSpan={12}
                           className="px-4 py-2 text-xs font-semibold text-muted-foreground border-t-4 border-border bg-muted/10 uppercase tracking-wide"
                         >
                           Open Production Only ({orphanOpenRows.length})
