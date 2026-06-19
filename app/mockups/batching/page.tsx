@@ -419,7 +419,7 @@ function OpenProductionRow({
 
       {/* Part Number */}
       <td className="px-4 py-1.5 align-middle">
-        <span className="font-mono text-xs text-muted-foreground/70">
+        <span className="font-mono text-xs whitespace-nowrap text-muted-foreground/70">
           {partNumber}
         </span>
       </td>
@@ -455,7 +455,7 @@ function OpenProductionRow({
 
       {/* Due Date */}
       <td className="px-4 py-1.5 align-middle text-right">
-        <span className={["text-xs tabular-nums", blueVal(derived.dueDateChanged)].join(" ")}>
+        <span className={["text-xs tabular-nums whitespace-nowrap", blueVal(derived.dueDateChanged)].join(" ")}>
           {formatDate(derived.dueDate)}
         </span>
       </td>
@@ -763,7 +763,7 @@ function CandidateRow({
       <td className="px-4 py-1.5 align-middle">
         <span
           className={[
-            "font-mono text-xs",
+            "font-mono text-xs whitespace-nowrap",
             isAssembly ? "text-foreground/70" : "text-foreground",
           ].join(" ")}
           title={
@@ -842,7 +842,7 @@ function CandidateRow({
       <td className="px-4 py-1.5 align-middle text-right">
         <span
           className={[
-            "text-xs tabular-nums",
+            "text-xs tabular-nums whitespace-nowrap",
             blueVal(derived.dueDateChanged),
           ].join(" ")}
         >
