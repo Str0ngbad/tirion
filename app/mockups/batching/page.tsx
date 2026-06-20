@@ -1275,11 +1275,34 @@ export default function BatchingPage() {
     return count;
   }, [viewMode, visibleLockedHostWoIds, state.chipHome, state.openRowChips, openRowVisibleInMode]);
 
-  // Auto-batch enabled: only in Batching or All views, and when visible unlocked groups have 2+ members
-  const autoBatchEnabled = useMemo(() => {
+  // Candidates-only tier: enabled when at least one non-singleton group has 2+ unlocked WOs
+  const candidatesOnlyEnabled = useMemo(() => {
     if (viewMode === "QuantityPlanning") return false;
     return filteredNonSingletonGroups.some((g) => g.woIds.length >= 2);
   }, [viewMode, filteredNonSingletonGroups]);
+
+  // WIP tier: enabled when at least one unlocked candidate at-home has a matching Case 1 Open row.
+  // Correct predicate per spec: partId of unlocked at-home candidate ∩ partId of Case 1 Open row.
+  const autoBatchWipEnabled = useMemo(() => {
+    if (viewMode === "QuantityPlanning") return false;
+    const case1PartIds = new Set<number>([
+      ...OPEN_WOS.filter((w) => w.mockProductionState === "case1").map((w) => w.partId),
+      ...OPEN_BATCHES.filter((b) => b.mockProductionState === "case1").map((b) => b.partId),
+    ]);
+    return allVisibleWoIds.some((woId) => {
+      const currentHost = state.chipHome[woId];
+      if (currentHost === undefined) return false;
+      // Skip chips already manually placed on an Open row
+      if (OPEN_ROW_HOST_IDS.has(currentHost) && currentHost !== woId) return false;
+      // Skip locked rows
+      if (state.lockedWoIds.has(currentHost)) return false;
+      const wo = ALL_BT_WOS.find((w) => w.woId === woId);
+      return wo ? case1PartIds.has(wo.partId) : false;
+    });
+  }, [viewMode, allVisibleWoIds, state.chipHome, state.lockedWoIds]);
+
+  // Overall Auto-Batch button enabled when any available tier has work
+  const autoBatchEnabled = candidatesOnlyEnabled || autoBatchWipEnabled;
 
   // Reset Draft enabled when any chip is not at home or any planned qty exceeds demand
   // or any Open row chips exist
@@ -1814,12 +1837,16 @@ export default function BatchingPage() {
                     </div>
                   </button>
                   <button
-                    onClick={() => handleSetAutoBatchTier("include-unstarted-wip")}
+                    disabled={!autoBatchWipEnabled}
+                    onClick={() => autoBatchWipEnabled ? handleSetAutoBatchTier("include-unstarted-wip") : undefined}
+                    title={!autoBatchWipEnabled ? "No Case 1 Open hosts available for visible candidates" : undefined}
                     className={[
-                      "w-full text-left px-3 py-1.5 text-xs hover:bg-muted transition-colors",
-                      state.autoBatchTier === "include-unstarted-wip"
-                        ? "text-foreground font-medium"
-                        : "text-muted-foreground",
+                      "w-full text-left px-3 py-1.5 text-xs transition-colors",
+                      !autoBatchWipEnabled
+                        ? "text-muted-foreground/40 cursor-not-allowed"
+                        : state.autoBatchTier === "include-unstarted-wip"
+                        ? "text-foreground font-medium hover:bg-muted"
+                        : "text-muted-foreground hover:bg-muted",
                     ].join(" ")}
                   >
                     <div className="font-medium">Auto-Batch: Include Unstarted WIP</div>
