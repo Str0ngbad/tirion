@@ -283,7 +283,9 @@ export async function confirmDraft(
 
   const auditActions = await prisma.auditAction.findMany({
     where: {
-      actionName: { in: ["BatchCreated", "WOAddedToOpenBatch", "SingletonConfirmed"] },
+      actionName: {
+        in: ["BatchCreated", "WOAddedToOpenBatch", "SingletonConfirmed", "WOBatchingConfirmed"],
+      },
     },
     select: { auditActionId: true, actionName: true },
   });
@@ -292,6 +294,7 @@ export async function confirmDraft(
   const auditBatchCreated = auditActionMap.get("BatchCreated")!;
   const auditWOAddedToOpenBatch = auditActionMap.get("WOAddedToOpenBatch")!;
   const auditSingletonConfirmed = auditActionMap.get("SingletonConfirmed")!;
+  const auditWOBatchingConfirmed = auditActionMap.get("WOBatchingConfirmed")!;
 
   const allWoIds = input.assignments.flatMap((a) => a.workOrderIds);
   const rawWOs = await prisma.workOrder.findMany({
@@ -397,6 +400,19 @@ export async function confirmDraft(
               },
             },
           });
+          for (const wo of wos) {
+            await tx.auditLog.create({
+              data: {
+                entityType: "WorkOrder",
+                entityId: wo.workOrderId,
+                auditActionId: auditWOBatchingConfirmed,
+                changedByUserId: userId,
+                timestamp: now,
+                previousValue: { status: "Unreleased" },
+                newValue: { status: "Open", batchId: batch.batchId },
+              },
+            });
+          }
           continue;
         }
 
@@ -451,6 +467,19 @@ export async function confirmDraft(
               },
             },
           });
+          for (const wo of wos) {
+            await tx.auditLog.create({
+              data: {
+                entityType: "WorkOrder",
+                entityId: wo.workOrderId,
+                auditActionId: auditWOBatchingConfirmed,
+                changedByUserId: userId,
+                timestamp: now,
+                previousValue: { status: "Unreleased" },
+                newValue: { status: "Open", batchId: targetBatchId },
+              },
+            });
+          }
           continue;
         }
 
@@ -522,6 +551,19 @@ export async function confirmDraft(
               },
             },
           });
+          for (const wo of wos) {
+            await tx.auditLog.create({
+              data: {
+                entityType: "WorkOrder",
+                entityId: wo.workOrderId,
+                auditActionId: auditWOBatchingConfirmed,
+                changedByUserId: userId,
+                timestamp: now,
+                previousValue: { status: "Unreleased" },
+                newValue: { status: "Open", batchId: batch.batchId },
+              },
+            });
+          }
         }
       }
     },
