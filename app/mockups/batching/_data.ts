@@ -1528,55 +1528,80 @@ export function autoBatchCandidates(
     byPartId.get(wo.partId)!.push(woId);
   }
 
-  // Step 4: form one draft batch per partId group with 2+ eligible members.
-  // Host = lowest WO ID in the group (deterministic).
+  // Step 4: place candidates.
+  //
+  // WIP tier precedence: for each PartID, check for a Case 1 Open host FIRST.
+  // If a Case 1 host exists for this PartID, ALL candidates join it — regardless
+  // of whether there are 1 or 2+ candidates. Candidate-to-candidate batching only
+  // applies when no Case 1 host is available for the PartID.
+  //
+  // Candidates-only tier: skips the Open-host check entirely.
   let totalBatched = 0;
   let batchesCreated = 0;
 
+  type OpenHostCandidate = { openHostId: number; dueDate: string | null; headroom: number };
+
   for (const [partIdStr, woIds] of byPartId) {
     const partId = Number(partIdStr);
-    if (woIds.length < 2) {
-      // "include-unstarted-wip" tier: try to match singleton to Case 1 Open row
-      if (tier === "include-unstarted-wip" && woIds.length === 1) {
-        const candidateWoId = woIds[0]!;
-        // Find Case 1 Open rows for this partId
-        const case1OpenWos = openWos.filter(
-          (w) => w.partId === partId && w.mockProductionState === "case1"
-        );
-        const case1OpenBatches = openBatches.filter(
-          (b) => b.partId === partId && b.mockProductionState === "case1"
-        );
 
-        // Combine and pick best host: prefer latest dueDate, then lowest openHostId
-        type OpenHost = { openHostId: number; dueDate: string | null };
-        const candidates: OpenHost[] = [
-          ...case1OpenWos.map((w) => ({ openHostId: w.openWoId, dueDate: w.dueDate })),
-          ...case1OpenBatches.map((b) => ({ openHostId: b.openBatchWoId, dueDate: b.dueDate })),
-        ];
+    if (tier === "include-unstarted-wip") {
+      // Open host takes priority over candidate-to-candidate for this PartID.
+      const case1OpenWos = openWos.filter(
+        (w) => w.partId === partId && w.mockProductionState === "case1"
+      );
+      const case1OpenBatches = openBatches.filter(
+        (b) => b.partId === partId && b.mockProductionState === "case1"
+      );
 
-        if (candidates.length > 0) {
-          // Sort: latest dueDate first (nulls last), then lowest openHostId
-          candidates.sort((a, b) => {
-            if (a.dueDate && b.dueDate) return b.dueDate.localeCompare(a.dueDate);
-            if (a.dueDate && !b.dueDate) return -1;
-            if (!a.dueDate && b.dueDate) return 1;
-            return a.openHostId - b.openHostId;
-          });
+      const openHostCandidates: OpenHostCandidate[] = [
+        ...case1OpenWos.map((w) => ({ openHostId: w.openWoId, dueDate: w.dueDate, headroom: w.mockHeadroom })),
+        ...case1OpenBatches.map((b) => ({ openHostId: b.openBatchWoId, dueDate: b.dueDate, headroom: b.mockHeadroom })),
+      ];
 
-          const bestHost = candidates[0]!;
-          // Assign chip to this Open row
-          newChipHome[candidateWoId] = bestHost.openHostId;
+      if (openHostCandidates.length > 0) {
+        // Pick best host: latest dueDate first (nulls last), then lowest openHostId
+        openHostCandidates.sort((a, b) => {
+          if (a.dueDate && b.dueDate) return b.dueDate.localeCompare(a.dueDate);
+          if (a.dueDate && !b.dueDate) return -1;
+          if (!a.dueDate && b.dueDate) return 1;
+          return a.openHostId - b.openHostId;
+        });
+
+        const bestHost = openHostCandidates[0]!;
+
+        // All-or-nothing: place all candidates or none.
+        // Checks against headroom remaining after any manually-pre-placed chips.
+        const existingDraftWoIds = newOpenRowChips[bestHost.openHostId] ?? [];
+        const existingDraftDemand = existingDraftWoIds.reduce((sum, id) => {
+          const wo = wos.find((w) => w.woId === id);
+          return sum + (wo?.quantity ?? 0);
+        }, 0);
+        const available = bestHost.headroom - existingDraftDemand;
+        const totalCandidateDemand = woIds.reduce((sum, id) => {
+          const wo = wos.find((w) => w.woId === id);
+          return sum + (wo?.quantity ?? 0);
+        }, 0);
+
+        if (totalCandidateDemand <= available) {
+          for (const candidateWoId of woIds) {
+            newChipHome[candidateWoId] = bestHost.openHostId;
+          }
           const existingDraft = newOpenRowChips[bestHost.openHostId] ?? [];
-          newOpenRowChips[bestHost.openHostId] = [...existingDraft, candidateWoId];
-          totalBatched += 1;
-          batchesCreated += 1; // count as a "batch" for stats
+          newOpenRowChips[bestHost.openHostId] = [...existingDraft, ...woIds];
+          totalBatched += woIds.length;
+          batchesCreated += 1;
           console.log(
-            `[AuditLog] Auto-batch (unstarted-wip) WO-${candidateWoId} → Open row ${bestHost.openHostId}`
+            `[AuditLog] Auto-batch (unstarted-wip) partId=${partId}, ${woIds.length} candidate(s) → Open row ${bestHost.openHostId}`
           );
         }
+        // If headroom insufficient: candidates stay at home, no toast
+        continue; // Either way, this PartID is resolved — skip candidate-to-candidate
       }
-      continue;
+      // No Case 1 Open host for this PartID → fall through to candidate-to-candidate
     }
+
+    // Candidate-to-candidate batching (candidates-only tier, or WIP tier with no Open host)
+    if (woIds.length < 2) continue;
 
     const sorted = [...woIds].sort((a, b) => a - b);
     const hostWoId = sorted[0]!;
@@ -1590,12 +1615,8 @@ export function autoBatchCandidates(
     totalBatched += sorted.length;
     batchesCreated++;
     console.log(
-      `[AuditLog] Auto-batch group partId=${wos.find((w) => w.woId === hostWoId)?.partId}: host WO-${hostWoId}, members: ${sorted.join(", ")}`
+      `[AuditLog] Auto-batch (candidate-to-candidate) partId=${partId}: host WO-${hostWoId}, members: ${sorted.join(", ")}`
     );
-
-    // "include-unstarted-wip" tier: also check if Open rows exist for this partId
-    // Note: with 2+ candidates already batched together, we don't add them to Open rows
-    // (they'll form their own new batch). This tier only helps singletons find a home.
   }
 
   return {
