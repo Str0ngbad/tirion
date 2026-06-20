@@ -423,7 +423,7 @@ export const OPEN_WOS: BtOpenWO[] = [
     dueDate: "2026-07-15",
     routingTemplateId: defaultTemplateId(getPartInfo(1942).partType, 1942),
     mockProductionState: "case1",
-    mockHeadroom: 8,       // plenty of room
+    mockHeadroom: 1,       // tight: headroom 1 < 2 candidates × demand 1 → WIP-tier auto-batch abstains
     mockActiveStepIndex: null,
     mockCompletedQty: 0,
   },
