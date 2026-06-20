@@ -18,6 +18,25 @@ Entries are ordered most recent first.
 
 ---
 
+## Session: Batching Lens — Consolidated Handoff Doc (2026-06-20)
+
+### Commits in this session
+
+1. `docs(mockup): consolidated Batching Phase 1+2 handoff doc`
+
+### Scope
+
+Created `mockup_track/batching_handoff.md` — the comprehensive Phase 1+2
+implementation handoff for the Batching Lens. Covers 18 spec gaps, Phase 1
+and Phase 2 architecture, visual patterns, mockup-only patterns, deferred
+items, implementation dependencies, color discipline, a 7-scenario manual
+test guide, and known open issues.
+
+Structural pattern matches `stock_fulfillment_handoff.md` and
+`project_creation_handoff.md`.
+
+---
+
 ## Session: Batching Lens — Auto-Batch Precedence, Headroom Constraint, Column Spacing (2026-06-20)
 
 ### Commits in this session
