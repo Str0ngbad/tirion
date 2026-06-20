@@ -117,11 +117,14 @@ async function seedAuditActions() {
     { actionName: "WOAttributeUpdatedByFlagResolution", category: "WO", description: "WO field updated to current Library value via Accept Change resolution" },
     { actionName: "BOMComponentAddedViaFlagResolution", category: "WO", description: "New child WO subtree generated under parent Assembly via Component Added Accept Change resolution" },
 
-    // Batch (4)
+    // Batch (7)
     { actionName: "BatchCreated", category: "Batch", description: "Production Batch created via Batching Lens" },
     { actionName: "BatchDissolved", category: "Batch", description: "Batch dissolved (only one member remained)" },
     { actionName: "BatchAdjustment", category: "Batch", description: "WO membership reshaped via Batch Adjustment Workspace" },
     { actionName: "BatchMemberRemovedForFlagResolution", category: "Batch", description: "WO removed from batch to enable per-member flag resolution" },
+    { actionName: "BatchPlannedQtySet", category: "Batch", description: "Planned Quantity set or changed on a batch or standalone WO during Batching Lens session" },
+    { actionName: "WOAddedToOpenBatch", category: "Batch", description: "Unreleased candidate WO confirmed into an existing Open batch (distinct from BatchCreated which covers new batch creation)" },
+    { actionName: "SingletonConfirmed", category: "Batch", description: "Singleton WO confirmed standalone — no batch created, WOStatus transitions Unreleased → Open" },
 
     // Blocker (3)
     { actionName: "BlockerCreated", category: "Blocker", description: "Blocker created on a WO or Batch" },
@@ -345,7 +348,7 @@ async function verify() {
   console.log("\nVerification:");
   console.log(`  ProcessTypes:           ${processTypeCount} (expected = 9)`);
   console.log(`  ProcessTypeSubStatuses: ${subStatusCount} (expected = 16)`);
-  console.log(`  AuditActions:           ${auditActionCount} (expected = 90)`);
+  console.log(`  AuditActions:           ${auditActionCount} (expected = 93)`);
   console.log(`  ProcurementCategories:  ${procurementCategoryCount} (expected = 4)`);
   console.log(`  Views:                  ${viewCount} (expected = 5)`);
   console.log(`  Admin user present:     ${userCount === 1 ? "yes" : "NO — check seed"}`);
