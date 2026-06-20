@@ -18,6 +18,36 @@ Entries are ordered most recent first.
 
 ---
 
+## Session: Batching Lens — Auto-Batch WIP Predicate Fix + Dropdown UX (2026-06-20)
+
+### Commits in this session
+
+1. `fix(mockup): correct Auto-Batch WIP tier enable predicate`
+2. `refactor(mockup): collapse Auto-Batch split-button into dropdown-only trigger`
+
+### Bugs fixed
+
+**BUG-8 — Auto-Batch "Include Unstarted WIP" option incorrectly greyed out.** The `autoBatchEnabled` predicate checked only for non-singleton groups with 2+ WOs (candidates-only tier logic) and the WIP dropdown option had no separate disabled state at all. As a result, the WIP tier option appeared enabled regardless of whether any Case 1 hosts existed for the visible candidates — or was blocked by the outer `autoBatchEnabled` check when no 2+ groups were present. Fix: split into two predicates: `candidatesOnlyEnabled` (2+ in a non-singleton group) and `autoBatchWipEnabled` (at least one unlocked at-home candidate's partId matches a Case 1 Open row). The WIP dropdown option now uses `disabled={!autoBatchWipEnabled}` with a tooltip explaining the condition. The outer button enable is the OR of both predicates.
+
+### UX changes
+
+**Auto-Batch split-button → single dropdown trigger.** The prior split-button (left area executes default tier, chevron opens dropdown) required planners to know which tier was "active" to avoid accidental execution. Replaced with a single button (label "Auto-Batch" + chevron) whose full click target opens the dropdown. Selecting a tier from the dropdown both sets it and executes the batch atomically (`handleSelectAndRunAutoBatch`). This avoids the stale-state race that would occur if `setState` and the batch run were decoupled. The `handleSetAutoBatchTier` helper and standalone `handleAutoBatch` are removed.
+
+**Per-option disabled states:**
+- "Only Candidates" — always enabled when the outer button is enabled
+- "Include Unstarted WIP" — enabled by `autoBatchWipEnabled`; tooltip on hover when disabled
+- "Include Started WIP" — always disabled (Phase 2.5); rendered as non-interactive `<div>` with strikethrough label
+
+### Playwright verification (2026-06-20)
+
+1. Initial load: Auto-Batch button enabled (seeded data has both 2+ candidate groups AND Case 1 hosts). Single button with chevron — no split.
+2. Click button → dropdown opens. No batch execution fires.
+3. Click "Include Unstarted WIP" → executes. Toast: "Auto-batched (incl. unstarted WIP) 100 candidates into 94 draft batches." Candidates placed on Open rows.
+4. Reset Draft → confirm. Click button → "Only Candidates" → executes. Toast confirms candidate-to-candidate batching only.
+5. Click button → click backdrop (fixed inset-0 overlay) → dropdown closes, no execution fires. Table unchanged.
+
+---
+
 ## Session: Batching Lens — Phase 2 Drag Restore + Available Label + Column Polish (2026-06-20)
 
 ### Commits in this session
