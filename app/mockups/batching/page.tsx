@@ -416,14 +416,14 @@ function OpenProductionRow({
       </td>
 
       {/* Part Number */}
-      <td className="px-4 py-1.5 align-middle">
-        <span className="font-mono text-xs whitespace-nowrap text-muted-foreground/70">
+      <td className="px-4 py-1.5 align-middle overflow-hidden" style={{ maxWidth: 110 }}>
+        <span className="font-mono text-xs truncate block text-muted-foreground/70" title={partNumber}>
           {partNumber}
         </span>
       </td>
 
       {/* Part Name */}
-      <td className="px-4 py-1.5 align-middle max-w-[184px]">
+      <td className="px-4 py-1.5 align-middle max-w-[194px]">
         <span className="text-xs truncate block text-muted-foreground/70" title={partName}>
           {partName}
         </span>
@@ -754,38 +754,38 @@ function CandidateRow({
         />
       </td>
 
-      {/* Part Number — hover shows ancestry for non-top-level WOs */}
-      <td className="px-4 py-1.5 align-middle">
-        <span
-          className={[
-            "font-mono text-xs whitespace-nowrap",
-            isAssembly ? "text-foreground/70" : "text-foreground",
-          ].join(" ")}
-          title={
-            wo.parentPartName
-              ? wo.ancestryPath.length > 0
-                ? [...wo.ancestryPath]
+      {/* Part Number — truncates at column width; tooltip shows full number + ancestry */}
+      <td className="px-4 py-1.5 align-middle overflow-hidden" style={{ maxWidth: 110 }}>
+        <div className="flex items-center gap-1 min-w-0">
+          <span
+            className={[
+              "font-mono text-xs truncate",
+              isAssembly ? "text-foreground/70" : "text-foreground",
+            ].join(" ")}
+            title={
+              wo.ancestryPath.length > 0
+                ? wo.partNumber + "\n" + [...wo.ancestryPath]
                     .reverse()
                     .map((a) => `${a.partNumber} — ${a.partName}`)
                     .join("\n")
-                : wo.parentPartName
-              : undefined
-          }
-        >
-          {wo.partNumber}
+                : wo.partNumber
+            }
+          >
+            {wo.partNumber}
+          </span>
           {PART_IDS_WITH_OPEN_WORK.has(wo.partId) && (
-            <span title="This part has Work in Progress" className="inline-block ml-1">
+            <span title="This part has Work in Progress" className="inline-block shrink-0">
               <Activity
                 className="h-2.5 w-2.5 text-amber-500"
                 aria-label="Has Work in Progress"
               />
             </span>
           )}
-        </span>
+        </div>
       </td>
 
       {/* Part Name */}
-      <td className="px-4 py-1.5 align-middle max-w-[184px]">
+      <td className="px-4 py-1.5 align-middle max-w-[194px]">
         <span className="text-xs truncate block" title={wo.partName}>
           {wo.partName}
         </span>
@@ -1971,8 +1971,8 @@ export default function BatchingPage() {
                   <col style={{ width: 32 }} />
                   <col style={{ width: 48 }} />
                   <col style={{ width: 170 }} />
-                  <col style={{ width: 120 }} />
-                  <col style={{ width: 200 }} />
+                  <col style={{ width: 110 }} />
+                  <col style={{ width: 210 }} />
                   <col style={{ width: 64 }} />
                   <col style={{ width: 80 }} />
                   <col style={{ width: 60 }} />
