@@ -435,9 +435,6 @@ function OpenProductionRow({
         <span className="text-muted-foreground/30 text-xs">—</span>
       </td>
 
-      {/* Headroom — shown on chip; blank in column */}
-      <td className="px-4 py-1.5 align-middle" />
-
       {/* Priority */}
       <td className="px-4 py-1.5 align-middle text-right">
         <span className={["font-mono text-xs", blueVal(derived.priorityChanged)].join(" ")}>
@@ -814,9 +811,6 @@ function CandidateRow({
           />
         )}
       </td>
-
-      {/* Headroom — blank for candidates */}
-      <td className="px-4 py-1.5 align-middle" />
 
       {/* Priority */}
       <td className="px-4 py-1.5 align-middle text-right">
@@ -1959,7 +1953,7 @@ export default function BatchingPage() {
               </div>
             ) : (
               <table className="w-full text-sm border-collapse">
-                {/* col order: checkbox, lock, composition, part#, part name, demand, planned, priority, due date, project(s), routing */}
+                {/* col order: checkbox, lock, composition, part#, part name, demand, planned, priority, due date, routing */}
                 <colgroup>
                   <col style={{ width: 32 }} />
                   <col style={{ width: 48 }} />
@@ -1968,7 +1962,6 @@ export default function BatchingPage() {
                   <col style={{ width: 180 }} />
                   <col style={{ width: 64 }} />
                   <col style={{ width: 80 }} />
-                  <col style={{ width: 64 }} />
                   <col style={{ width: 96 }} />
                   <col style={{ width: 90 }} />
                   <col style={{ width: 260 }} />
@@ -2008,9 +2001,6 @@ export default function BatchingPage() {
                       Planned
                     </th>
                     <th className="px-4 py-2 text-right text-xs font-semibold text-muted-foreground">
-                      Headroom
-                    </th>
-                    <th className="px-4 py-2 text-right text-xs font-semibold text-muted-foreground">
                       Priority
                     </th>
                     <th className="px-4 py-2 text-right text-xs font-semibold text-muted-foreground">
@@ -2035,7 +2025,7 @@ export default function BatchingPage() {
                       <>
                         <tr>
                           <td
-                            colSpan={11}
+                            colSpan={10}
                             className="px-4 py-2 text-xs font-semibold text-muted-foreground border-t-4 border-border bg-muted/20 uppercase tracking-wide"
                           >
                             Unbatchable Parts ({visibleSingletonCount})
@@ -2054,7 +2044,7 @@ export default function BatchingPage() {
                     <>
                       <tr>
                         <td
-                          colSpan={11}
+                          colSpan={10}
                           className="px-4 py-2 text-xs font-semibold text-muted-foreground border-t-4 border-border bg-muted/10 uppercase tracking-wide"
                         >
                           Open Production Only ({orphanOpenRows.length})
