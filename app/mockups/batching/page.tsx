@@ -416,14 +416,14 @@ function OpenProductionRow({
       </td>
 
       {/* Part Number */}
-      <td className="px-4 py-1.5 align-middle overflow-hidden" style={{ maxWidth: 110 }}>
+      <td className="px-4 py-1.5 align-middle overflow-hidden" style={{ maxWidth: 128 }}>
         <span className="font-mono text-xs truncate block text-muted-foreground/70" title={partNumber}>
           {partNumber}
         </span>
       </td>
 
       {/* Part Name */}
-      <td className="px-4 py-1.5 align-middle max-w-[194px]">
+      <td className="px-4 py-1.5 align-middle max-w-[176px]">
         <span className="text-xs truncate block text-muted-foreground/70" title={partName}>
           {partName}
         </span>
@@ -755,7 +755,7 @@ function CandidateRow({
       </td>
 
       {/* Part Number — truncates at column width; tooltip shows full number + ancestry */}
-      <td className="px-4 py-1.5 align-middle overflow-hidden" style={{ maxWidth: 110 }}>
+      <td className="px-4 py-1.5 align-middle overflow-hidden" style={{ maxWidth: 128 }}>
         <div className="flex items-center gap-1 min-w-0">
           <span
             className={[
@@ -785,7 +785,7 @@ function CandidateRow({
       </td>
 
       {/* Part Name */}
-      <td className="px-4 py-1.5 align-middle max-w-[194px]">
+      <td className="px-4 py-1.5 align-middle max-w-[176px]">
         <span className="text-xs truncate block" title={wo.partName}>
           {wo.partName}
         </span>
@@ -1971,8 +1971,8 @@ export default function BatchingPage() {
                   <col style={{ width: 32 }} />
                   <col style={{ width: 48 }} />
                   <col style={{ width: 170 }} />
-                  <col style={{ width: 110 }} />
-                  <col style={{ width: 210 }} />
+                  <col style={{ width: 128 }} />
+                  <col style={{ width: 192 }} />
                   <col style={{ width: 64 }} />
                   <col style={{ width: 80 }} />
                   <col style={{ width: 60 }} />
