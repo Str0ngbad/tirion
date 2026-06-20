@@ -113,6 +113,7 @@ describe("getBatchingViewData", () => {
   it("sets lockState Locked for singleton with no Open work", async () => {
     const candidateWO = {
       workOrderId: 1,
+      projectId: 100,
       partId: 10,
       quantity: new Decimal(5),
       priority: 1,
@@ -121,13 +122,14 @@ describe("getBatchingViewData", () => {
       bomPath: ["P-001 Widget"],
       stockFulfillmentReviewedAt: new Date(),
       project: { projectNumber: "10001.01" },
-      routingTemplateDefinition: { steps: [] },
+      routingTemplate: { steps: [] },
       steps: [],
       part: { partNumber: "P-001", partName: "Widget" },
     };
 
     mockPrisma.workOrder.findMany
       .mockResolvedValueOnce([candidateWO]) // candidate query
+      .mockResolvedValueOnce([{ workOrderId: 1, parentWoId: null, topLevelIndex: 1 }]) // project WOs
       .mockResolvedValueOnce([]); // open WO query
 
     const result = await getBatchingViewData();
@@ -140,6 +142,7 @@ describe("getBatchingViewData", () => {
   it("sets lockState Unlocked when multiple candidates for same part", async () => {
     const makeWO = (id: number) => ({
       workOrderId: id,
+      projectId: 100,
       partId: 10,
       quantity: new Decimal(3),
       priority: null,
@@ -148,13 +151,17 @@ describe("getBatchingViewData", () => {
       bomPath: ["P-001 Widget"],
       stockFulfillmentReviewedAt: new Date(),
       project: { projectNumber: "10001.01" },
-      routingTemplateDefinition: { steps: [] },
+      routingTemplate: { steps: [] },
       steps: [],
       part: { partNumber: "P-001", partName: "Widget" },
     });
 
     mockPrisma.workOrder.findMany
       .mockResolvedValueOnce([makeWO(1), makeWO(2)])
+      .mockResolvedValueOnce([
+        { workOrderId: 1, parentWoId: null, topLevelIndex: 1 },
+        { workOrderId: 2, parentWoId: null, topLevelIndex: 2 },
+      ])
       .mockResolvedValueOnce([]);
 
     const result = await getBatchingViewData();
@@ -165,6 +172,7 @@ describe("getBatchingViewData", () => {
   it("sets lockState Unlocked for singleton that has Open work for same part", async () => {
     const candidateWO = {
       workOrderId: 1,
+      projectId: 100,
       partId: 10,
       quantity: new Decimal(5),
       priority: null,
@@ -173,7 +181,7 @@ describe("getBatchingViewData", () => {
       bomPath: ["P-001 Widget"],
       stockFulfillmentReviewedAt: new Date(),
       project: { projectNumber: "10001.01" },
-      routingTemplateDefinition: { steps: [] },
+      routingTemplate: { steps: [] },
       steps: [],
       part: { partNumber: "P-001", partName: "Widget" },
     };
@@ -189,6 +197,7 @@ describe("getBatchingViewData", () => {
 
     mockPrisma.workOrder.findMany
       .mockResolvedValueOnce([candidateWO])
+      .mockResolvedValueOnce([{ workOrderId: 1, parentWoId: null, topLevelIndex: 1 }])
       .mockResolvedValueOnce([openWO]);
 
     const result = await getBatchingViewData();

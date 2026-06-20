@@ -96,6 +96,30 @@ export async function getBatchingViewData(): Promise<BatchingViewData> {
 
   const candidatePartIds = [...new Set(candidateWOs.map((wo) => wo.partId))];
 
+  // Build a map to resolve topLevelIndex for child WOs (topLevelIndex is null on non-top-level WOs).
+  // Fetch all WOs in the relevant projects, then walk the parentWoId chain.
+  const projectIds = [...new Set(candidateWOs.map((wo) => wo.projectId))];
+  const projectWOs = await prisma.workOrder.findMany({
+    where: { projectId: { in: projectIds } },
+    select: { workOrderId: true, parentWoId: true, topLevelIndex: true },
+  });
+  const woIndexMap = new Map<number, number | null>(
+    projectWOs.map((w) => [w.workOrderId, w.topLevelIndex])
+  );
+  const woParentMap = new Map<number, number | null>(
+    projectWOs.map((w) => [w.workOrderId, w.parentWoId])
+  );
+
+  function resolveTopLevelIndex(workOrderId: number): number {
+    let id: number | null = workOrderId;
+    while (id !== null) {
+      const idx = woIndexMap.get(id);
+      if (idx !== null && idx !== undefined) return idx;
+      id = woParentMap.get(id) ?? null;
+    }
+    return 0;
+  }
+
   const openWOs = await prisma.workOrder.findMany({
     where: {
       status: "Open",
@@ -144,7 +168,7 @@ export async function getBatchingViewData(): Promise<BatchingViewData> {
       dueDate: wo.dueDate,
       routingSteps,
       bomPath,
-      topLevelRef: buildTopLevelRef(wo.project.projectNumber, wo.topLevelIndex ?? 0),
+      topLevelRef: buildTopLevelRef(wo.project.projectNumber, resolveTopLevelIndex(wo.workOrderId)),
       productionState,
       completedQty: completedQtyStep?.completedQty ?? null,
       lockState: "Unlocked",
