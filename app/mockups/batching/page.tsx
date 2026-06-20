@@ -417,7 +417,7 @@ function OpenProductionRow({
       </td>
 
       {/* Part Name */}
-      <td className="px-4 py-1.5 align-middle max-w-[160px]">
+      <td className="px-4 py-1.5 align-middle max-w-[184px]">
         <span className="text-xs truncate block text-muted-foreground/70" title={partName}>
           {partName}
         </span>
@@ -779,7 +779,7 @@ function CandidateRow({
       </td>
 
       {/* Part Name */}
-      <td className="px-4 py-1.5 align-middle max-w-[160px]">
+      <td className="px-4 py-1.5 align-middle max-w-[184px]">
         <span className="text-xs truncate block" title={wo.partName}>
           {wo.partName}
         </span>
@@ -1957,12 +1957,12 @@ export default function BatchingPage() {
                 <colgroup>
                   <col style={{ width: 32 }} />
                   <col style={{ width: 48 }} />
-                  <col style={{ width: 150 }} />
+                  <col style={{ width: 170 }} />
                   <col style={{ width: 120 }} />
-                  <col style={{ width: 180 }} />
+                  <col style={{ width: 200 }} />
                   <col style={{ width: 64 }} />
                   <col style={{ width: 80 }} />
-                  <col style={{ width: 96 }} />
+                  <col style={{ width: 60 }} />
                   <col style={{ width: 90 }} />
                   <col style={{ width: 260 }} />
                 </colgroup>
