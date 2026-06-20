@@ -813,17 +813,41 @@ export function getOpenRowHostIds(
   return result;
 }
 
-// Whether an Open row accepts drops: Case 1 only
+// Whether an Open row accepts drops: Case 1 only, and headroom must accommodate the candidate.
+// candidateDemand and existingDraftWoIds/wos are optional — omitting them skips the headroom check.
 export function isEligibleOpenTarget(
   openHostId: number,
   openWos: BtOpenWO[],
-  openBatches: BtOpenBatch[]
+  openBatches: BtOpenBatch[],
+  candidateDemand: number = 0,
+  existingDraftWoIds: number[] = [],
+  wos: BtWorkOrder[] = []
 ): boolean {
   const openWo = openWos.find((w) => w.openWoId === openHostId);
-  if (openWo) return openWo.mockProductionState === "case1";
-  const openBatch = openBatches.find((b) => b.openBatchWoId === openHostId);
-  if (openBatch) return openBatch.mockProductionState === "case1";
-  return false;
+  let isCase1: boolean;
+  let headroom: number;
+
+  if (openWo) {
+    isCase1 = openWo.mockProductionState === "case1";
+    headroom = openWo.mockHeadroom;
+  } else {
+    const openBatch = openBatches.find((b) => b.openBatchWoId === openHostId);
+    if (!openBatch) return false;
+    isCase1 = openBatch.mockProductionState === "case1";
+    headroom = openBatch.mockHeadroom;
+  }
+
+  if (!isCase1) return false;
+
+  if (candidateDemand > 0) {
+    const existingDraftDemand = existingDraftWoIds.reduce((sum, id) => {
+      const wo = wos.find((w) => w.woId === id);
+      return sum + (wo?.quantity ?? 0);
+    }, 0);
+    if (candidateDemand > headroom - existingDraftDemand) return false;
+  }
+
+  return true;
 }
 
 // ─── Session state ─────────────────────────────────────────────────────────────

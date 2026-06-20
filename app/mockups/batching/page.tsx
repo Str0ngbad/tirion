@@ -326,11 +326,17 @@ function OpenProductionRow({
 
   const isEligible =
     isDragActive && activeChipWoId !== null
-      ? isEligibleOpenTarget(openHostId, OPEN_WOS, OPEN_BATCHES) &&
-        (() => {
-          // Also must be same partId as drag chip
+      ? (() => {
           const dragWo = wos.find((w) => w.woId === activeChipWoId);
-          return dragWo?.partId === partId;
+          if (!dragWo || dragWo.partId !== partId) return false;
+          return isEligibleOpenTarget(
+            openHostId,
+            OPEN_WOS,
+            OPEN_BATCHES,
+            dragWo.quantity,
+            draftChipWoIds,
+            wos
+          );
         })()
       : false;
 
@@ -1356,9 +1362,13 @@ export default function BatchingPage() {
 
     if (woId !== undefined && targetHostWoId !== undefined) {
       if (isOpenRowTarget) {
-        // Dropping onto an Open row
-        if (isEligibleOpenTarget(targetHostWoId, OPEN_WOS, OPEN_BATCHES)) {
-          const dragWo = ALL_BT_WOS.find((w) => w.woId === woId);
+        // Dropping onto an Open row — headroom check mirrors the drag-over grey-out
+        const dragWo = ALL_BT_WOS.find((w) => w.woId === woId);
+        const currentDraftWoIds = state.openRowChips[targetHostWoId] ?? [];
+        if (isEligibleOpenTarget(
+          targetHostWoId, OPEN_WOS, OPEN_BATCHES,
+          dragWo?.quantity ?? 0, currentDraftWoIds, ALL_BT_WOS
+        )) {
           const openWo = OPEN_WOS.find((w) => w.openWoId === targetHostWoId);
           const openBatch = OPEN_BATCHES.find((b) => b.openBatchWoId === targetHostWoId);
           const openPartId = openWo?.partId ?? openBatch?.partId;
