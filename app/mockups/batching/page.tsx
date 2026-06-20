@@ -216,22 +216,22 @@ function OpenCompositionCell({
 
 function OpenWoChip({
   openWo,
-  headroom,
-  headroomChanged,
+  available,
+  availableChanged,
   mockProductionState,
 }: {
   openWo: BtOpenWO;
-  headroom: number;
-  headroomChanged: boolean;
+  available: number;
+  availableChanged: boolean;
   mockProductionState: MockProductionState;
 }) {
   const meta = openWo.projectColor ? PROJECT_COLOR_MAP[openWo.projectColor] : null;
   const borderColor = meta ? meta.hex : "#6b7280";
 
-  const headroomClass =
+  const availableValClass =
     mockProductionState === "case3"
       ? "text-red-500 font-semibold"
-      : headroomChanged
+      : availableChanged
       ? "text-[#0EA5E9] font-semibold"
       : "text-muted-foreground/70";
 
@@ -246,9 +246,11 @@ function OpenWoChip({
         <span className="text-muted-foreground/40">·</span>
         <span className="font-mono text-muted-foreground/80">{openWo.topLevelRef}</span>
       </div>
-      <div className="flex items-center gap-2 whitespace-nowrap">
+      <div className="flex items-center gap-1 whitespace-nowrap">
         <span className="text-muted-foreground/70">Qty: {openWo.openQty}</span>
-        <span className={headroomClass}>Hdrm: {headroom}</span>
+        <span className="text-muted-foreground/30 mx-0.5">·</span>
+        <span className="text-muted-foreground/70">Available:</span>
+        <span className={availableValClass}>{available}</span>
       </div>
     </div>
   );
@@ -256,19 +258,19 @@ function OpenWoChip({
 
 function OpenBatchChip({
   openBatch,
-  headroom,
-  headroomChanged,
+  available,
+  availableChanged,
   mockProductionState,
 }: {
   openBatch: BtOpenBatch;
-  headroom: number;
-  headroomChanged: boolean;
+  available: number;
+  availableChanged: boolean;
   mockProductionState: MockProductionState;
 }) {
-  const headroomClass =
+  const availableValClass =
     mockProductionState === "case3"
       ? "text-red-500 font-semibold"
-      : headroomChanged
+      : availableChanged
       ? "text-[#0EA5E9] font-semibold"
       : "text-muted-foreground/70";
 
@@ -280,9 +282,11 @@ function OpenBatchChip({
       <div className="whitespace-nowrap">
         <span className="font-mono font-semibold text-muted-foreground">{openBatch.batchId}</span>
       </div>
-      <div className="flex items-center gap-2 whitespace-nowrap">
+      <div className="flex items-center gap-1 whitespace-nowrap">
         <span className="text-muted-foreground/70">Qty: {openBatch.openQty}</span>
-        <span className={headroomClass}>Hdrm: {headroom}</span>
+        <span className="text-muted-foreground/30 mx-0.5">·</span>
+        <span className="text-muted-foreground/70">Available:</span>
+        <span className={availableValClass}>{available}</span>
       </div>
     </div>
   );
@@ -342,10 +346,10 @@ function OpenProductionRow({
     wos
   );
 
-  const baseHeadroom = openWo?.mockHeadroom ?? openBatch?.mockHeadroom ?? 0;
+  const baseAvailable = openWo?.mockHeadroom ?? openBatch?.mockHeadroom ?? 0;
   const draftQtyTotal = draftChips.reduce((sum, w) => sum + (w?.quantity ?? 0), 0);
-  const headroom = baseHeadroom - draftQtyTotal;
-  const headroomChanged = draftQtyTotal > 0;
+  const available = baseAvailable - draftQtyTotal;
+  const availableChanged = draftQtyTotal > 0;
 
   const blueVal = (changed: boolean) =>
     changed ? "text-[#0EA5E9] font-semibold" : "";
@@ -362,15 +366,15 @@ function OpenProductionRow({
   const openIdentityChip = openWo ? (
     <OpenWoChip
       openWo={openWo}
-      headroom={headroom}
-      headroomChanged={headroomChanged}
+      available={available}
+      availableChanged={availableChanged}
       mockProductionState={mockProductionState}
     />
   ) : openBatch ? (
     <OpenBatchChip
       openBatch={openBatch}
-      headroom={headroom}
-      headroomChanged={headroomChanged}
+      available={available}
+      availableChanged={availableChanged}
       mockProductionState={mockProductionState}
     />
   ) : null;
