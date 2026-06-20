@@ -43,6 +43,7 @@ next-env.d.ts
 
 # Claude Code local overrides
 .claude/settings.local.json
+.claude/launch.json
 
 # Local IDE settings (in case VS Code workspace settings get committed accidentally)
 .vscode/settings.json
@@ -83,3 +84,4 @@ data-import/import-report-*.txt
 
 # But keep migration files
 !prisma/migrations/**/*.sql
+.vercel
