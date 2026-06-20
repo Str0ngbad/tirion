@@ -18,6 +18,47 @@ Entries are ordered most recent first.
 
 ---
 
+## Session: Batching Lens — Auto-Batch Precedence, Headroom Constraint, Column Spacing (2026-06-20)
+
+### Commits in this session
+
+1. `fix(mockup): correct auto-batch precedence — Open host takes priority over candidate pairing`
+2. `feat(mockup): enforce Available headroom constraint for auto-batch (no partial fills)`
+3. `feat(mockup): enforce Available headroom constraint on manual drag to Open hosts`
+4. `refactor(mockup): cap Part # column at 110px with truncation`
+
+### Bugs fixed
+
+**BUG-9 — Auto-batch WIP precedence inverted.** The old algorithm handled `woIds.length >= 2` groups as unconditional candidate-to-candidate batches, and only tried Open hosts for `woIds.length < 2` (singletons). Groups with 2+ candidates that also had Case 1 Open hosts were batched with each other, violating the "Include Unstarted WIP" intent. Fix: restructured step 4 so the WIP tier checks for a Case 1 Open host FIRST for every PartID, regardless of group size. All candidates join the Open host if headroom allows. Candidate-to-candidate batching is now the fallback that fires only when no Case 1 host exists for the PartID.
+
+### New behaviors
+
+**Available headroom constraint — auto-batch (all-or-nothing per PartID).** In the WIP tier loop, before placing candidates: compute totalCandidateDemand (sum of WO quantities for the group) and available headroom on the selected Case 1 host (mockHeadroom minus existing draft demand). If demand > available → skip the entire PartID group, candidates stay home, no toast. Seeded data: Open WO 50001 (partId 1942, Tailstock Brake Assembly) mockHeadroom lowered 8 → 1 to create a natural test scenario (2 candidates × qty 1 = demand 2 > available 1 → WIP-tier auto-batch abstains).
+
+**Available headroom constraint — manual drag.** `isEligibleOpenTarget` extended with optional params: `candidateDemand`, `existingDraftWoIds`, `wos`. When provided, the function checks candidateDemand ≤ (mockHeadroom − existingDraftDemand). A host that would overflow greys out during drag and silently rejects the drop, matching Case 2/3 visual treatment. Existing callers that omit the new params get prior behavior (case1 check only).
+
+### Structural changes
+
+**Part # column capped at 110px.** Reduces from 120 → 110px. Reclaimed 10px goes to Part Name (200 → 210px; max-w updated 184 → 194px). Part # cell uses `flex items-center gap-1 min-w-0` with a `truncate` span for text and `shrink-0` Activity icon so the WIP indicator is never clipped. Tooltip always surfaces the full part number (plus ancestry chain for non-top-level WOs). Open row Part # cells updated to `truncate block` with title.
+
+### Verification (Playwright + console log, 2026-06-20)
+
+Run WIP-tier auto-batch from reset state. Console audit log confirms:
+
+**Precedence fix (2+ candidates → Open host, not candidate-to-candidate):**
+- partId 1948 (Drive Shaft): `unstarted-wip, 2 candidates → Open row 50011` ✓
+- partId 2035 (Cover Panel): `unstarted-wip, 2 candidates → Open row 50012` ✓
+- partId 2066 (Gear Assembly): `unstarted-wip, 2 candidates → Open row 60003` ✓
+- partId 2063 (Seal Ring): `unstarted-wip, 2 candidates → Open row 50015` ✓
+
+**Headroom constraint (abstain when demand > available):**
+- partId 1942 (Tailstock Brake Assembly): absent from log — candidates stayed home (demand 2 > available 1) ✓
+
+**Singletons with Open hosts placed correctly:**
+- partId 1908, 1922, 1929, 1951, 1967: each placed on matching Case 1 Open row ✓
+
+---
+
 ## Session: Batching Lens — Auto-Batch WIP Predicate Fix + Dropdown UX (2026-06-20)
 
 ### Commits in this session
