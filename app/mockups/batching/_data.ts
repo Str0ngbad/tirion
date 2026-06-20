@@ -1137,15 +1137,25 @@ export function addChipToOpenRow(
 ): BtSessionState {
   const existing = state.openRowChips[openHostId] ?? [];
   if (existing.includes(candidateWoId)) return state;
-  const newOpenRowChips = {
-    ...state.openRowChips,
-    [openHostId]: [...existing, candidateWoId],
-  };
-  // Also record where the candidate chip is "homed" — it's now at the open row
+
+  const newOpenRowChips = { ...state.openRowChips };
+
+  // If chip was previously in a different Open row, remove it from there first.
+  // This handles drag-between-open-rows without leaving stale openRowChips entries
+  // that would cause the chip to render in both the source and destination Open rows.
+  const prevHost = state.chipHome[candidateWoId];
+  if (prevHost !== undefined && prevHost !== openHostId && newOpenRowChips[prevHost] !== undefined) {
+    const remaining = newOpenRowChips[prevHost].filter((id) => id !== candidateWoId);
+    if (remaining.length === 0) {
+      delete newOpenRowChips[prevHost];
+    } else {
+      newOpenRowChips[prevHost] = remaining;
+    }
+  }
+
+  newOpenRowChips[openHostId] = [...existing, candidateWoId];
   const newChipHome = { ...state.chipHome, [candidateWoId]: openHostId };
-  console.log(
-    `[AuditLog] Chip WO-${candidateWoId} assigned to Open row ${openHostId}`
-  );
+  console.log(`[AuditLog] Chip WO-${candidateWoId} assigned to Open row ${openHostId}`);
   return { ...state, openRowChips: newOpenRowChips, chipHome: newChipHome };
 }
 

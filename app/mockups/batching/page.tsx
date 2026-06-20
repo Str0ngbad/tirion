@@ -46,7 +46,6 @@ import {
   confirmDraft,
   autoBatchCandidates,
   addChipToOpenRow,
-  removeChipFromOpenRow,
   resetDraft,
 } from "./_data";
 
@@ -166,14 +165,12 @@ function OpenCompositionCell({
   draftChips,  // candidate WOs placed in this Open row's draft
   isEligible,
   isDragActive,
-  onRemoveDraftChip,
 }: {
   openHostId: number;
   openChip: React.ReactNode;
   draftChips: BtWorkOrder[];
   isEligible: boolean;
   isDragActive: boolean;
-  onRemoveDraftChip: (candidateWoId: number) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `open-cell-${openHostId}`,
@@ -196,26 +193,20 @@ function OpenCompositionCell({
     >
       {/* Static Open identity chip */}
       {openChip}
-      {/* Draft candidate chips placed onto this Open row */}
+      {/* Draft candidate chips placed onto this Open row — draggable back home or to another Case 1 host */}
       {draftChips.map((wo) => (
-        <button
+        <ProjectChip
           key={wo.woId}
-          onClick={() => onRemoveDraftChip(wo.woId)}
-          title={`${wo.topLevelRef} / Qty ${wo.quantity} — click to remove`}
-          className="focus:outline-none rounded-md"
-        >
-          <ProjectChip
-            woId={wo.woId}
-            projectNumber={wo.projectNumber}
-            topLevelRef={wo.topLevelRef}
-            demandQty={wo.quantity}
-            color={wo.projectColor}
-            isAtHome={false}
-            isRoot={false}
-            isAnchoredRoot={true}
-            disabled={false}
-          />
-        </button>
+          woId={wo.woId}
+          projectNumber={wo.projectNumber}
+          topLevelRef={wo.topLevelRef}
+          demandQty={wo.quantity}
+          color={wo.projectColor}
+          isAtHome={false}
+          isRoot={false}
+          isAnchoredRoot={false}
+          disabled={false}
+        />
       ))}
     </div>
   );
@@ -308,7 +299,6 @@ function OpenProductionRow({
   activeChipWoId,
   state,
   wos,
-  onRemoveDraftChip,
   isFirstInGroup,
   isGreyedOut,
 }: {
@@ -320,7 +310,6 @@ function OpenProductionRow({
   activeChipWoId: number | null;
   state: BtSessionState;
   wos: BtWorkOrder[];
-  onRemoveDraftChip: (candidateWoId: number, openHostId: number) => void;
   isFirstInGroup: boolean;
   isGreyedOut?: boolean;
 }) {
@@ -413,7 +402,6 @@ function OpenProductionRow({
           draftChips={draftChips}
           isEligible={isEligible}
           isDragActive={isDragActive}
-          onRemoveDraftChip={(candidateWoId) => onRemoveDraftChip(candidateWoId, openHostId)}
         />
       </td>
 
@@ -1398,10 +1386,6 @@ export default function BatchingPage() {
     setState((prev) => updatePlannedQty(hostWoId, qty, prev));
   }
 
-  function handleRemoveDraftChipFromOpenRow(candidateWoId: number, openHostId: number) {
-    setState((prev) => removeChipFromOpenRow(candidateWoId, openHostId, prev));
-  }
-
   function handleConfirmDraft() {
     const { newState, stats } = confirmDraft(state, ALL_BT_WOS, visibleLockedHostWoIds);
     setState(newState);
@@ -1653,7 +1637,6 @@ export default function BatchingPage() {
           activeChipWoId={activeChipWoId}
           state={state}
           wos={ALL_BT_WOS}
-          onRemoveDraftChip={handleRemoveDraftChipFromOpenRow}
           isFirstInGroup={false}
           isGreyedOut={isOpenGreyedOut}
         />
@@ -2086,8 +2069,7 @@ export default function BatchingPage() {
                             activeChipWoId={activeChipWoId}
                             state={state}
                             wos={ALL_BT_WOS}
-                            onRemoveDraftChip={handleRemoveDraftChipFromOpenRow}
-                            isFirstInGroup={true}
+                                              isFirstInGroup={true}
                           />
                         );
                       })}
