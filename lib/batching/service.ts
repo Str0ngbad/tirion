@@ -223,7 +223,8 @@ export async function getBatchingViewData(): Promise<BatchingViewData> {
         partName: wo.part.partName,
         demand: wo.quantity,
         plannedQty: null,
-        available: new Prisma.Decimal(0),
+        // headroom = plannedQty ?? quantity; available = headroom - quantity (WO is sole member)
+        available: computeHeadroom(null, wo.quantity),
         productionState,
         completedQty,
       };
@@ -526,6 +527,7 @@ export async function confirmDraft(
             data: {
               partId,
               totalQuantity: newTotal,
+              plannedQuantity: plannedQty ? new Prisma.Decimal(plannedQty) : null,
               status: "Planned",
             },
           });

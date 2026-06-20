@@ -1423,10 +1423,11 @@ export default function BatchingPage() {
       const openHostId = Number(openHostIdStr);
       const row = openRows.find((r) => r.openHostId === openHostId);
       if (!row) continue;
+      const openPlanned = state.plannedQty[openHostId] ?? null;
       if (row.batchId !== null) {
-        assignments.push({ workOrderIds: draftWoIds, targetType: "add-to-open-batch", targetBatchId: row.batchId });
+        assignments.push({ workOrderIds: draftWoIds, targetType: "add-to-open-batch", targetBatchId: row.batchId, ...(openPlanned ? { plannedQty: openPlanned } : {}) });
       } else if (row.workOrderId !== null) {
-        assignments.push({ workOrderIds: draftWoIds, targetType: "add-to-open-wo", targetWorkOrderId: row.workOrderId });
+        assignments.push({ workOrderIds: draftWoIds, targetType: "add-to-open-wo", targetWorkOrderId: row.workOrderId, ...(openPlanned ? { plannedQty: openPlanned } : {}) });
       }
     }
 
