@@ -750,7 +750,7 @@ export const OPEN_BATCHES: BtOpenBatch[] = [
     memberProjectNums: ["10030", "10121"],
     mockProductionState: "case3",
     mockHeadroom: 3,       // planner-verified, shown in red
-    mockActiveStepIndex: 3, // active at Inspect (final step, index 3)
+    mockActiveStepIndex: 2, // active at QC (final step for tmpl_assembly, index 2)
     mockCompletedQty: 0,
   },
   // partId 1954 (End Cap Right, even → tmpl_mill) — case2 with sufficient headroom (actionable)

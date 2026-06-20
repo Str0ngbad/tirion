@@ -88,3 +88,11 @@ export {
   DescendantCompleteError,
   ReconcileStockError,
 } from "@/lib/errors/stock-fulfillment-errors";
+export {
+  BatchNotFoundError,
+  BatchWOPartMismatchError,
+  BatchConfirmEmptyError,
+  WONotBatchCandidateError,
+  BatchEligibilityError,
+  OpenRowHeadroomError,
+} from "@/lib/errors/batching-errors";
