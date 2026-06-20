@@ -1427,31 +1427,29 @@ export default function BatchingPage() {
     toast.success(msg);
   }
 
-  function handleAutoBatch() {
-    const openRowHostWoIds = new Set<number>(OPEN_ROW_HOST_IDS);
+  // Selects a tier and immediately runs auto-batch with that tier.
+  // We pass tier directly so the run uses the just-chosen value, not stale state.
+  function handleSelectAndRunAutoBatch(tier: "candidates-only" | "include-unstarted-wip") {
+    setAutoBatchDropdownOpen(false);
+    const openRowHostWoIdsSet = new Set<number>(OPEN_ROW_HOST_IDS);
     const { newState, stats } = autoBatchCandidates(
       state,
       ALL_BT_WOS,
       allVisibleWoIds,
-      openRowHostWoIds,
-      state.autoBatchTier,
+      openRowHostWoIdsSet,
+      tier,
       OPEN_WOS,
       OPEN_BATCHES
     );
-    setState(newState);
+    setState({ ...newState, autoBatchTier: tier });
     if (stats.batchesCreated === 0) {
       toast("No batchable candidates found.");
       return;
     }
-    const tierLabel = state.autoBatchTier === "include-unstarted-wip" ? " (incl. unstarted WIP)" : "";
+    const tierLabel = tier === "include-unstarted-wip" ? " (incl. unstarted WIP)" : "";
     toast.success(
       `Auto-batched${tierLabel} ${stats.totalBatched} candidate${stats.totalBatched !== 1 ? "s" : ""} into ${stats.batchesCreated} draft batch${stats.batchesCreated !== 1 ? "es" : ""}.`
     );
-  }
-
-  function handleSetAutoBatchTier(tier: "candidates-only" | "include-unstarted-wip") {
-    setState((prev) => ({ ...prev, autoBatchTier: tier }));
-    setAutoBatchDropdownOpen(false);
   }
 
   function handleResetDraft() {
@@ -1781,7 +1779,7 @@ export default function BatchingPage() {
 
             <div className="flex-1" />
 
-            {/* Auto-Batch Candidates button with dropdown */}
+            {/* Auto-Batch button — click anywhere opens tier dropdown; no default action */}
             <div className="relative flex shrink-0">
               <button
                 disabled={!autoBatchEnabled}
@@ -1789,73 +1787,51 @@ export default function BatchingPage() {
                   viewMode === "QuantityPlanning"
                     ? "Auto-Batch operates on unlocked rows. Switch to Batching or All view."
                     : autoBatchEnabled
-                    ? `Combines eligible unlocked candidates into draft batches. Tier: ${
-                        state.autoBatchTier === "include-unstarted-wip"
-                          ? "Include Unstarted WIP"
-                          : "Candidates Only"
-                      }`
-                    : "No batchable candidates available"
+                    ? "Select a tier to run Auto-Batch"
+                    : "No work to auto-batch"
                 }
-                onClick={handleAutoBatch}
+                onClick={() => setAutoBatchDropdownOpen((o) => !o)}
                 className={[
-                  "rounded-l px-3 py-1.5 text-sm font-medium transition-colors border-r border-border/30",
+                  "flex items-center gap-1.5 rounded px-3 py-1.5 text-sm font-medium transition-colors",
                   autoBatchEnabled
                     ? "bg-secondary text-secondary-foreground hover:bg-secondary/80"
                     : "bg-muted text-muted-foreground cursor-not-allowed",
                 ].join(" ")}
               >
                 Auto-Batch
-              </button>
-              <button
-                onClick={() => setAutoBatchDropdownOpen((o) => !o)}
-                className={[
-                  "rounded-r px-2 py-1.5 text-sm font-medium transition-colors",
-                  autoBatchEnabled
-                    ? "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                    : "bg-muted text-muted-foreground cursor-not-allowed",
-                ].join(" ")}
-                title="Select auto-batch tier"
-              >
                 <ChevronDown className="h-3.5 w-3.5" />
               </button>
 
-              {/* Dropdown */}
+              {/* Dropdown — selecting a tier executes it immediately */}
               {autoBatchDropdownOpen && (
                 <div className="absolute right-0 top-full mt-1 z-20 rounded border border-border bg-background shadow-lg min-w-[220px] py-1">
                   <button
-                    onClick={() => handleSetAutoBatchTier("candidates-only")}
-                    className={[
-                      "w-full text-left px-3 py-1.5 text-xs hover:bg-muted transition-colors",
-                      state.autoBatchTier === "candidates-only"
-                        ? "text-foreground font-medium"
-                        : "text-muted-foreground",
-                    ].join(" ")}
+                    onClick={() => handleSelectAndRunAutoBatch("candidates-only")}
+                    className="w-full text-left px-3 py-1.5 text-xs hover:bg-muted transition-colors text-foreground"
                   >
-                    <div className="font-medium">Auto-Batch: Only Candidates</div>
+                    <div className="font-medium">Only Candidates</div>
                     <div className="text-[10px] text-muted-foreground mt-0.5">
                       Groups candidates by PartID only
                     </div>
                   </button>
                   <button
                     disabled={!autoBatchWipEnabled}
-                    onClick={() => autoBatchWipEnabled ? handleSetAutoBatchTier("include-unstarted-wip") : undefined}
+                    onClick={() => autoBatchWipEnabled ? handleSelectAndRunAutoBatch("include-unstarted-wip") : undefined}
                     title={!autoBatchWipEnabled ? "No Case 1 Open hosts available for visible candidates" : undefined}
                     className={[
                       "w-full text-left px-3 py-1.5 text-xs transition-colors",
                       !autoBatchWipEnabled
                         ? "text-muted-foreground/40 cursor-not-allowed"
-                        : state.autoBatchTier === "include-unstarted-wip"
-                        ? "text-foreground font-medium hover:bg-muted"
-                        : "text-muted-foreground hover:bg-muted",
+                        : "text-foreground hover:bg-muted",
                     ].join(" ")}
                   >
-                    <div className="font-medium">Auto-Batch: Include Unstarted WIP</div>
+                    <div className="font-medium">Include Unstarted WIP</div>
                     <div className="text-[10px] text-muted-foreground mt-0.5">
                       Also assigns singletons to matching Case 1 Open rows
                     </div>
                   </button>
                   <div className="px-3 py-1.5 text-xs text-muted-foreground/50 cursor-not-allowed border-t border-border mt-1 pt-1">
-                    <div className="font-medium line-through">Auto-Batch: Include Started WIP</div>
+                    <div className="font-medium line-through">Include Started WIP</div>
                     <div className="text-[10px] mt-0.5">
                       Available when execution data exists (Phase 2.5)
                     </div>
