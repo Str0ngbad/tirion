@@ -18,6 +18,140 @@ Entries are ordered most recent first.
 
 ---
 
+## Session: Batching Lens — Phase 2 Drag Restore + Available Label + Column Polish (2026-06-20)
+
+### Commits in this session
+
+1. `fix(mockup): restore drag on draft chips and fix open-row-to-open-row state collision`
+2. `refactor(mockup): revise open chip format to Available label with value-only color`
+3. `refactor(mockup): remove vestigial headroom column from table`
+4. `refactor(mockup): equalize column widths for visual balance`
+
+### Bugs fixed
+
+**BUG-6 — Open-row-to-open-row state collision (dual render).** The prior session's `moveChip` cleanup fix covered candidate→candidate drags that exited an Open row via `moveChip`. It did NOT cover the case where a draft chip was dragged from one Case 1 Open row directly onto a different Case 1 Open row (same partId), which routes through `addChipToOpenRow`. Before the fix, `addChipToOpenRow` set `chipHome[candidateWoId] = newHostId` AND added the chip to `openRowChips[newHostId]`, but left `openRowChips[oldHostId]` intact. Result: chip rendered in both Open rows simultaneously. Fix: `addChipToOpenRow` now inspects `chipHome[candidateWoId]` before writing and removes the chip from any prior Open row's `openRowChips` entry.
+
+**BUG-7 — Draft chips non-draggable (prior workaround reversed).** The prior session set `isAnchoredRoot={true}` on draft chips in `OpenCompositionCell` as a preventive workaround for the tandem-drag bug. With BUG-4 (moveChip cleanup) and BUG-6 (addChipToOpenRow cleanup) both fixed, the state is now consistent regardless of drag path. The workaround is removed: draft chips use `isAnchoredRoot={false}` and are fully draggable — back to their home candidate row, or to another eligible Case 1 Open row. The click-to-remove button wrapper is also removed; drag is now the sole interaction for repositioning a draft chip.
+
+### Structural changes
+
+**Headroom column removed.** The Headroom column (blank for all rows — value moved to chip in prior session) served no display purpose. Column header, `<col>` entry, and blank `<td>` cells in both `CandidateRow` and `OpenProductionRow` are removed. Column count 11 → 10: Select | Lock | Composition | Part # | Part Name | Demand | Planned | Priority | Due Date | Routing. `colSpan` updated to 10.
+
+**Open chip label: "Hdrm:" → "Available:"** Chip line 2 now reads `Available: N` where only the numeric value `N` receives color (red for case3; bright blue `#0EA5E9` when draft chips present; muted otherwise). The "Available:" label text stays neutral muted in all states. Internal variables renamed `headroom`/`headroomChanged` → `available`/`availableChanged` in `OpenProductionRow`. Data field `mockHeadroom` unchanged.
+
+**Column spacing adjusted.** Composition: 150 → 170px. Part Name: 180 → 200px (max-w updated to 184px). Priority: 96 → 60px (single digit; prior width was excessive). Total ~1124px — no horizontal scroll at 1280px.
+
+### Known data issue (deferred)
+
+**Open Batch B004 (partId 1951, PB-M Base Assembly) has `mockActiveStepIndex: 3`.** B004 uses `tmpl_assembly` (Prep/Assembly/QC, 3 steps, valid indices 0–2). Index 3 is out of bounds — RoutingPills renders no highlighted pill. The batch is case3 so the out-of-bounds index does not cause a crash (all pills render muted anyway), but the QC pill should be highlighted. Not fixed in this session; flag for a future data-cleanup commit.
+
+### Manual Test Guide (Phase 2 refresh — 2026-06-20)
+
+Navigate to `http://localhost:3000/mockups/batching` (dev server on port 3000).
+
+**Prerequisite:** Click "Reset Draft" if any chips have been moved.
+
+**Columns visible (10 total):** Select | Lock | Composition | Part # | Part Name | Demand | Planned | Priority | Due Date | Routing. No Project, Completed, or Headroom columns.
+
+**Spot-check Part Names.** Walk `app/mockups/batching/_data.ts` Open WOs and Batches to verify the rendered table matches:
+- partId 1942 → Part # "Tailstock Brake Assembly", Part Name "Tailstock Brake Assembly"
+- partId 1948 → Part # "58-17-0-00", Part Name "Photo Eye Kit Assembly"
+- partId 2035 → Part # "18-01-3-00", Part Name "CW 10.5in Cutter Plate Assembly"
+
+All parts in the batching lens are Assembly type → all Routing cells show Prep / Assembly / QC pills.
+
+---
+
+**Scenario 1 — Case 1 drop + Available live update on chip**
+
+- **Part:** Part # `58-17-0-00` / "Photo Eye Kit Assembly"
+- **Candidate WOs (Batching view):** two rows — chip `10030.08 / Qty: 1` and `10489.01 / Qty: 1`
+- **Open rows visible for this part:** Open WO 50011 (case1, Available: 6, all pills muted) · Open WO 50002 (case2, available: 1, Assembly pill highlighted)
+
+Steps:
+1. Drag either Photo Eye Kit candidate chip onto Open WO 50011 (case1). Row highlights green.
+2. On drop: draft chip appears in 50011's Composition cell. Chip line 2 updates: `Available: 5` in bright blue `#0EA5E9`.
+3. Source candidate row shows "Drafted → 10030.08".
+4. Open WO 50002 (case2) stays greyed during drag — drop blocked.
+5. **Drag the draft chip from Open WO 50011 back to the candidate row.** Chip returns home; source row chip reappears; Available returns to 6 (blue disappears).
+
+---
+
+**Scenario 2 — Case 2 blocked drop**
+
+- **Part:** Part # `55-10-0-00` / "PB-M Wrap Around Drive Assembly (standard height columns)"
+- **Candidate WO:** one row — chip `10030.02 / Qty: 1`
+- **Open rows visible:** Open WO 50007 (case2, Available: 3, Assembly pill highlighted) · Open Batch B005 (case2, Available: 4, Assembly pill highlighted)
+
+Steps:
+1. Begin dragging the candidate chip. Verify both case2 Open rows stay greyed — drop targets not highlighted.
+2. Attempt to drop on either Open row → chip returns home.
+
+---
+
+**Scenario 3 — Case 3 blocked drop + red Available value on chip**
+
+- **Part:** Part # `18-01-3-00` / "CW 10.5in Cutter Plate Assembly"
+- **Candidate WOs:** two rows — `10121.03 / Qty: 1` and `10412.02 / Qty: 1`
+- **Open rows visible:** Open WO 50005 (case3, `Available: 3` in **red**, QC pill highlighted) · Open WO 50012 (case1, `Available: 5` muted, all pills muted)
+
+Steps:
+1. Verify 50005's chip shows `Available: 3` in red with QC pill highlighted.
+2. Begin dragging a candidate chip. 50005 (case3) stays greyed; 50012 (case1) highlights green.
+3. Drop on 50012 → draft chip appears; 50012 chip updates `Available: 4` in blue.
+4. Attempt drop on 50005 → chip snaps back to source.
+
+---
+
+**Scenario 4 — Multi-host heuristic (Auto-Batch WIP tier)**
+
+- **Part:** Part # "Tailstock Brake Assembly" / "Tailstock Brake Assembly"
+- **Open rows visible:** Open WO 50001 (case1, Jul 15) · Open Batch B001 (case1, Jul 12) · Open WO 50013 (case3, Aug 15 — greyed during drag)
+
+Steps:
+1. Switch Auto-Batch to "Include Unstarted WIP" tier.
+2. Click "Auto-Batch."
+3. Verify both Tailstock Brake Assembly candidate chips land on Open WO 50001 (latest case1 due date). Chip line 2: `Available: 6` → `Available: 4` in blue (after 2 draft chips with qty 1 each).
+
+---
+
+**Scenario 5 — Draft chip drag between two Case 1 Open rows**
+
+- **Part:** Part # `59-16-3-00` / "1 inch PB-M End Stop Assembly"
+- **Candidate WOs:** two rows — `10030.07 / Qty: 1` and `10489.02 / Qty: 1`
+- **Open rows visible:** Open WO 50008 (case1, Available: 8) · Open Batch B003 (case1, Available: 7)
+
+Steps:
+1. Drag `10030.07` chip onto Open WO 50008. Drop → draft chip appears. 50008 shows `Available: 7`.
+2. **Drag the draft chip from 50008 onto Open Batch B003.** Drop → chip appears in B003; 50008 Available restores to 8 (blue disappears); B003 shows `Available: 6` in blue.
+3. Verify: chip appears in exactly ONE place (B003). No duplicate in 50008 or the candidate row.
+
+---
+
+**Scenario 6 — No-duplication check**
+
+Steps:
+1. Drag any candidate chip onto a Case 1 Open row. Drop succeeds.
+2. Verify: candidate row shows "Drafted →". Open row Composition shows ONE draft chip (not two).
+3. Drag the draft chip back to the candidate row. Home row chip reappears; Open row draft clears.
+4. Verify: chip appears in exactly one place at all times.
+
+---
+
+### Spec gaps — for implementation handoff
+
+| Gap | Description |
+|-----|-------------|
+| Project column removed | Spec lists Project(s) column; removed as redundant. Update spec. |
+| Completed column removed | Spec lists Completed column; removed (covered by chip Available). Update spec. |
+| Headroom column removed | Spec may list Headroom column; moved to chip line 2. Update spec. |
+| Open chip 2-line layout | Spec shows single-line chip. Now 2-line with Available inline. Update spec chip format. |
+| "Available" label | Spec may reference "Headroom" as the column/field label. Implementation should use "Available." |
+| Batch ID format | Spec may reference OPEN-BATCH-NNN format. Implementation should use short BN format. |
+| B004 activeStepIndex | Open Batch B004 has mockActiveStepIndex: 3 but tmpl_assembly only has 3 steps (0–2). Fix in data before implementation. |
+
+---
+
 ## Session: Batching Lens — Phase 2 Chip Duplication Fix + Column Restructure (2026-06-19)
 
 ### Commits in this session
