@@ -1201,11 +1201,11 @@ export default function BatchingPage() {
   const allVisibleWoIds = useMemo(() => {
     const ids: number[] = [];
     for (const g of filteredNonSingletonGroups) ids.push(...g.candidates.map((c) => c.workOrderId));
-    if (state.showHiddenSingletons) {
+    if (state.showHiddenSingletons || viewMode !== "Batching") {
       for (const g of filteredSingletonGroups) ids.push(...g.candidates.map((c) => c.workOrderId));
     }
     return ids;
-  }, [filteredNonSingletonGroups, filteredSingletonGroups, state.showHiddenSingletons]);
+  }, [filteredNonSingletonGroups, filteredSingletonGroups, state.showHiddenSingletons, viewMode]);
 
   // Confirmable count
   const confirmableCount = useMemo(() => {
@@ -1261,11 +1261,11 @@ export default function BatchingPage() {
   const candidatePartIds = useMemo(() => {
     const ids = new Set<number>();
     for (const g of filteredNonSingletonGroups) ids.add(g.partId);
-    if (state.showHiddenSingletons) {
+    if (state.showHiddenSingletons || viewMode !== "Batching") {
       for (const g of filteredSingletonGroups) ids.add(g.partId);
     }
     return ids;
-  }, [filteredNonSingletonGroups, filteredSingletonGroups, state.showHiddenSingletons]);
+  }, [filteredNonSingletonGroups, filteredSingletonGroups, state.showHiddenSingletons, viewMode]);
 
   const orphanOpenRows = useMemo(() => {
     return filteredOpenRows.filter((r) => !candidatePartIds.has(r.partId));
@@ -1445,7 +1445,7 @@ export default function BatchingPage() {
   // ─── Empty state ──────────────────────────────────────────────────────────────
 
   const hasAnyVisible = filteredNonSingletonGroups.some((g) => g.candidates.length > 0) ||
-    (state.showHiddenSingletons && filteredSingletonGroups.length > 0) ||
+    ((state.showHiddenSingletons || viewMode !== "Batching") && filteredSingletonGroups.length > 0) ||
     filteredOpenRows.length > 0;
 
   const hasAnyLockedNonSingleton = nonSingletonPartIds.some((pid) =>
@@ -1608,15 +1608,15 @@ export default function BatchingPage() {
 
           {/* ── Count bar ── */}
           <div className="px-4 py-1.5 border-b border-border text-xs text-muted-foreground shrink-0">
-            {totalVisibleCandidates > 0 || (state.showHiddenSingletons && visibleSingletonCount > 0) || filteredOpenRows.length > 0 ? (
+            {totalVisibleCandidates > 0 || ((state.showHiddenSingletons || viewMode !== "Batching") && visibleSingletonCount > 0) || filteredOpenRows.length > 0 ? (
               <>
                 {totalVisibleCandidates > 0 && (
                   <><span className="text-foreground font-medium">{totalVisibleCandidates} candidates</span>{" "}</>
                 )}
-                {!state.showHiddenSingletons && hiddenSingletonCount > 0 && (
+                {viewMode === "Batching" && !state.showHiddenSingletons && hiddenSingletonCount > 0 && (
                   <span>{totalVisibleCandidates > 0 ? " · " : ""}<span className="text-muted-foreground">{hiddenSingletonCount} unbatchable part{hiddenSingletonCount !== 1 ? "s" : ""}</span></span>
                 )}
-                {state.showHiddenSingletons && visibleSingletonCount > 0 && (
+                {(state.showHiddenSingletons || viewMode !== "Batching") && visibleSingletonCount > 0 && (
                   <span>{totalVisibleCandidates > 0 ? " · " : ""}<span className="text-muted-foreground">{visibleSingletonCount} unbatchable part{visibleSingletonCount !== 1 ? "s" : ""}</span></span>
                 )}
                 {filteredOpenRows.length > 0 && (
@@ -1732,7 +1732,7 @@ export default function BatchingPage() {
                   ))}
 
                   {/* Unbatchable Parts (singletons) */}
-                  {state.showHiddenSingletons && filteredSingletonGroups.length > 0 && (
+                  {(state.showHiddenSingletons || viewMode !== "Batching") && filteredSingletonGroups.length > 0 && (
                     <>
                       <tr>
                         <td colSpan={10} className="px-4 py-2 text-xs font-semibold text-muted-foreground border-t-4 border-border bg-muted/20 uppercase tracking-wide">
